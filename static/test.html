@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>地図範囲固定版</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        body { margin: 0; padding: 0; }
+        #map {
+            height: 100vh;
+            width: 100%;
+            background-color: #fff;
+        }
+        #random-zoom-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 1000;
+            padding: 10px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="map"></div>
+    <button id="random-zoom-btn">ランダムな県へ</button>
+
+    <script>
+        const map = L.map('map', {
+            // --- 静的な地図にするためのオプション ---
+            dragging: false,          // ドラッグ操作を無効化
+            scrollWheelZoom: false,   // ホイールズームを無効化
+            doubleClickZoom: false,   // ダブルクリックズームを無効化
+            boxZoom: false,           // ボックスズーム（Shift+ドラッグ）を無効化
+            keyboard: false,          // キーボード操作を無効化
+            tap: false,               // タップ操作を無効化 (モバイル向け)
+            touchZoom: false,         // ピンチズームを無効化 (モバイル向け)
+            zoomControl: false,       // ズームコントロール（＋ーボタン）を非表示に
+
+            // --- これまでの設定 ---
+            minZoom: 5
+        });
+
+        const prefectureLayers = [];
+        let focusedLayer = null;
+
+        const defaultStyle = {
+            color: "#cccccc",
+            weight: 1,
+            opacity: 1,
+            fillColor: "#f8f8f8",
+            fillOpacity: 1
+        };
+        const focusedStyle = {
+            color: "#ff7800",
+            weight: 3,
+            opacity: 1,
+            fillColor: "yellow",
+            fillOpacity: 0.5
+        };
+
+        fetch('data/low_prefectures.geojson')
+            .then(response => response.json())
+            .then(data => {
+                const geoJsonLayer = L.geoJSON(data, {
+                    style: defaultStyle,
+                    onEachFeature: function(feature, layer) {
+                        prefectureLayers.push(layer);
+                    }
+                }).addTo(map);
+
+                // ▼▼▼ 【変更点】ここから ▼▼▼
+
+                // 日本全体の領域を取得
+                const bounds = geoJsonLayer.getBounds();
+
+                // 地図の移動範囲を日本全体の領域に制限する
+                // .pad(0.1)で領域に10%の余白を持たせ、端の操作をしやすくする
+                map.setMaxBounds(bounds.pad(0.1));
+
+                // 最初の表示を日本全体に合わせる
+                map.fitBounds(bounds);
+
+                // ▲▲▲ ここまで ▲▲▲
+            })
+            .catch(error => console.error('Error loading the GeoJSON file:', error));
+
+        const randomZoomBtn = document.getElementById('random-zoom-btn');
+
+        randomZoomBtn.addEventListener('click', function() {
+            if (prefectureLayers.length === 0) {
+                return;
+            }
+
+            const randomIndex = Math.floor(Math.random() * prefectureLayers.length);
+            const randomLayer = prefectureLayers[randomIndex];
+
+            if (focusedLayer && focusedLayer !== randomLayer) {
+                focusedLayer.setStyle(defaultStyle);
+            }
+
+            randomLayer.setStyle(focusedStyle);
+            focusedLayer = randomLayer;
+
+            map.flyToBounds(randomLayer.getBounds(), {
+                duration: 0.2
+            });
+        });
+    </script>
+</body>
+</html>

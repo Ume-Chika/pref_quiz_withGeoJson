@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>都道府県クイズ</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <h1>都道府県クイズ</h1>
+
+    <div id="quiz-area" style="display: none;">
+
+        <div id="timer-display">
+            残り時間: <span id="time-left">15</span>秒
+        </div>
+
+        <p>この都道府県はなんでしょうか？</p>
+
+        <div id="map-container">
+            <div id="map"></div>
+        </div>
+
+        <fieldset>
+            <div>
+                <input type="radio" id="select1" name="select" value="">
+                <label for="select1" id="label1">選択肢1</label>
+            </div>
+            <div>
+                <input type="radio" id="select2" name="select" value="">
+                <label for="select2" id="label2">選択肢2</label>
+            </div>
+            <div>
+                <input type="radio" id="select3" name="select" value="">
+                <label for="select3" id="label3">選択肢3</label>
+            </div>
+            <div>
+                <input type="radio" id="select4" name="select" value="">
+                <label for="select4" id="label4">選択肢4</label>
+            </div>
+            <button id="submit-button">決定！</button>
+        </fieldset>
+    </div>
+
+    <button id="start-button">クイズ開始！</button>
+    <br>
+    <br>
+    <button id="log-button">これまでの回答を表示▽</button><!--「これまでの回答を閉じる」と切り替わる-->
+    <button id="log-option-button">不正解のみに絞る</button><!--オンの間は色が変わる-->
+
+    <div id="log-area">
+    </div>
+
+    <div id="custom-alert-overlay" class="custom-alert" style="display: none;">
+        <div id="custom-alert-box">
+            <h2 id="custom-alert-title"></h2>
+            <p id="custom-alert-text"></p>
+            <div id="custom-alert-buttons">
+                <button id="alert-confirm-btn">続ける</button>
+                <button id="alert-cancel-btn">休む</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="/static/js/script.js"></script>
+</body>
+</html>
