@@ -340,39 +340,16 @@ function renderHistory() {
         logEntryDiv.appendChild(resultTitle);
 
         // --- ここからが新しい構造の組み立てです ---
-        // 1. 全体を包むラッパーを作成
-        const mapWrapper = document.createElement('div');
-        mapWrapper.className = 'log-map-wrapper';
-
-        // 2. テキスト層を作成
-        const placeholder = document.createElement('div');
-        placeholder.className = 'log-map-placeholder';
-        placeholder.innerHTML = 'クリックして<br>地図を表示';
-
-        // 3. 地図層を作成
         const mapTarget = document.createElement('div');
         mapTarget.className = 'log-map-target';
-        mapTarget.id = `log-map-${index}`; // IDは地図層に付与
+        mapTarget.id = `log-map-${index}`;
+        mapTarget.style.height = ''; // 高さをリセット
+        contentDiv.appendChild(mapTarget);
 
-        // ラッパーにテキスト層と地図層を追加
-        mapWrapper.appendChild(placeholder);
-        mapWrapper.appendChild(mapTarget);
-
-        // ラッパーがクリックされたときの処理を設定（一度だけ実行）
-        mapWrapper.addEventListener('click', function() {
-            // テキスト層を非表示にする
-            placeholder.style.display = 'none';
-            // 地図層を表示する
-            mapTarget.style.display = 'block';
-
-            // 地図層の中に地図を初期化
+        // 遅延実行で地図を初期化
+        setTimeout(() => {
             initLogMap(mapTarget.id, entry.prefectureName);
-
-            // 読み込み済みの印を付け、二度とイベントが起きないようにする
-            this.classList.add('loaded');
-        }, { once: true }); // イベントリスナーを一度実行したら自動で削除するオプション
-
-        contentDiv.appendChild(mapWrapper);
+        }, 0);
         // --- ここまで ---
 
         const choicesList = document.createElement('ul');

@@ -90,37 +90,10 @@
     gap: 20px; /* 画像と選択肢の間のスペース */
 }
 
-/* ログ用地図全体を包むラッパー */
-.log-map-wrapper {
-    position: relative; /* 子要素の配置の基準点にする */
-    width: 150px;
-    height: 120px;
-    border: 1px solid #ccc;
-    cursor: pointer; /* クリックできることを示す */
-}
-/* 読み込み後はカーソルを戻す */
-.log-map-wrapper.loaded {
-    cursor: default;
-}
-
-/* 「クリックして...」のテキストを表示する層 */
-.log-map-placeholder {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    width: 100%;
-    height: 100%;
-    background-color: #f0f8ff;
-    font-size: 14px;
-    color: #555;
-    text-align: center;
-}
-
-/* 実際に地図が描画される層（初期状態では非表示） */
 .log-map-target {
-    width: 100%;
-    height: 100%;
-    display: none;
+    width: 150px;
+    aspect-ratio: 4 / 3; /* 幅に対して4:3の比率を維持 */
+    border: 1px solid #ccc;
 }
 
 .log-content ul {
