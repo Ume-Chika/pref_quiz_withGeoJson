@@ -6,6 +6,29 @@ app = Flask(__name__,
             static_folder='static',
             template_folder='templates')
 
+# GeoJSONから都道府県名を読み込み、アプリケーション起動時に一度だけ実行
+def load_prefectures_from_geojson():
+    try:
+        with open('static/data/low_prefectures.geojson', 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        # 'features'リストから各featureの'properties'にある'name'を抽出
+        prefectures = [feature['properties']['name'] for feature in data['features']]
+        return prefectures
+    except FileNotFoundError:
+        print("エラー: 'low_prefectures.geojson' が見つかりません。")
+        return []
+    except json.JSONDecodeError:
+        print("エラー: 'low_prefectures.geojson' のJSON形式が正しくありません。")
+        return []
+    except KeyError:
+        print("エラー: GeoJSONの形式が予期したものと異なります。（'features'または'properties'/'name'キーが見つかりません）")
+        return []
+
+ALL_PREFECTURES = load_prefectures_from_geojson()
+# 都道府県リストが正常に読み込まれたか確認
+if not ALL_PREFECTURES:
+    print("警告: 都道府県リストが空です。クイズは正常に動作しない可能性があります。")
+
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -13,22 +36,14 @@ def index():
 @app.route('/api/quiz')
 def get_quiz():
     """クイズデータを動的に生成して、JSON形式で返す"""
-    with open('quizzes.json', 'r', encoding='utf-8') as f:
-        # JSONを読み込むと、all_prefecturesは都道府県名のリストになる
-        all_prefectures = json.load(f)
+    # 1. 全都道府県リストから、ランダムに4つの選択肢を重複なく選ぶ
+    choices = random.sample(ALL_PREFECTURES, 4)
 
-    # 1. リストから正解をランダムに1つ選ぶ
-    correct_answer = random.choice(all_prefectures)
+    # 2. 4つの選択肢の中から、ランダムに1つを正解として選ぶ
+    correct_answer = random.choice(choices)
 
-    # 2. 正解以外の都道府県のリストを作る
-    wrong_prefectures = [p for p in all_prefectures if p != correct_answer]
-
-    # 3. 正解以外のリストから、不正解の選択肢を3つランダムに選ぶ
-    wrong_choices = random.sample(wrong_prefectures, 3)
-
-    # 4. 正解と不正解の選択肢を結合して、シャッフルする
-    choices = wrong_choices + [correct_answer]
-    random.shuffle(choices)
+    # `choices`リストはrandom.sampleによって既にランダムな順序になっているため、
+    # 再度シャッフルする必要はありません。
 
     response_data = {
         'correctAnswer': correct_answer,
