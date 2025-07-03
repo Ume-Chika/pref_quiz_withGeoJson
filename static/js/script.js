@@ -1,26 +1,20 @@
 /**
  * HTML要素の取得
  */
-const startButton = document.getElementById('start-button');
-const submitButton = document.getElementById('submit-button');
-const quizArea = document.getElementById('quiz-area');
-// quizImageはHTMLから削除したため、ここも削除
-const labels = [
-    document.getElementById('label1'), document.getElementById('label2'),
-    document.getElementById('label3'), document.getElementById('label4')
-];
-const radioButtons = [
-    document.getElementById('select1'), document.getElementById('select2'),
-    document.getElementById('select3'), document.getElementById('select4')
-];
-const customAlert = document.getElementById('custom-alert-overlay');
-const alertTitle = document.getElementById('custom-alert-title');
-const alertText = document.getElementById('custom-alert-text');
-const alertConfirmBtn = document.getElementById('alert-confirm-btn');
-const alertCancelBtn = document.getElementById('alert-cancel-btn');
-const logButton = document.getElementById('log-button');
-const logOptionButton = document.getElementById('log-option-button');
-const logArea = document.getElementById('log-area');
+const getById = (id) => document.getElementById(id);
+const startButton = getById('start-button');
+const submitButton = getById('submit-button');
+const quizArea = getById('quiz-area');
+const labels = Array.from({ length: 4 }, (_, i) => getById(`label${i + 1}`));
+const radioButtons = Array.from({ length: 4 }, (_, i) => getById(`select${i + 1}`));
+const customAlert = getById('custom-alert-overlay');
+const alertTitle = getById('custom-alert-title');
+const alertText = getById('custom-alert-text');
+const alertConfirmBtn = getById('alert-confirm-btn');
+const alertCancelBtn = getById('alert-cancel-btn');
+const logButton = getById('log-button');
+const logOptionButton = getById('log-option-button');
+const logArea = getById('log-area');
 
 
 /**
@@ -130,35 +124,7 @@ function initMap() {
     });
 }
 
-function initLogMap(containerId, prefName) {
-    const mapContainerElement = document.getElementById(containerId);
-    if (!mapContainerElement) {
-        console.error(`エラー: コンテナID "${containerId}" が見つかりません。`);
-        return;
-    }
-    // コンテナの中身をクリアする処理は、この新しい構造では不要です。
 
-    const logMap = L.map(containerId, {
-        zoomControl: false,
-        dragging: false,
-        scrollWheelZoom: false,
-        doubleClickZoom: false,
-        touchZoom: false,
-    });
-
-    const targetLayer = prefectureLayers[prefName];
-
-    if (targetLayer) {
-        const clonedLayer = L.geoJSON(targetLayer.toGeoJSON(), {
-            style: focusedStyle
-        }).addTo(logMap);
-        logMap.fitBounds(clonedLayer.getBounds());
-    } else {
-        console.error(`❌ エラー: "${prefName}" の地図レイヤーが見つかりません。`);
-        mapContainerElement.innerHTML = '地図データが<br>見つかりません';
-        mapContainerElement.style.color = 'red';
-    }
-}
 
 
 /**
