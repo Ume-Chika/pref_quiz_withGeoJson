@@ -9,7 +9,7 @@ const SKILLS = {
 };
 const LOCATION_TYPES = ["locate", "locateJapan", "mapMemory", "shapeLocate", "capitalLocate", "dishLocate"];
 const NATIONWIDE_LOCATION_TYPES = ["locateJapan", "shapeLocate", "capitalLocate", "dishLocate"];
-const ANIMATED_TYPES = ["spotlight", "reveal", "flash", "mapFlash"];
+const ANIMATED_TYPES = ["shapeMemory", "spotlight", "reveal", "flash", "mapFlash", "shapeLocate"];
 
 const $ = (id) => document.getElementById(id);
 const screens = ["loading-screen", "error-screen", "home-screen", "game-screen", "result-screen"].map($);
@@ -425,29 +425,28 @@ function buildQuestion(prefecture, skill, forcedType = "") {
   if (skill === "A") {
     const modes = !item.attempts ? ["shapeMemory"] : mastery < .15 ? ["silhouette", "reveal"] : mastery < .45 ? ["silhouette", "reveal", "spotlight", "silhouetteReverse"] : ["spotlight", "flash", "reveal", "silhouette", "silhouetteReverse"];
     if (canUseIntegratedMode(mastery, getProgress(prefecture.code, "B").mastery)) modes.push("mapShape");
-    type = randomOf(modes);
+    type = randomMode(modes, "silhouette");
   } else if (skill === "B") {
     const modes = !item.attempts ? ["map"] : mastery < .2 ? ["map"] : mastery < .55 ? ["map", "mapChoice", "locate", "mapFlash"] : ["map", "mapChoice", "locate", "locateJapan", "mapFlash", "compass"];
     if (canUseIntegratedMode(mastery, getProgress(prefecture.code, "A").mastery)) modes.push("shapeLocate");
-    type = randomOf(modes);
+    type = randomMode(modes, "map");
   } else if (skill === "C") {
     const modes = ["capital", "capitalReverse"];
     if (canUseIntegratedMode(mastery, getProgress(prefecture.code, "A").mastery)) modes.push("capitalShape");
     if (canUseIntegratedMode(mastery, getProgress(prefecture.code, "B").mastery)) modes.push("capitalMap", "capitalLocate");
-    type = randomOf(modes);
+    type = randomMode(modes, "capital");
   } else if (skill === "D") {
     const modes = ["region", "regionMember"];
     if (canUseIntegratedMode(mastery, getProgress(prefecture.code, "A").mastery)) modes.push("shapeRegion");
     if (canUseIntegratedMode(mastery, getProgress(prefecture.code, "B").mastery)) modes.push("regionMap");
     if (canUseIntegratedMode(mastery, getProgress(prefecture.code, "C").mastery)) modes.push("capitalRegion");
-    type = randomOf(modes);
+    type = randomMode(modes, "region");
   } else {
     const modes = ["dish", "dishReverse"];
     if (canUseIntegratedMode(mastery, getProgress(prefecture.code, "B").mastery)) modes.push("dishMap", "dishLocate");
     if (canUseIntegratedMode(mastery, getProgress(prefecture.code, "A").mastery)) modes.push("dishShapeChoice");
-    type = randomOf(modes);
+    type = randomMode(modes, "dish");
   }
-  if (!saved.settings.visualEffects && ANIMATED_TYPES.includes(type)) type = skill === "A" ? "silhouette" : "map";
   type = forcedType || type;
 
   const question = { prefecture, skill, type, isNew: !item.attempts, choices: [], correct: "" };
@@ -584,7 +583,7 @@ function setQuestionCopy(question) {
     dishLocate: ["郷土料理→地図", `農林水産省の郷土料理百選で「${question.prefecture.dish}」が選ばれた都道府県は？`, "日本地図から場所を選んでください。"]
   }[question.type];
   if (["locate", "mapMemory"].includes(question.type)) copy[2] = `${question.prefecture.region}周辺の地図から選んでください。`;
-  if (!saved.settings.visualEffects && ANIMATED_TYPES.includes(question.type)) {
+  if (!saved.settings.visualEffects && ["spotlight", "reveal", "flash", "mapFlash"].includes(question.type)) {
     copy[2] = question.type === "mapFlash" ? "設定で視覚効果がOFFのため、位置を静止表示しています。" : "設定で視覚効果がOFFのため、輪郭を静止表示しています。";
   }
   [ui.type.textContent, ui.title.textContent, ui.help.textContent] = copy;
@@ -973,7 +972,7 @@ function finishGame() {
     const now = Date.now();
     session.retries.forEach(({ code, skill }) => {
       const item = getProgress(code, skill);
-      if (item.attempts) item.nextDue = Math.min(item.nextDue, now);
+      if (item.attempts) saved.progress[progressKey(code, skill)] = { ...item, nextDue: Math.min(item.nextDue, now) };
     });
     persist();
   }
@@ -1040,6 +1039,10 @@ function playTone(kind) {
 }
 
 function randomOf(items) { return items[Math.floor(Math.random() * items.length)]; }
+function randomMode(modes, fallback) {
+  const available = saved.settings.visualEffects ? modes : modes.filter((type) => !ANIMATED_TYPES.includes(type));
+  return randomOf(available.length ? available : [fallback]);
+}
 function shuffle(items) {
   const copy = [...items];
   for (let index = copy.length - 1; index > 0; index -= 1) {
