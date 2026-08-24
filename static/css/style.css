@@ -177,7 +177,7 @@ kbd { padding: 1px 5px; border: 1px solid #c4cac5; border-bottom-width: 2px; bor
 .feedback-mark { display: grid; width: 70px; height: 70px; margin: 0 auto 10px; place-items: center; color: white; border-radius: 50%; background: var(--correct); font-size: 2.8rem; font-weight: 900; animation: mark-pop .38s cubic-bezier(.2,.9,.3,1.3); }
 .feedback-dialog.incorrect .feedback-mark { background: var(--danger); }
 .feedback-comparison { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 16px 0 10px; text-align: center; }
-.feedback-comparison.is-correct { grid-template-columns: minmax(0, 260px); justify-content: center; }
+.feedback-comparison.is-single { grid-template-columns: minmax(0, 260px); justify-content: center; }
 .feedback-shape-card { display: grid; min-width: 0; padding: 10px; border: 1px solid var(--line); border-radius: 16px; background: #faf9f4; place-items: center; }
 .feedback-shape-card.selected-wrong { border-color: #e5b1ab; background: var(--danger-soft); }
 .feedback-shape-card.correct-answer { border-color: #9bcbbb; background: var(--accent-soft); }
@@ -227,7 +227,8 @@ button.danger-button { color: var(--danger); border: 1px solid #e5b1ab; backgrou
 .study-map-canvas svg { display: block; width: 100%; height: 350px; cursor: crosshair; touch-action: manipulation; }
 .study-map-canvas .map-prefecture.recent-correct { fill: #4d9b78; stroke: #075c4c; }
 .study-map-canvas .map-prefecture.recent-incorrect { fill: #c7675c; stroke: #742d27; }
-.study-map-canvas .map-prefecture:hover, .study-map-canvas .map-prefecture:focus { fill: var(--sun); stroke: #744300; stroke-width: 2.5; outline: none; }
+.study-map-canvas .map-prefecture:hover, .study-map-canvas .map-prefecture:focus { stroke: #744300; stroke-width: 2.5; outline: none; }
+.study-map-canvas .map-prefecture.selected { stroke: #4f3200; stroke-width: 4; }
 .study-map-detail { margin-top: 12px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); }
 .study-map-detail h3 { margin: 0; font-size: 1.35rem; }
 .study-map-detail p { margin: 2px 0; color: var(--muted); font-size: .78rem; }

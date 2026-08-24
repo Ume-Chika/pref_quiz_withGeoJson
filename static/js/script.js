@@ -7,6 +7,8 @@ const QUESTION_SECONDS = 15;
 const SKILLS = {
   A: { name: "形" }, B: { name: "位置" }, C: { name: "県庁所在地" }, D: { name: "地方区分" }, E: { name: "郷土料理" }
 };
+const LOCATION_TYPES = ["locate", "locateJapan", "mapMemory", "capitalLocate", "dishLocate"];
+const NATIONWIDE_LOCATION_TYPES = ["locateJapan", "capitalLocate", "dishLocate"];
 
 const $ = (id) => document.getElementById(id);
 const screens = ["loading-screen", "error-screen", "home-screen", "game-screen", "result-screen"].map($);
@@ -245,7 +247,13 @@ function renderStudyMap() {
 
   const showCode = (code) => {
     const prefecture = prefectures.find((item) => item.code === code);
-    if (prefecture) renderStudyMapDetail(prefecture, recent);
+    if (!prefecture) return;
+    paths.forEach((path) => {
+      path.classList.toggle("selected", path.dataset.code === code);
+      if (path.dataset.code === code) path.setAttribute("aria-current", "true");
+      else path.removeAttribute("aria-current");
+    });
+    renderStudyMapDetail(prefecture, recent);
   };
   svg.addEventListener("pointerover", (event) => showCode(event.target.closest?.("[data-code]")?.dataset.code));
   svg.addEventListener("focusin", (event) => showCode(event.target.closest?.(".map-prefecture[data-code]")?.dataset.code));
@@ -271,7 +279,7 @@ function renderStudyMap() {
   const initial = prefectures.find((item) => item.code === recent[0]?.code) || prefectures[0];
   const initialPath = paths.find((path) => path.dataset.code === initial.code);
   if (initialPath) paths.forEach((path) => { path.tabIndex = path === initialPath ? 0 : -1; });
-  renderStudyMapDetail(initial, recent);
+  showCode(initial.code);
 }
 
 function renderStudyMapDetail(prefecture, recent) {
@@ -375,18 +383,19 @@ function buildQuestion(prefecture, skill, forcedType = "") {
   } else if (skill === "C") {
     const modes = ["capital", "capitalReverse", "capitalMap"];
     if (canUseIntegratedMode(mastery, getProgress(prefecture.code, "A").mastery)) modes.push("capitalShape");
+    if (canUseIntegratedMode(mastery, getProgress(prefecture.code, "B").mastery)) modes.push("capitalLocate");
     type = randomOf(modes);
   } else if (skill === "D") {
     type = randomOf(["region", "regionMember", "regionMap"]);
   } else {
     const modes = ["dish", "dishReverse"];
-    if (canUseIntegratedMode(mastery, getProgress(prefecture.code, "B").mastery)) modes.push("dishMap");
+    if (canUseIntegratedMode(mastery, getProgress(prefecture.code, "B").mastery)) modes.push("dishMap", "dishLocate");
     type = randomOf(modes);
   }
   type = forcedType || type;
 
   const question = { prefecture, skill, type, choices: [], correct: "" };
-  if (["silhouette", "reveal", "spotlight", "flash", "silhouetteReverse", "map", "mapChoice", "locate", "locateJapan", "mapMemory", "mapFlash"].includes(type)) {
+  if (["silhouette", "reveal", "spotlight", "flash", "silhouetteReverse", "map", "mapChoice", "mapFlash", ...LOCATION_TYPES].includes(type)) {
     question.correct = prefecture.name;
     question.choices = nameChoices(prefecture, type === "mapChoice" ? Math.max(.3, mastery) : mastery, skill === "A" ? "shape" : "geo");
   } else if (["capital", "capitalMap", "capitalShape"].includes(type)) {
@@ -490,12 +499,14 @@ function setQuestionCopy(question) {
     capitalReverse: ["逆・県庁所在地", `${question.prefecture.capital}が県庁所在地なのは？`, "都道府県名を選んでください。"],
     capitalMap: ["地図＋県庁所在地", "地図で光る県の県庁所在地は？", "位置と県庁所在地を結びつけましょう。"],
     capitalShape: ["形＋県庁所在地", "この形の県の県庁所在地は？", "形と県庁所在地を結びつけましょう。"],
+    capitalLocate: ["県庁所在地→地図", `${question.prefecture.capital}が県庁所在地の県はどこ？`, "日本地図から場所を選んでください。"],
     region: ["地方区分", `${question.prefecture.name}が属する地方は？`, "本アプリでは内閣府資料の8区分を使います。"],
     regionMember: ["地方区分", `${question.prefecture.region}に含まれるのは？`, "当てはまる都道府県を選んでください。"],
     regionMap: ["地方地図", "黄色くまとまった地方はどこ？", "地方の広がりを地図で確認してください。"],
-    dish: ["郷土料理", `${question.prefecture.dish}で選ばれた都道府県は？`, "農林水産省の郷土料理百選を基準にします。"],
+    dish: ["郷土料理", `農林水産省の郷土料理百選で「${question.prefecture.dish}」が選ばれた都道府県は？`, "正しい都道府県を選んでください。"],
     dishReverse: ["郷土料理", `${question.prefecture.name}で選ばれた郷土料理は？`, "農林水産省の郷土料理百選から選んでください。"],
-    dishMap: ["地図＋郷土料理", "地図で光る県の郷土料理は？", "位置と郷土料理を結びつけましょう。"]
+    dishMap: ["地図＋郷土料理", "地図で光る県の郷土料理は？", "位置と郷土料理を結びつけましょう。"],
+    dishLocate: ["郷土料理→地図", `農林水産省の郷土料理百選で「${question.prefecture.dish}」が選ばれた都道府県は？`, "日本地図から場所を選んでください。"]
   }[question.type];
   if (["locate", "mapMemory"].includes(question.type)) copy[2] = `${question.prefecture.region}周辺の地図から選んでください。`;
   if (matchMedia("(prefers-reduced-motion: reduce)").matches && ["spotlight", "reveal", "flash", "mapFlash"].includes(question.type)) {
@@ -535,13 +546,15 @@ function renderVisual(question, token) {
         ui.stage.querySelector(".memory-status")?.remove();
       });
     }
-  } else if (["locate", "locateJapan", "mapMemory"].includes(type)) {
+  } else if (LOCATION_TYPES.includes(type)) {
     const regional = regionPrefectures(prefecture);
-    const visiblePrefectures = type === "locateJapan" ? prefectures : regional;
+    const nationwide = NATIONWIDE_LOCATION_TYPES.includes(type);
+    const visiblePrefectures = nationwide ? prefectures : regional;
     const viewBounds = expandedBounds(boundsOf(visiblePrefectures.map((item) => item.mainGeometry)), regional.length > 1 ? .62 : .55);
     const targetCode = type === "mapMemory" ? prefecture.code : "";
-    ui.stage.innerHTML = svgMap(visiblePrefectures, viewBounds, { targetCode, clickable: true, label: type === "locateJapan" ? `${prefecture.name}の位置を選ぶ日本地図` : `${prefecture.name}の位置を選ぶ${prefecture.region}周辺の地図` });
-    ui.stage.classList.toggle("nationwide-stage", type === "locateJapan");
+    const label = type === "capitalLocate" ? "県庁所在地を手がかりに県を選ぶ日本地図" : type === "dishLocate" ? "郷土料理を手がかりに県を選ぶ日本地図" : nationwide ? `${prefecture.name}の位置を選ぶ日本地図` : `${prefecture.name}の位置を選ぶ${prefecture.region}周辺の地図`;
+    ui.stage.innerHTML = svgMap(visiblePrefectures, viewBounds, { targetCode, clickable: true, label });
+    ui.stage.classList.toggle("nationwide-stage", nationwide);
     if (type === "mapMemory") ui.stage.insertAdjacentHTML("beforeend", '<span class="memory-status" aria-live="polite">2秒だけ記憶</span>');
     ui.answerFieldset.hidden = true;
     ui.submit.hidden = saved.settings.answerMode === "instant";
@@ -552,7 +565,7 @@ function renderVisual(question, token) {
       path.addEventListener("click", () => selectLocation(path.dataset.code));
     });
     const keyboardPaths = [...ui.stage.querySelectorAll(".map-prefecture[data-code]")];
-    if (type === "locateJapan") ui.stage.querySelector("svg").addEventListener("click", (event) => {
+    if (nationwide) ui.stage.querySelector("svg").addEventListener("click", (event) => {
       if (event.target.closest(".map-prefecture[data-code], .map-hit[data-code]")) return;
       const svg = event.currentTarget;
       const point = new DOMPoint(event.clientX, event.clientY).matrixTransform(svg.getScreenCTM().inverse());
@@ -697,7 +710,7 @@ function updateTimer(token) {
 
 function submitSelectedAnswer() {
   if (!session || session.answered || session.locationLocked) return;
-  if (["locate", "locateJapan", "mapMemory"].includes(session.current.type)) {
+  if (LOCATION_TYPES.includes(session.current.type)) {
     if (session.selectedLocation) answerLocation(session.selectedLocation);
     return;
   }
@@ -756,7 +769,7 @@ function updateLearning(question, correct, timedOut, responseMs, answer, selecte
 }
 
 function questionEvidence(type) {
-  return ["mapMemory", "mapFlash"].includes(type) ? .4 : ["capitalShape", "dishMap"].includes(type) ? .65 : 1;
+  return ["mapMemory", "mapFlash"].includes(type) ? .4 : ["capitalShape", "capitalLocate", "dishMap", "dishLocate"].includes(type) ? .65 : 1;
 }
 
 function showFeedback(question, correct, timedOut, points, answer) {
@@ -773,16 +786,21 @@ function showFeedback(question, correct, timedOut, points, answer) {
 }
 
 function renderFeedbackComparison(question, answer, correct, timedOut) {
-  const selectedPrefecture = prefectures.find((prefecture) => prefecture.name === answer);
-  ui.feedbackComparison.classList.toggle("is-correct", correct);
+  const selectedPrefecture = prefectures.find((prefecture) => [prefecture.name, prefecture.capital, prefecture.dish].includes(answer));
+  const canCompare = !correct && !timedOut && selectedPrefecture && selectedPrefecture.code !== question.prefecture.code;
+  ui.feedbackComparison.classList.toggle("is-single", !canCompare);
   const correctNote = question.correct === question.prefecture.name ? `${question.prefecture.region}・県庁所在地 ${question.prefecture.capital}` : `答え：${question.correct}`;
   if (correct) {
     ui.feedbackComparison.replaceChildren(feedbackShapeCard("形を再確認", question.prefecture, question.prefecture.name, correctNote, "correct-answer"));
     return;
   }
-  const selectedValue = timedOut ? "時間切れ" : answer;
+  if (!canCompare) {
+    const result = timedOut ? "時間切れ" : `あなたの回答：${answer}`;
+    ui.feedbackComparison.replaceChildren(feedbackShapeCard("正解の県", question.prefecture, question.prefecture.name, `${result}／正解：${question.correct}`, "correct-answer"));
+    return;
+  }
   ui.feedbackComparison.replaceChildren(
-    feedbackShapeCard("あなたの回答", selectedPrefecture, selectedValue, selectedPrefecture ? selectedPrefecture.region : "県名以外の回答", "selected-wrong"),
+    feedbackShapeCard("あなたの回答", selectedPrefecture, selectedPrefecture.name, answer === selectedPrefecture.name ? selectedPrefecture.region : `回答：${answer}`, "selected-wrong"),
     feedbackShapeCard("正解の県", question.prefecture, question.prefecture.name, correctNote, "correct-answer")
   );
 }
@@ -951,7 +969,7 @@ $("confirm-reset-button").addEventListener("click", () => {
 document.addEventListener("keydown", (event) => {
   if (ui.feedback.open || ui.settings.open || ui.progress.open || ui.studyMap.open || ui.resetConfirm.open || ui.game.hidden || !session || session.answered || session.locationLocked) return;
   const number = Number(event.key);
-  const isLocation = ["locate", "locateJapan", "mapMemory"].includes(session.current.type);
+  const isLocation = LOCATION_TYPES.includes(session.current.type);
   if (!isLocation && number >= 1 && number <= 4) {
     const input = ui.answerGrid.querySelectorAll('input[name="answer"]')[number - 1];
     if (input && !input.disabled) { input.checked = true; input.dispatchEvent(new Event("change")); }
