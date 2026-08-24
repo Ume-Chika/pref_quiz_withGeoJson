@@ -232,7 +232,11 @@ button.danger-button { color: var(--danger); border: 1px solid #e5b1ab; backgrou
 .study-map-legend .legend-correct { background: var(--correct); }
 .study-map-legend .legend-incorrect { background: var(--danger); }
 .study-map-legend .legend-neutral { color: var(--muted); border: 1px solid var(--line); background: #fdfbf5; }
-.study-map-canvas { min-height: 350px; overflow: hidden; border: 1px solid var(--line); border-radius: 18px; background: #eef5f1; }
+.study-map-toolbar { display: flex; gap: 6px; align-items: center; justify-content: flex-end; margin-bottom: 8px; }
+.study-map-toolbar button { min-width: 44px; min-height: 44px; padding: 4px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); font-weight: 800; cursor: pointer; }
+.study-map-toolbar button:disabled { opacity: .35; cursor: not-allowed; }
+.study-map-toolbar output { min-width: 50px; color: var(--muted); font-size: .75rem; font-variant-numeric: tabular-nums; text-align: center; }
+.study-map-canvas { min-height: 350px; overflow: auto; border: 1px solid var(--line); border-radius: 18px; background: #eef5f1; }
 .study-map-canvas svg { display: block; width: 100%; height: 350px; cursor: crosshair; touch-action: manipulation; }
 .study-map-canvas .map-prefecture.recent-correct { fill: #4d9b78; stroke: #075c4c; }
 .study-map-canvas .map-prefecture.recent-incorrect { fill: #c7675c; stroke: #742d27; stroke-dasharray: 4 3; }
