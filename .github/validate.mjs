@@ -94,7 +94,7 @@ if (afterTimeout.correct !== 1 || afterTimeout.streak !== 0 || afterTimeout.time
 const fullWrong = recordAnswer({ ...firstCorrect, mastery: .8 }, { correct: false, timedOut: false, responseMs: 5000, now });
 const weakWrong = recordAnswer({ ...firstCorrect, mastery: .8 }, { correct: false, timedOut: false, responseMs: 5000, evidence: .4, now });
 const integratedWrong = recordAnswer({ ...firstCorrect, attempts: 3, correct: 3, streak: 3, mastery: .8 }, { correct: false, timedOut: false, responseMs: 5000, evidence: .65, now });
-if (weakWrong.mastery <= fullWrong.mastery || integratedWrong.streak !== 2 || integratedWrong.nextDue !== now + 4 * 60 * 60e3) throw new Error("弱い証拠の誤答を強く扱いすぎています");
+if (weakWrong.mastery <= fullWrong.mastery || integratedWrong.streak !== 2 || integratedWrong.nextDue !== now + 2 * 60e3) throw new Error("弱い証拠の誤答を強く扱いすぎているか、復習が遅すぎます");
 if (schedulingPriority(blankProgress(), { now, random: 0 }) <= schedulingPriority(firstCorrect, { now, random: 0 })) {
   throw new Error("未学習項目が学習済み項目より優先されていません");
 }
