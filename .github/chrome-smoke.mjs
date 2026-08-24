@@ -252,7 +252,8 @@ try {
     }
     await waitFor(cdp, `document.querySelector('#feedback-dialog').open`);
     assert(await evaluate(cdp, `document.querySelector('#feedback-kicker').textContent === 'CORRECT' && document.querySelector('#feedback-detail').textContent.length > 5`), `${type}: 正答または解説が不正です`);
-    assert(await evaluate(cdp, `document.querySelectorAll('#feedback-comparison .feedback-shape-card').length === 1 && document.querySelector('#feedback-comparison .correct-answer[data-code="${code}"] svg')`), `${type}: 正解県の形を1枚で再確認できません`);
+    assert(await evaluate(cdp, `(() => { const card=document.querySelector('#feedback-comparison .correct-answer[data-code="${code}"]'); return document.querySelectorAll('#feedback-comparison .feedback-shape-card').length===1 && card?.querySelectorAll('.map-prefecture').length===47 && card.querySelector('.map-prefecture.target[data-map-code="${code}"]'); })()`), `${type}: 正解県の形と周辺位置を1枚で再確認できません`);
+    if (type === "shapeMemory") assert(await evaluate(cdp, `(() => { const paths=[...document.querySelectorAll('#feedback-comparison .feedback-map .map-prefecture')]; return paths.filter(path=>{const box=path.getBBox();return box.x<650&&box.x+box.width>0&&box.y<410&&box.y+box.height>0;}).length>1; })()`), "正解県と同じ拡大率で周辺県の輪郭を表示できません");
     await evaluate(cdp, `document.querySelector('#quit-game-button').click(); true`);
     await waitFor(cdp, `document.querySelector('#result-screen:not([hidden])')`);
     await evaluate(cdp, `document.querySelector('#result-home-button').click(); true`);
@@ -290,14 +291,14 @@ try {
   await waitFor(cdp, `document.querySelector('#game-screen:not([hidden])') && document.querySelector('#game-screen').dataset.quizType === 'locate'`);
   await evaluate(cdp, `document.querySelector('.map-prefecture[data-code="02"]').dispatchEvent(new MouseEvent('click',{bubbles:true})); document.querySelector('#submit-answer-button').click(); true`);
   await waitFor(cdp, `document.querySelector('#feedback-dialog').open`);
-  assert(await evaluate(cdp, `(() => { const cards=[...document.querySelectorAll('#feedback-comparison .feedback-shape-card')]; const recent=JSON.parse(localStorage.getItem('prefecture-minigame-v2')).recent[0]; return document.querySelector('#feedback-kicker').textContent==='MISS' && cards.length===2 && cards[0].dataset.code==='02' && cards[1].dataset.code==='01' && cards.every(card=>card.querySelector('svg')) && recent.answer==='青森県' && recent.selectedCode==='02'; })()`), "誤答時に選択県と正解県の形を比較できません");
+  assert(await evaluate(cdp, `(() => { const cards=[...document.querySelectorAll('#feedback-comparison .feedback-shape-card')]; const recent=JSON.parse(localStorage.getItem('prefecture-minigame-v2')).recent[0]; return document.querySelector('#feedback-kicker').textContent==='MISS' && cards.length===2 && cards[0].dataset.code==='02' && cards[1].dataset.code==='01' && cards.every(card=>card.querySelectorAll('.map-prefecture').length===47&&card.querySelector('.map-prefecture.target[data-map-code="'+card.dataset.code+'"]')) && recent.answer==='青森県' && recent.selectedCode==='02'; })()`), "誤答時に選択県と正解県の形・周辺位置を比較できません");
   await evaluate(cdp, `document.querySelector('#quit-game-button').click(); document.querySelector('#result-home-button').click(); delete globalThis.__prefQuizTest; true`);
 
   await evaluate(cdp, `globalThis.__prefQuizTest={type:'capital',skill:'C',code:'01'}; document.querySelector('#start-endless-button').click(); true`);
   await waitFor(cdp, `document.querySelector('#game-screen:not([hidden])') && document.querySelector('#game-screen').dataset.quizType === 'capital'`);
   await evaluate(cdp, `(() => { const input=[...document.querySelectorAll('input[name="answer"]')].find(item=>item.value!=='札幌市'); input.checked=true; input.dispatchEvent(new Event('change')); document.querySelector('#submit-answer-button').click(); return true; })()`);
   await waitFor(cdp, `document.querySelector('#feedback-dialog').open`);
-  assert(await evaluate(cdp, `(() => { const cards=[...document.querySelectorAll('#feedback-comparison .feedback-shape-card')]; return cards.length===2 && cards[0].dataset.code && cards[0].dataset.code!=='01' && cards[1].dataset.code==='01' && cards.every(card=>card.querySelector('svg')); })()`), "県庁所在地の誤答から選択県の形を逆引きできません");
+  assert(await evaluate(cdp, `(() => { const cards=[...document.querySelectorAll('#feedback-comparison .feedback-shape-card')]; return cards.length===2 && cards[0].dataset.code && cards[0].dataset.code!=='01' && cards[1].dataset.code==='01' && cards.every(card=>card.querySelector('.map-prefecture.target[data-map-code="'+card.dataset.code+'"]')); })()`), "県庁所在地の誤答から選択県の形と場所を逆引きできません");
   await evaluate(cdp, `document.querySelector('#quit-game-button').click(); document.querySelector('#result-home-button').click(); delete globalThis.__prefQuizTest; true`);
 
   await evaluate(cdp, `globalThis.__prefQuizTest={type:'region',skill:'D',code:'02'}; document.querySelector('#start-endless-button').click(); true`);
@@ -337,7 +338,7 @@ try {
   await new Promise((resolveWait) => setTimeout(resolveWait, 16_000));
   await cdp.command("Page.setWebLifecycleState", { state: "active" });
   await waitFor(cdp, `document.querySelector('#feedback-dialog').open`, 5_000);
-  assert(await evaluate(cdp, `document.querySelector('#feedback-kicker').textContent === 'TIME UP' && JSON.parse(localStorage.getItem('prefecture-minigame-v2')).recent[0].timedOut === true && document.querySelectorAll('#feedback-comparison .feedback-shape-card').length===1 && document.querySelector('#feedback-comparison .correct-answer').dataset.code==='01' && document.querySelector('#feedback-comparison .correct-answer small').textContent.includes('時間切れ')`), "時間切れの記録または正解県の形表示が不正です");
+  assert(await evaluate(cdp, `document.querySelector('#feedback-kicker').textContent === 'TIME UP' && JSON.parse(localStorage.getItem('prefecture-minigame-v2')).recent[0].timedOut === true && document.querySelectorAll('#feedback-comparison .feedback-shape-card').length===1 && document.querySelector('#feedback-comparison .correct-answer').dataset.code==='01' && document.querySelector('#feedback-comparison .correct-answer .map-prefecture.target[data-map-code="01"]') && document.querySelector('#feedback-comparison .correct-answer small').textContent.includes('時間切れ')`), "時間切れの記録または正解県の形・場所表示が不正です");
   await evaluate(cdp, `document.querySelector('#quit-game-button').click(); document.querySelector('#result-home-button').click(); delete globalThis.__prefQuizTest; true`);
   assert(errors.length === 0, `Chromeでエラーが発生しました: ${errors.join(" / ")}`);
   console.log("Chromeで30形式、見本後の遅延検索、白地図、形比較、10問、即時・地図・キー操作、時間切れ、保存、通信復旧、全消去の確認に成功しました。");

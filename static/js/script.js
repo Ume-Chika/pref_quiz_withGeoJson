@@ -179,6 +179,10 @@ function silhouetteGeometry(prefecture) {
   return { type: "MultiPolygon", coordinates };
 }
 
+function silhouetteViewBounds(prefecture) {
+  return expandedBounds(boundsOf([silhouetteGeometry(prefecture)]), .62);
+}
+
 function shapeStats(geometry) {
   const bounds = boundsOf([geometry]);
   const width = Math.max(.001, bounds.maxX - bounds.minX);
@@ -226,7 +230,7 @@ function silhouetteSvg(prefecture, effect = "plain") {
   const width = 650;
   const height = 410;
   const geometry = silhouetteGeometry(prefecture);
-  const project = projector(expandedBounds(boundsOf([geometry]), .62), width, height, 38);
+  const project = projector(silhouetteViewBounds(prefecture), width, height, 38);
   const path = geometryPath(geometry, project);
   if (matchMedia("(prefers-reduced-motion: reduce)").matches) effect = "plain";
   if (effect === "spotlight") {
@@ -859,7 +863,7 @@ function renderFeedbackComparison(question, answer, correct, timedOut) {
   ui.feedbackComparison.classList.toggle("is-single", !canCompare);
   const correctNote = question.correct === question.prefecture.name ? `${question.prefecture.region}・県庁所在地 ${question.prefecture.capital}` : `答え：${question.correct}`;
   if (correct) {
-    ui.feedbackComparison.replaceChildren(feedbackShapeCard("形を再確認", question.prefecture, question.prefecture.name, correctNote, "correct-answer"));
+    ui.feedbackComparison.replaceChildren(feedbackShapeCard("形と場所を再確認", question.prefecture, question.prefecture.name, correctNote, "correct-answer"));
     return;
   }
   if (!canCompare) {
@@ -881,7 +885,10 @@ function feedbackShapeCard(title, prefecture, value, note, className) {
   const label = document.createElement("span");
   label.textContent = title;
   const visual = document.createElement("div");
-  if (prefecture) visual.innerHTML = silhouetteSvg(prefecture);
+  if (prefecture) {
+    visual.className = "feedback-map";
+    visual.innerHTML = svgMap(prefectures, silhouetteViewBounds(prefecture), { width: 650, height: 410, targetCode: prefecture.code, label: `${prefecture.name}と周辺県の位置` });
+  }
   else { visual.className = "feedback-no-shape"; visual.textContent = "？"; }
   const name = document.createElement("strong");
   name.textContent = value;
