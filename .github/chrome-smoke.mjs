@@ -91,7 +91,8 @@ try {
   for (const scenario of [{ type: "silhouetteReverse", skill: "A", code: "01" }, { type: "mapChoice", skill: "B", code: "01" }, { type: "capitalRegion", skill: "D", code: "01" }, { type: "locateJapan", skill: "B", code: "01" }]) {
     await evaluate(cdp, `globalThis.__prefQuizTest=${JSON.stringify(scenario)}; document.querySelector('#start-endless-button').click(); true`);
     await waitFor(cdp, `document.querySelector('#game-screen:not([hidden])') && (document.querySelectorAll('input[name="answer"]').length === 4 || document.querySelectorAll('.map-prefecture.clickable').length === 47)`);
-    assert(await evaluate(cdp, `[document.querySelector('#visual-stage'), ...document.querySelectorAll('.answer-option label'), document.querySelector('#submit-answer-button')].filter(item=>item.getClientRects().length).every(item => item.getBoundingClientRect().bottom <= innerHeight) && getComputedStyle(document.querySelector('#keyboard-hint')).display !== 'none'`), `PCの短い画面で${scenario.type}の問題・選択肢・決定ボタン・キー案内が収まりません`);
+    const desktopLayout = await evaluate(cdp, `(() => { const items=[document.querySelector('#visual-stage'),...document.querySelectorAll('.answer-option label'),document.querySelector('#submit-answer-button'),document.querySelector('#keyboard-hint')].filter(item=>item.getClientRects().length); return {height:innerHeight,items:items.map(item=>{const rect=item.getBoundingClientRect();return {id:item.id||item.tagName,top:Math.round(rect.top),height:Math.round(rect.height),bottom:Math.round(rect.bottom)}}),stageMinHeight:getComputedStyle(document.querySelector('#visual-stage')).minHeight,hint:getComputedStyle(document.querySelector('#keyboard-hint')).display}; })()`);
+    assert(desktopLayout.items.every((item) => item.bottom <= desktopLayout.height) && desktopLayout.hint !== "none", `PCの短い画面で${scenario.type}が収まりません: ${JSON.stringify(desktopLayout)}`);
     await evaluate(cdp, `document.querySelector('#quit-game-button').click(); true`);
     await waitFor(cdp, `document.querySelector('#home-screen:not([hidden])')`);
   }
@@ -116,7 +117,8 @@ try {
   await waitFor(cdp, `document.querySelector('#home-screen:not([hidden])')`, 10_000);
   await evaluate(cdp, `document.querySelector('#start-endless-button').click(); true`);
   await waitFor(cdp, `document.querySelector('#game-screen:not([hidden])')`);
-  assert(await evaluate(cdp, `document.querySelector('#game-screen').dataset.skill==='C' && JSON.parse(localStorage.getItem('prefecture-minigame-v2')).unlockedBasic>=3`), "既に解放・学習した分野が再ロックされました");
+  const migratedUnlock = await evaluate(cdp, `({skill:document.querySelector('#game-screen').dataset.skill,unlockedBasic:JSON.parse(localStorage.getItem('prefecture-minigame-v2')).unlockedBasic,type:document.querySelector('#game-screen').dataset.quizType})`);
+  assert(migratedUnlock.skill === "C" && migratedUnlock.unlockedBasic >= 3, `既存分野の解放移行が不正です: ${JSON.stringify(migratedUnlock)}`);
   await evaluate(cdp, `document.querySelector('#quit-game-button').click(); true`);
   await waitFor(cdp, `document.querySelector('#home-screen:not([hidden])')`);
   await evaluate(cdp, `(() => { const progress={}; const learned={attempts:1,correct:1,streak:1,lastSeen:1,averageMs:5000,timeouts:0,nextDue:Date.now()+864e5,mastery:.8,recent:[1]}; for(let number=1;number<=15;number++){const code=String(number).padStart(2,'0'); progress[code+':A']={...learned}; progress[code+':B']={...learned};} localStorage.setItem('prefecture-minigame-v2',JSON.stringify({schema:2,settings:{sound:false,volume:.5,answerMode:'confirm'},progress,highScore:0,recent:[]})); location.reload(); return true; })()`);
