@@ -308,6 +308,8 @@ button.danger-button { color: var(--danger); border: 1px solid #e5b1ab; backgrou
   .visual-stage.nationwide-stage { min-height: clamp(180px, 34svh, 230px); }
   .answer-grid { gap: 5px; }
   .answer-option label { min-height: 44px; padding: 6px 8px; }
+  .answer-option label.shape-option, .answer-option label.map-option { padding: 4px; }
+  .shape-option svg, .map-option svg { height: 46px; }
   .submit-button { min-height: 44px !important; margin-top: 6px; padding-block: 8px !important; }
   .keyboard-hint { margin-top: 3px; font-size: .64rem; }
 }

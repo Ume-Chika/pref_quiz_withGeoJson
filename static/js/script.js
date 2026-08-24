@@ -391,7 +391,8 @@ function chooseQuestion() {
   const recentTypes = session.recentTypes.slice(-2);
   const skills = unlockedSkills();
   const hasEligiblePractice = skills.some((skill) => prefectures.some((prefecture) => getProgress(prefecture.code, skill).attempts));
-  const allowUnseen = canIntroduceNewItem(saved.recent) || !hasEligiblePractice;
+  const hasRetryRoom = !session.limit || session.answers.length + 4 < session.limit;
+  const allowUnseen = hasRetryRoom && (canIntroduceNewItem(saved.recent) || !hasEligiblePractice);
   const candidates = skills.flatMap((skill) => prefectures.map((prefecture) => {
     const item = getProgress(prefecture.code, skill);
     const bucket = item.attempts && item.nextDue <= now ? 3 : item.attempts ? 1 : allowUnseen ? 2 : 0;
@@ -590,6 +591,9 @@ function renderVisual(question, token) {
     ui.keyboardHint.textContent = "1.7秒だけ見本を表示します";
     lockPreview(token, 1750, () => {
       ui.stage.querySelector(".memory-teach")?.remove();
+      ui.type.textContent = "形を思い出す";
+      ui.title.textContent = `${prefecture.name}の形はどれ？`;
+      ui.help.textContent = "見本で見た輪郭を4つから選んでください。";
       ui.answerFieldset.hidden = false;
       ui.submit.hidden = saved.settings.answerMode === "instant";
       ui.keyboardHint.innerHTML = saved.settings.answerMode === "instant" ? "<kbd>1</kbd>–<kbd>4</kbd> で回答" : "<kbd>1</kbd>–<kbd>4</kbd> 選択　<kbd>Enter</kbd> 決定";
@@ -726,7 +730,7 @@ function lockPreview(token, duration, beforeUnlock = () => {}) {
 
 function renderAnswers(question) {
   ui.answerGrid.innerHTML = "";
-  const shapeChoices = ["silhouetteReverse", "mapShape", "dishShapeChoice"].includes(question.type);
+  const shapeChoices = ["shapeMemory", "silhouetteReverse", "mapShape", "dishShapeChoice"].includes(question.type);
   const mapChoices = question.type === "mapChoice";
   const mapChoicePrefectures = mapChoices ? question.choices.map((choice) => prefectures.find((item) => item.name === choice)) : [];
   const mapChoiceFeatures = mapChoices ? [...new Map(mapChoicePrefectures.flatMap(regionPrefectures).map((item) => [item.code, item])).values()] : [];
@@ -956,6 +960,14 @@ function finishGame() {
   questionToken += 1;
   if (ui.feedback.open) ui.feedback.close();
   if (!session?.answers.length) { session = null; renderHome(); showScreen(ui.home); return; }
+  if (session.retries.length) {
+    const now = Date.now();
+    session.retries.forEach(({ code, skill }) => {
+      const item = getProgress(code, skill);
+      if (item.attempts) item.nextDue = Math.min(item.nextDue, now);
+    });
+    persist();
+  }
   const correct = session.answers.filter((answer) => answer.correct).length;
   const timeouts = session.answers.filter((answer) => answer.timedOut).length;
   const isRecord = session.limit === 10 && session.answers.length === 10 && session.score > saved.highScore;
