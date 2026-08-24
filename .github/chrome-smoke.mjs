@@ -1,7 +1,7 @@
 import { spawn } from "node:child_process";
 import { once } from "node:events";
 import { createServer } from "node:http";
-import { mkdtempSync, readFileSync, rmSync, statSync } from "node:fs";
+import { mkdtempSync, readFileSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { extname, join, normalize, resolve } from "node:path";
 
@@ -114,7 +114,6 @@ try {
   chrome.kill("SIGTERM");
   if (chrome.exitCode === null) await Promise.race([once(chrome, "exit"), new Promise((resolveWait) => setTimeout(resolveWait, 2000))]);
   await new Promise((resolveClose) => server.close(resolveClose));
-  rmSync(profile, { recursive: true, force: true });
 }
 }
 
