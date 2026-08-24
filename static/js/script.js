@@ -499,7 +499,7 @@ function setQuestionCopy(question) {
     capitalReverse: ["逆・県庁所在地", `${question.prefecture.capital}が県庁所在地なのは？`, "都道府県名を選んでください。"],
     capitalMap: ["地図＋県庁所在地", "地図で光る県の県庁所在地は？", "位置と県庁所在地を結びつけましょう。"],
     capitalShape: ["形＋県庁所在地", "この形の県の県庁所在地は？", "形と県庁所在地を結びつけましょう。"],
-    capitalLocate: ["県庁所在地→地図", `${question.prefecture.capital}が県庁所在地の県はどこ？`, "日本地図から場所を選んでください。"],
+    capitalLocate: ["県庁所在地→地図", `${question.prefecture.capital}が県庁所在地の都道府県はどこ？`, "日本地図から場所を選んでください。"],
     region: ["地方区分", `${question.prefecture.name}が属する地方は？`, "本アプリでは内閣府資料の8区分を使います。"],
     regionMember: ["地方区分", `${question.prefecture.region}に含まれるのは？`, "当てはまる都道府県を選んでください。"],
     regionMap: ["地方地図", "黄色くまとまった地方はどこ？", "地方の広がりを地図で確認してください。"],
@@ -552,7 +552,7 @@ function renderVisual(question, token) {
     const visiblePrefectures = nationwide ? prefectures : regional;
     const viewBounds = expandedBounds(boundsOf(visiblePrefectures.map((item) => item.mainGeometry)), regional.length > 1 ? .62 : .55);
     const targetCode = type === "mapMemory" ? prefecture.code : "";
-    const label = type === "capitalLocate" ? "県庁所在地を手がかりに県を選ぶ日本地図" : type === "dishLocate" ? "郷土料理を手がかりに県を選ぶ日本地図" : nationwide ? `${prefecture.name}の位置を選ぶ日本地図` : `${prefecture.name}の位置を選ぶ${prefecture.region}周辺の地図`;
+    const label = type === "capitalLocate" ? "県庁所在地を手がかりに都道府県を選ぶ日本地図" : type === "dishLocate" ? "郷土料理を手がかりに都道府県を選ぶ日本地図" : nationwide ? `${prefecture.name}の位置を選ぶ日本地図` : `${prefecture.name}の位置を選ぶ${prefecture.region}周辺の地図`;
     ui.stage.innerHTML = svgMap(visiblePrefectures, viewBounds, { targetCode, clickable: true, label });
     ui.stage.classList.toggle("nationwide-stage", nationwide);
     if (type === "mapMemory") ui.stage.insertAdjacentHTML("beforeend", '<span class="memory-status" aria-live="polite">2秒だけ記憶</span>');
@@ -796,12 +796,12 @@ function renderFeedbackComparison(question, answer, correct, timedOut) {
   }
   if (!canCompare) {
     const result = timedOut ? "時間切れ" : `あなたの回答：${answer}`;
-    ui.feedbackComparison.replaceChildren(feedbackShapeCard("正解の県", question.prefecture, question.prefecture.name, `${result}／正解：${question.correct}`, "correct-answer"));
+    ui.feedbackComparison.replaceChildren(feedbackShapeCard("正解の都道府県", question.prefecture, question.prefecture.name, `${result}／正解：${question.correct}`, "correct-answer"));
     return;
   }
   ui.feedbackComparison.replaceChildren(
     feedbackShapeCard("あなたの回答", selectedPrefecture, selectedPrefecture.name, answer === selectedPrefecture.name ? selectedPrefecture.region : `回答：${answer}`, "selected-wrong"),
-    feedbackShapeCard("正解の県", question.prefecture, question.prefecture.name, correctNote, "correct-answer")
+    feedbackShapeCard("正解の都道府県", question.prefecture, question.prefecture.name, correctNote, "correct-answer")
   );
 }
 
