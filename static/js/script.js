@@ -876,6 +876,11 @@ function showFeedback(question, correct, timedOut, points, answer) {
   ui.feedbackPoints.textContent = points ? `+${points}点${session.combo >= 2 ? `・${session.combo}コンボ` : ""}` : canRetryThisRound && questionEvidence(question.type, false) === 1 ? "3問はさんで、もう一度出題します" : "次回、優先して復習します";
   $("next-question-button").textContent = session.limit && session.answers.length >= session.limit ? "結果を見る" : "次の問題";
   ui.feedback.showModal();
+  ui.feedback.scrollTop = 0;
+  requestAnimationFrame(() => {
+    ui.feedback.scrollTop = 0;
+    ui.feedbackTitle.focus({ preventScroll: true });
+  });
 }
 
 function renderFeedbackComparison(question, answer, correct, timedOut) {

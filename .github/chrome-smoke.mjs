@@ -97,6 +97,15 @@ try {
     await waitFor(cdp, `document.querySelector('#home-screen:not([hidden])')`);
   }
   await evaluate(cdp, `delete globalThis.__prefQuizTest; true`);
+  await cdp.command("Emulation.setDeviceMetricsOverride", { width: 320, height: 568, deviceScaleFactor: 1, mobile: true });
+  for (const scenario of [{ type: "silhouetteReverse", skill: "A", code: "01" }, { type: "locateJapan", skill: "B", code: "01" }]) {
+    await evaluate(cdp, `globalThis.__prefQuizTest=${JSON.stringify(scenario)}; document.querySelector('#start-endless-button').click(); true`);
+    await waitFor(cdp, `document.querySelector('#game-screen:not([hidden])') && document.querySelector('#game-screen').dataset.quizType==='${scenario.type}'`);
+    assert(await evaluate(cdp, `(() => { const items=[...document.querySelectorAll('.answer-option label'),document.querySelector('#visual-stage'),document.querySelector('#submit-answer-button'),document.querySelector('#keyboard-hint')].filter(item=>item.getClientRects().length); return items.every(item=>item.getBoundingClientRect().bottom<=innerHeight); })()`), `320×568画面で${scenario.type}の回答操作が画面内に収まりません`);
+    await evaluate(cdp, `document.querySelector('#quit-game-button').click(); true`);
+    await waitFor(cdp, `document.querySelector('#home-screen:not([hidden])')`);
+  }
+  await evaluate(cdp, `delete globalThis.__prefQuizTest; true`);
   await cdp.command("Emulation.clearDeviceMetricsOverride");
 
   await cdp.command("Emulation.setEmulatedMedia", { features: [{ name: "prefers-reduced-motion", value: "reduce" }] });
@@ -198,7 +207,7 @@ try {
   await waitFor(cdp, `document.querySelector('#home-screen:not([hidden])')`, 10_000);
   await evaluate(cdp, `document.querySelector('#study-map-button').click(); true`);
   await waitFor(cdp, `document.querySelector('#study-map-dialog').open`);
-  assert(await evaluate(cdp, `(() => { const map=document.querySelector('#study-map-canvas'); const path=code=>map.querySelector('.map-prefecture[data-code="'+code+'"]'); return map.querySelectorAll('.map-prefecture[data-code]').length===47 && path('01').classList.contains('recent-incorrect') && !path('01').classList.contains('recent-correct') && path('02').classList.contains('recent-correct') && path('13').classList.contains('recent-incorrect') && !path('03').classList.contains('recent-correct') && !path('03').classList.contains('recent-incorrect'); })()`), "白地図の直近10問・最新回答優先の色分けが不正です");
+  assert(await evaluate(cdp, `(() => { const map=document.querySelector('#study-map-canvas'); const path=code=>map.querySelector('.map-prefecture[data-code="'+code+'"]'); return map.querySelectorAll('.map-prefecture[data-code]').length===47 && path('01').classList.contains('recent-incorrect') && !path('01').classList.contains('recent-correct') && path('02').classList.contains('recent-correct') && path('13').classList.contains('recent-incorrect') && !path('03').classList.contains('recent-correct') && !path('03').classList.contains('recent-incorrect') && getComputedStyle(path('01')).strokeDasharray!=='none' && getComputedStyle(path('02')).strokeDasharray==='none'; })()`), "白地図の直近10問・最新回答優先の色・線種が不正です");
   assert(await evaluate(cdp, `(() => { const path=document.querySelector('#study-map-canvas .map-prefecture[data-code="02"]'); path.dispatchEvent(new PointerEvent('pointerover',{bubbles:true})); path.dispatchEvent(new MouseEvent('click',{bubbles:true})); return document.querySelector('#study-map-name').textContent==='青森県' && document.querySelector('#study-map-status').textContent.includes('正解') && document.querySelector('#study-map-region').textContent===${JSON.stringify(factsByCode["02"].region)} && document.querySelector('#study-map-capital').textContent===${JSON.stringify(factsByCode["02"].capital)} && document.querySelector('#study-map-dish').textContent===${JSON.stringify(factsByCode["02"].dish)} && document.querySelector('#study-map-history').textContent.includes('2問前・位置') && path.classList.contains('selected') && path.getAttribute('aria-current')==='true'; })()`), "白地図のホバー・タップ・県詳細・選択表示が不正です");
   await clickCenter(cdp, '#study-map-canvas .map-prefecture[data-code="01"]');
   assert(await evaluate(cdp, `document.querySelector('#study-map-name').textContent==='北海道' && document.querySelector('#study-map-canvas .map-prefecture[data-code="01"]').classList.contains('selected')`), "白地図を実ポインタで選択できません");
@@ -237,7 +246,7 @@ try {
     if (locationTypes.includes(type)) {
       const expectedPaths = nationwideLocationTypes.includes(type) ? 47 : 7;
       assert(await evaluate(cdp, `document.querySelectorAll('.map-prefecture[data-code]').length === ${expectedPaths}`), `${type}: 地図の選択肢数が不正です`);
-      if (nationwideLocationTypes.includes(type) && type !== "shapeLocate") assert(await evaluate(cdp, `(() => { const svg=document.querySelector('#visual-stage svg'); const tokyo=svg.querySelector('[data-code="13"]'); const point=new DOMPoint(Number(tokyo.dataset.centerX),Number(tokyo.dataset.centerY)).matrixTransform(svg.getScreenCTM()); svg.dispatchEvent(new MouseEvent('click',{bubbles:true,clientX:point.x,clientY:point.y})); return svg.querySelector('[data-code="13"]').classList.contains('selected') && !document.querySelector('#submit-answer-button').disabled; })()`), `${type}: 全国地図の余白タップで東京都本土を選べません`);
+      if (nationwideLocationTypes.includes(type) && type !== "shapeLocate") assert(await evaluate(cdp, `(() => { const svg=document.querySelector('#visual-stage svg'); const tokyo=svg.querySelector('[data-code="13"]'); const point=new DOMPoint(Number(tokyo.dataset.centerX),Number(tokyo.dataset.centerY)).matrixTransform(svg.getScreenCTM()); svg.dispatchEvent(new MouseEvent('click',{bubbles:true,clientX:point.x,clientY:point.y})); const style=getComputedStyle(tokyo); return tokyo.classList.contains('selected') && style.fill==='rgb(241, 185, 64)' && parseFloat(style.strokeWidth)>=3 && !document.querySelector('#submit-answer-button').disabled; })()`), `${type}: 全国地図の余白タップ後に選択表示を維持できません`);
     }
     if (["shapeMemory", "flash", "mapFlash", "mapMemory", "shapeLocate"].includes(type)) {
       assert(await evaluate(cdp, `(() => { document.dispatchEvent(new KeyboardEvent('keydown',{key:'1',bubbles:true})); return !document.querySelector('input[name="answer"]:checked') && !document.querySelector('#feedback-dialog').open; })()`), `${type}: 記憶中にキー回答できてしまいます`);
@@ -260,6 +269,8 @@ try {
       await evaluate(cdp, `(() => { const input=[...document.querySelectorAll('input[name="answer"]')].find(item => item.value === ${JSON.stringify(correct)}); input.checked=true; input.dispatchEvent(new Event('change')); document.querySelector('#submit-answer-button').click(); return true; })()`);
     }
     await waitFor(cdp, `document.querySelector('#feedback-dialog').open`);
+    await waitFor(cdp, `document.activeElement===document.querySelector('#feedback-title')`);
+    assert(await evaluate(cdp, `document.querySelector('#feedback-dialog').scrollTop===0`), `${type}: 正誤画面が解説より下へ自動スクロールしています`);
     assert(await evaluate(cdp, `document.querySelector('#feedback-kicker').textContent === 'CORRECT' && document.querySelector('#feedback-detail').textContent.length > 5`), `${type}: 正答または解説が不正です`);
     assert(await evaluate(cdp, `(() => { const card=document.querySelector('#feedback-comparison .correct-answer[data-code="${code}"]'); return document.querySelectorAll('#feedback-comparison .feedback-shape-card').length===1 && card?.querySelectorAll('.map-prefecture').length===47 && card.querySelector('.map-prefecture.target[data-map-code="${code}"]'); })()`), `${type}: 正解県の形と周辺位置を1枚で再確認できません`);
     if (type === "shapeMemory") assert(await evaluate(cdp, `(() => { const paths=[...document.querySelectorAll('#feedback-comparison .feedback-map .map-prefecture')]; return paths.filter(path=>{const box=path.getBBox();return box.x<650&&box.x+box.width>0&&box.y<410&&box.y+box.height>0;}).length>1; })()`), "正解県と同じ拡大率で周辺県の輪郭を表示できません");
