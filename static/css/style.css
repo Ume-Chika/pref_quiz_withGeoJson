@@ -9,7 +9,7 @@
   --accent-dark: #075c4c;
   --accent-soft: #d9f0e9;
   --sun: #f1b940;
-  --danger: #c64e43;
+  --danger: #96372f;
   --danger-soft: #fbe3df;
   --correct: #087a5b;
   --shadow: 0 18px 50px rgba(38, 54, 47, .09);
@@ -100,6 +100,7 @@ button.secondary-button:hover { border-color: #a8b1ab; background: white; }
 .map-prefecture.clickable:hover, .map-prefecture.clickable:focus { fill: var(--accent-soft); stroke: var(--accent); outline: none; }
 .map-prefecture.selected { fill: var(--sun); stroke: #a26300; stroke-width: 3; }
 .map-hit { fill: transparent; stroke: transparent; stroke-width: 10; pointer-events: stroke; vector-effect: non-scaling-stroke; cursor: pointer; }
+.nationwide-stage svg { cursor: crosshair; touch-action: manipulation; }
 .memory-status { position: absolute; top: 12px; left: 50%; padding: 5px 10px; color: white; border-radius: 999px; background: rgba(18,32,27,.82); font-size: .72rem; font-weight: 800; transform: translateX(-50%); }
 .silhouette { fill: var(--accent); stroke: var(--accent-dark); stroke-width: 3; vector-effect: non-scaling-stroke; }
 .stage-corner-label { position: absolute; right: 12px; bottom: 10px; padding: 3px 8px; color: var(--muted); border-radius: 8px; background: rgba(255,255,255,.82); font-size: .66rem; }
@@ -110,6 +111,7 @@ button.secondary-button:hover { border-color: #a8b1ab; background: white; }
 .fact-prompt strong { font-size: clamp(2.3rem, 11vw, 5rem); line-height: 1.12; letter-spacing: -.05em; }
 .answer-fieldset { min-width: 0; margin: 0; padding: 0; border: 0; }
 .answer-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.answer-grid.shape-grid { align-items: stretch; }
 .answer-option { position: relative; }
 .answer-option input { position: absolute; width: 1px; height: 1px; opacity: 0; }
 .answer-option label { display: flex; align-items: center; min-height: 58px; padding: 12px 16px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); font-weight: 800; cursor: pointer; transition: border .15s ease, background .15s ease, transform .15s ease; }
@@ -118,6 +120,13 @@ button.secondary-button:hover { border-color: #a8b1ab; background: white; }
 .answer-option input:focus-visible + label { outline: 3px solid rgba(17, 122, 101, .3); outline-offset: 2px; }
 .answer-option input:checked + label { border-color: var(--accent); background: var(--accent-soft); box-shadow: 0 0 0 1px var(--accent); }
 .answer-option input:checked + label::before { color: white; border-color: var(--accent); background: var(--accent); }
+.answer-option label.shape-option { justify-content: center; padding: 8px; }
+.shape-option svg { width: 100%; height: 86px; min-height: 0; }
+.shape-option .silhouette { stroke-width: 5; }
+.compass-prompt { display: grid; grid-template-columns: 1fr auto 1fr; gap: 18px; align-items: center; width: min(92%, 580px); text-align: center; }
+.compass-prompt span { padding: 20px 10px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); color: var(--muted); font-size: .75rem; }
+.compass-prompt strong { color: var(--ink); font-size: clamp(1.2rem, 5vw, 2rem); }
+.compass-prompt b { color: var(--accent); font-size: 2rem; }
 .submit-button { width: 100%; margin-top: 12px; }
 .keyboard-hint { margin: 9px 0 0; color: var(--muted); font-size: .7rem; text-align: center; }
 .game-quit-button { display: block; margin: 8px auto 0; }
@@ -217,6 +226,7 @@ button.danger-button { color: var(--danger); border: 1px solid #e5b1ab; backgrou
   .timer-row { margin-bottom: 10px; }
   .question-heading h1 { margin-top: 5px; font-size: 1.3rem; }
   .visual-stage { min-height: clamp(155px, 28svh, 210px); margin: 9px 0; border-radius: 18px; }
+  .visual-stage.nationwide-stage { min-height: 330px; }
   .answer-grid { grid-template-columns: 1fr 1fr; gap: 7px; }
   .answer-option label { min-height: 48px; padding: 8px 10px; font-size: .86rem; }
   .answer-option label::before { flex-basis: 22px; height: 22px; margin-right: 7px; }
