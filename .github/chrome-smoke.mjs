@@ -349,6 +349,17 @@ try {
   assert(await evaluate(cdp, `document.querySelector('#combo-count').textContent === '2' && Number(document.querySelector('#score-count').textContent) > 200`), "コンボまたはスコア加算が不正です");
   await evaluate(cdp, `document.querySelector('#quit-game-button').click(); document.querySelector('#result-home-button').click(); delete globalThis.__prefQuizTest; true`);
 
+  await evaluate(cdp, `(() => { const item={attempts:3,correct:3,streak:3,lastSeen:Number.MAX_SAFE_INTEGER,averageMs:5000,timeouts:0,nextDue:Number.MAX_SAFE_INTEGER,mastery:.8,recent:[1,1,1]}; localStorage.setItem('prefecture-minigame-v2',JSON.stringify({schema:2,settings:{sound:false,volume:.5,answerMode:'confirm'},progress:{'01:B':item},highScore:0,recent:[]})); location.reload(); return true; })()`);
+  await waitFor(cdp, `document.querySelector('#home-screen:not([hidden])')`, 10_000);
+  assert(await evaluate(cdp, `(() => { const item=JSON.parse(localStorage.getItem('prefecture-minigame-v2')).progress['01:B']; return item.lastSeen<=Date.now() && item.nextDue<=Date.now()+30*864e5; })()`), "端末時刻の変更で復習期限が遠い未来に固定されます");
+  await evaluate(cdp, `globalThis.__prefQuizTest={type:'mapFlash',skill:'B',code:'01'}; document.querySelector('#start-endless-button').click(); true`);
+  await waitFor(cdp, `document.querySelector('#game-screen').dataset.quizType==='mapFlash' && document.querySelector('#timer-text').textContent==='記憶中'`);
+  await waitFor(cdp, `document.querySelector('#timer-text').textContent!=='記憶中'`, 4_000);
+  await evaluate(cdp, `(() => { const input=[...document.querySelectorAll('input[name="answer"]')].find(item=>item.value!=='北海道'); input.checked=true; input.dispatchEvent(new Event('change')); document.querySelector('#submit-answer-button').click(); return true; })()`);
+  await waitFor(cdp, `document.querySelector('#feedback-dialog').open`);
+  assert(await evaluate(cdp, `(() => { const item=JSON.parse(localStorage.getItem('prefecture-minigame-v2')).progress['01:B']; return item.streak===0 && item.mastery<=.5 && document.querySelector('#feedback-points').textContent.includes('3問'); })()`), "見本付き問題の誤答を通常誤答より軽く扱っています");
+  await evaluate(cdp, `document.querySelector('#quit-game-button').click(); document.querySelector('#result-home-button').click(); delete globalThis.__prefQuizTest; true`);
+
   await evaluate(cdp, `globalThis.__prefQuizTest={type:'silhouette',skill:'A',code:'01'}; document.querySelector('#start-endless-button').click(); true`);
   await waitFor(cdp, `document.querySelector('#game-screen:not([hidden])')`);
   await cdp.command("Page.setWebLifecycleState", { state: "frozen" });
