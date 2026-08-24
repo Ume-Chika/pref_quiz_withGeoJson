@@ -2,7 +2,7 @@ import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { blankProgress, canIntroduceNewItem, compassVector, deadlinePassed, normalizeProgress, recordAnswer, schedulingPriority, skillsForMastery } from "../static/js/learning.mjs";
+import { blankProgress, canIntroduceNewItem, canUseIntegratedMode, compassVector, deadlinePassed, normalizeProgress, recordAnswer, schedulingPriority, skillsForMastery } from "../static/js/learning.mjs";
 
 const required = [
   "index.html",
@@ -51,6 +51,9 @@ if (!canIntroduceNewItem([{ newItem: true }, { newItem: true }, { newItem: true 
 if (skillsForMastery(2).join("") !== "AB" || skillsForMastery(3).join("") !== "ABC" || skillsForMastery(7).join("") !== "ABC" || skillsForMastery(8).join("") !== "ABCD" || skillsForMastery(14).join("") !== "ABCD" || skillsForMastery(15).join("") !== "ABCDE") {
   throw new Error("分野の段階解放境界が不正です");
 }
+if (canUseIntegratedMode(.54, 1) || canUseIntegratedMode(1, .44) || !canUseIntegratedMode(.55, .45)) {
+  throw new Error("複数分野をまたぐ形式の解放境界が不正です");
+}
 const firstCorrect = recordAnswer(blankProgress(), { correct: true, timedOut: false, responseMs: 5000, now });
 if (firstCorrect.attempts !== 1 || firstCorrect.correct !== 1 || firstCorrect.streak !== 1 || firstCorrect.mastery <= 0 || firstCorrect.nextDue <= now) {
   throw new Error("正解時の学習記録更新が不正です");
@@ -67,6 +70,10 @@ const promptedAfterStreak = recordAnswer({ ...firstCorrect, attempts: 3, correct
 if (promptedAfterStreak.streak !== 3 || promptedAfterStreak.nextDue !== now + 5 * 60e3 || promptedAfterStreak.mastery <= .6) {
   throw new Error("正解提示を含む記憶問題が既存の連続正解を壊しています");
 }
+const integratedAfterStreak = recordAnswer({ ...firstCorrect, attempts: 3, correct: 3, streak: 3, mastery: .6 }, { correct: true, timedOut: false, responseMs: 4000, evidence: .65, now });
+if (integratedAfterStreak.streak !== 3 || integratedAfterStreak.nextDue !== now + 24 * 60 * 60e3) {
+  throw new Error("複数分野をまたぐ正解の復習間隔が短すぎます");
+}
 const retrievalAfterPrompt = recordAnswer(promptedAfterStreak, { correct: true, timedOut: false, responseMs: 4000, now });
 if (retrievalAfterPrompt.streak !== 4 || retrievalAfterPrompt.nextDue !== now + 3 * 864e5) {
   throw new Error("正解提示後の完全検索で連続正解を再開できません");
@@ -75,6 +82,10 @@ const afterTimeout = recordAnswer(firstCorrect, { correct: false, timedOut: true
 if (afterTimeout.correct !== 1 || afterTimeout.streak !== 0 || afterTimeout.timeouts !== 1 || afterTimeout.mastery >= firstCorrect.mastery) {
   throw new Error("時間切れ時の学習記録更新が不正です");
 }
+const fullWrong = recordAnswer({ ...firstCorrect, mastery: .8 }, { correct: false, timedOut: false, responseMs: 5000, now });
+const weakWrong = recordAnswer({ ...firstCorrect, mastery: .8 }, { correct: false, timedOut: false, responseMs: 5000, evidence: .4, now });
+const integratedWrong = recordAnswer({ ...firstCorrect, attempts: 3, correct: 3, streak: 3, mastery: .8 }, { correct: false, timedOut: false, responseMs: 5000, evidence: .65, now });
+if (weakWrong.mastery <= fullWrong.mastery || integratedWrong.streak !== 2 || integratedWrong.nextDue !== now + 4 * 60 * 60e3) throw new Error("弱い証拠の誤答を強く扱いすぎています");
 if (schedulingPriority(blankProgress(), { now, random: 0 }) <= schedulingPriority(firstCorrect, { now, random: 0 })) {
   throw new Error("未学習項目が学習済み項目より優先されていません");
 }
