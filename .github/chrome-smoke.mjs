@@ -88,9 +88,8 @@ try {
   await waitFor(cdp, `document.querySelector('#game-screen:not([hidden])') && document.querySelectorAll('.shape-option').length === 4`);
   assert(await evaluate(cdp, `[...document.querySelectorAll('.shape-option'), document.querySelector('#submit-answer-button')].every(item => item.getBoundingClientRect().bottom <= innerHeight)`), "PCの短い画面で選択肢または決定ボタンが表示範囲に収まりません");
   await evaluate(cdp, `document.querySelector('#quit-game-button').click(); true`);
-  await waitFor(cdp, `document.querySelector('#result-screen:not([hidden])')`);
-  await evaluate(cdp, `delete globalThis.__prefQuizTest; document.querySelector('#result-home-button').click(); true`);
   await waitFor(cdp, `document.querySelector('#home-screen:not([hidden])')`);
+  await evaluate(cdp, `delete globalThis.__prefQuizTest; true`);
   await cdp.command("Emulation.clearDeviceMetricsOverride");
 
   await cdp.command("Network.setBlockedURLs", { urls: ["*prefecture_facts.json"] });
