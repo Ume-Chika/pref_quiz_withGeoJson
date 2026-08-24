@@ -853,7 +853,7 @@ function completeAnswer(answer, timedOut) {
   updateLearning(question, correct, timedOut, responseMs, answer, selectedCode);
   if (question.isNew && (question.type === "shapeMemory" || question.skill === "B")) {
     session.retries.push({ code: question.prefecture.code, skill: question.skill, type: question.skill === "A" ? "silhouette" : "map", dueAt: session.answers.length + 4 });
-  } else if (!correct && questionEvidence(question.type, false) === 1) {
+  } else if (!correct) {
     session.retries.push({ code: question.prefecture.code, skill: question.skill, dueAt: session.answers.length + 4 });
   }
   ui.combo.textContent = session.combo;
@@ -885,7 +885,7 @@ function showFeedback(question, correct, timedOut, points, answer) {
   ui.feedbackDetail.textContent = feedbackDetail(question);
   renderFeedbackComparison(question, answer, correct, timedOut);
   const canRetryThisRound = !session.limit || session.answers.length + 3 < session.limit;
-  ui.feedbackPoints.textContent = points ? `+${points}点${session.combo >= 2 ? `・${session.combo}コンボ` : ""}` : canRetryThisRound && questionEvidence(question.type, false) === 1 ? "3問はさんで、もう一度出題します" : "次回、優先して復習します";
+  ui.feedbackPoints.textContent = points ? `+${points}点${session.combo >= 2 ? `・${session.combo}コンボ` : ""}` : canRetryThisRound ? "3問はさんで、もう一度出題します" : "次回、優先して復習します";
   $("next-question-button").textContent = session.limit && session.answers.length >= session.limit ? "結果を見る" : "次の問題";
   ui.feedback.showModal();
   ui.feedback.scrollTop = 0;
@@ -988,7 +988,7 @@ function finishGame() {
   $("result-combo").textContent = session.maxCombo;
   $("result-timeouts").textContent = timeouts;
   const weakest = weakestItems(1)[0];
-  $("result-review").textContent = weakest ? `${weakest.prefecture.name}の「${SKILLS[weakest.skill].name}」を優先して復習します。` : "次は新しい都道府県に挑戦します。";
+  $("result-review").textContent = weakest ? `${weakest.prefecture.name}の「${SKILLS[weakest.skill].name}」が現在もっとも低い習熟度です。` : "次は新しい都道府県に挑戦します。";
   showScreen(ui.result);
   renderHome();
 }
