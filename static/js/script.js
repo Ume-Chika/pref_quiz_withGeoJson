@@ -9,7 +9,7 @@ const SKILLS = {
 };
 const LOCATION_TYPES = ["locate", "locateJapan", "mapMemory", "shapeLocate", "capitalLocate", "dishLocate"];
 const NATIONWIDE_LOCATION_TYPES = ["locateJapan", "shapeLocate", "capitalLocate", "dishLocate"];
-const ANIMATED_TYPES = ["shapeMemory", "spotlight", "reveal", "flash", "mapMemory", "mapFlash", "shapeLocate"];
+const ANIMATED_TYPES = ["spotlight", "reveal", "flash", "mapMemory", "mapFlash", "shapeLocate"];
 
 const $ = (id) => document.getElementById(id);
 const screens = ["loading-screen", "error-screen", "home-screen", "game-screen", "result-screen"].map($);
@@ -648,18 +648,38 @@ function renderVisual(question, token) {
     const islandCount = prefecture.feature.geometry.type === "MultiPolygon" ? prefecture.feature.geometry.coordinates.length : 1;
     const previewMs = Math.min(4000, Math.round(2500 + (1 - getProgress(prefecture.code, "A").mastery) * 700 + (islandCount - 1) * 150));
     ui.stage.innerHTML = `${silhouetteSvg(prefecture)}<div class="memory-teach"><span>形の見本</span><strong>${prefecture.name}</strong></div><div class="memory-curtain">思い出して答えよう</div>`;
+    ui.stage.querySelector(".memory-curtain").style.animationDelay = `${previewMs}ms`;
     ui.answerFieldset.hidden = true;
     ui.submit.hidden = true;
-    ui.keyboardHint.textContent = `${(previewMs / 1000).toFixed(1)}秒だけ見本を表示します`;
-    lockPreview(token, previewMs, () => {
+    const unlock = () => {
       ui.stage.querySelector(".memory-teach")?.remove();
+      ui.stage.querySelector(".memory-ready-button")?.remove();
       ui.type.textContent = "形を思い出す";
       ui.title.textContent = `${prefecture.name}の形はどれ？`;
       ui.help.textContent = "見本で見た輪郭を4つから選んでください。";
       ui.answerFieldset.hidden = false;
       ui.submit.hidden = saved.settings.answerMode === "instant";
       ui.keyboardHint.innerHTML = saved.settings.answerMode === "instant" ? "<kbd>1</kbd>–<kbd>4</kbd> で回答" : "<kbd>1</kbd>–<kbd>4</kbd> 選択　<kbd>Enter</kbd> 決定";
-    });
+    };
+    if (reducedMotion) {
+      ui.stage.querySelector(".memory-curtain").remove();
+      ui.help.textContent = "形を確認して、覚えたらボタンを押してください。";
+      ui.keyboardHint.textContent = "時間は減りません";
+      ui.stage.insertAdjacentHTML("beforeend", '<button class="memory-ready-button" type="button">覚えた</button>');
+      session.locationLocked = true;
+      session.lockLabel = "確認中";
+      ui.stage.querySelector(".memory-ready-button").addEventListener("click", () => {
+        if (token !== questionToken) return;
+        unlock();
+        session.locationLocked = false;
+        session.lockLabel = "";
+        session.startedAt = Date.now();
+        session.deadline = session.startedAt + QUESTION_SECONDS * 1000;
+      });
+    } else {
+      ui.keyboardHint.textContent = `${(previewMs / 1000).toFixed(1)}秒だけ見本を表示します`;
+      lockPreview(token, previewMs, unlock);
+    }
   } else if (["silhouette", "reveal", "spotlight", "flash"].includes(type)) {
     ui.stage.classList.toggle("dark", type === "spotlight" || type === "flash");
     ui.stage.innerHTML = silhouetteSvg(prefecture, type === "spotlight" ? "spotlight" : type === "reveal" ? "reveal" : "plain");
