@@ -8,6 +8,22 @@ export function deadlinePassed(answeredAt, deadline) {
   return answeredAt >= deadline;
 }
 
+export function canIntroduceNewItem(recent) {
+  return recent.slice(0, 9).filter((entry) => entry?.newItem).length < 4;
+}
+
+export function skillsForMastery(mastered) {
+  return ["A", "B", ...(mastered >= 3 ? ["C"] : []), ...(mastered >= 8 ? ["D"] : []), ...(mastered >= 15 ? ["E"] : [])];
+}
+
+export function compassVector(target, reference) {
+  const meanLatitude = (target[1] + reference[1]) / 2 * Math.PI / 180;
+  const dx = (target[0] - reference[0]) * Math.cos(meanLatitude);
+  const dy = target[1] - reference[1];
+  const angle = (Math.atan2(dy, dx) * 180 / Math.PI + 360) % 360;
+  return { dx, dy, distance: Math.hypot(dx, dy), margin: Math.abs(angle % 45 - 22.5) };
+}
+
 export function normalizeProgress(value, maxResponseMs = 15000) {
   const item = blankProgress();
   if (!value || typeof value !== "object") return item;
@@ -25,19 +41,20 @@ export function normalizeProgress(value, maxResponseMs = 15000) {
   return item;
 }
 
-export function recordAnswer(previous, { correct, timedOut, responseMs, now = Date.now() }) {
+export function recordAnswer(previous, { correct, timedOut, responseMs, evidence = 1, now = Date.now() }) {
   const item = normalizeProgress(previous);
   const normalizedMs = Math.max(0, Math.min(15000, Math.round(responseMs)));
+  const weight = Math.max(.1, Math.min(1, evidence));
   item.attempts += 1;
   item.correct += correct ? 1 : 0;
-  item.streak = correct ? item.streak + 1 : 0;
+  item.streak = correct ? (weight === 1 ? item.streak + 1 : item.streak) : 0;
   item.lastSeen = now;
   item.averageMs = item.averageMs ? Math.round(item.averageMs * .7 + normalizedMs * .3) : normalizedMs;
   item.timeouts += timedOut ? 1 : 0;
   item.mastery = correct
-    ? Math.min(1, item.mastery + (1 - item.mastery) * .22)
+    ? Math.min(1, item.mastery + (1 - item.mastery) * .22 * weight)
     : item.mastery * (timedOut ? .5 : .62);
-  item.nextDue = now + (correct ? INTERVALS[Math.min(item.streak - 1, INTERVALS.length - 1)] : 2 * 60e3);
+  item.nextDue = now + (correct ? weight < 1 ? INTERVALS[0] : INTERVALS[Math.max(0, Math.min(item.streak - 1, INTERVALS.length - 1))] : 2 * 60e3);
   item.recent = [...item.recent, correct ? 1 : timedOut ? -1 : 0].slice(-8);
   return item;
 }
