@@ -87,9 +87,9 @@ try {
   await evaluate(cdp, `globalThis.__prefQuizTest={type:'silhouetteReverse',skill:'A',code:'01'}; document.querySelector('#start-endless-button').click(); true`);
   await waitFor(cdp, `document.querySelector('#game-screen:not([hidden])') && document.querySelectorAll('.shape-option').length === 4`);
   assert(await evaluate(cdp, `[...document.querySelectorAll('.shape-option'), document.querySelector('#submit-answer-button')].every(item => item.getBoundingClientRect().bottom <= innerHeight)`), "PCの短い画面で選択肢または決定ボタンが表示範囲に収まりません");
-  await evaluate(cdp, `globalThis.__nativeConfirm=window.confirm; window.confirm=()=>true; document.querySelector('#game-quit-button').click(); true`);
+  await evaluate(cdp, `document.querySelector('#quit-game-button').click(); true`);
   await waitFor(cdp, `document.querySelector('#result-screen:not([hidden])')`);
-  await evaluate(cdp, `window.confirm=globalThis.__nativeConfirm; delete globalThis.__nativeConfirm; delete globalThis.__prefQuizTest; document.querySelector('#result-home-button').click(); true`);
+  await evaluate(cdp, `delete globalThis.__prefQuizTest; document.querySelector('#result-home-button').click(); true`);
   await waitFor(cdp, `document.querySelector('#home-screen:not([hidden])')`);
   await cdp.command("Emulation.clearDeviceMetricsOverride");
 
