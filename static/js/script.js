@@ -18,8 +18,8 @@ const ui = {
   type: $("quiz-type"), title: $("question-title"), help: $("question-help"), stage: $("visual-stage"),
   answerFieldset: $("answer-fieldset"), answerGrid: $("answer-grid"), submit: $("submit-answer-button"), keyboardHint: $("keyboard-hint"),
   feedback: $("feedback-dialog"), feedbackMark: $("feedback-mark"), feedbackKicker: $("feedback-kicker"),
-  feedbackTitle: $("feedback-title"), feedbackDetail: $("feedback-detail"), feedbackPoints: $("feedback-points"),
-  settings: $("settings-dialog"), progress: $("progress-dialog"), resetConfirm: $("confirm-reset-dialog")
+  feedbackTitle: $("feedback-title"), feedbackDetail: $("feedback-detail"), feedbackComparison: $("feedback-comparison"), feedbackPoints: $("feedback-points"),
+  settings: $("settings-dialog"), progress: $("progress-dialog"), studyMap: $("study-map-dialog"), studyMapCanvas: $("study-map-canvas"), resetConfirm: $("confirm-reset-dialog")
 };
 
 let geoData = null;
@@ -52,7 +52,12 @@ function loadSaved() {
       },
       progress,
       highScore: finiteNumber(parsed.highScore, 0, 0, 1e9),
-      recent: Array.isArray(parsed.recent) ? parsed.recent.filter((item) => item && typeof item.code === "string" && typeof item.type === "string").slice(0, 30) : []
+      recent: Array.isArray(parsed.recent) ? parsed.recent.filter((item) => item && /^(0[1-9]|[1-3]\d|4[0-7])$/.test(item.code) && SKILLS[item.skill] && typeof item.type === "string").slice(0, 30).map((item) => ({
+        code: item.code, skill: item.skill, type: item.type.slice(0, 40), correct: item.correct === true, timedOut: item.timedOut === true,
+        newItem: item.newItem === true, at: finiteNumber(item.at, 0, 0, Date.now() + 86_400_000),
+        answer: typeof item.answer === "string" ? item.answer.slice(0, 80) : "",
+        selectedCode: /^(0[1-9]|[1-3]\d|4[0-7])$/.test(item.selectedCode) ? item.selectedCode : ""
+      })) : []
     };
   } catch (_) {
     return freshSaved();
@@ -73,6 +78,7 @@ function showScreen(target) {
   $("home-button").disabled = playing || !prefectures.length;
   $("settings-button").disabled = playing || !prefectures.length;
   $("progress-button").disabled = playing || !prefectures.length;
+  $("study-map-button").disabled = playing || !prefectures.length;
   requestAnimationFrame(() => ui.app.focus({ preventScroll: true }));
   window.scrollTo({ top: 0, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
 }
@@ -219,6 +225,78 @@ function silhouetteSvg(prefecture, effect = "plain") {
 
 function renderHeroMap() {
   ui.heroMap.innerHTML = svgMap(prefectures, boundsOf(prefectures), { width: 500, height: 500, label: "" });
+}
+
+function renderStudyMap() {
+  const recent = saved.recent.slice(0, 10);
+  const latest = new Map();
+  recent.forEach((item) => { if (!latest.has(item.code)) latest.set(item.code, item); });
+  ui.studyMapCanvas.innerHTML = svgMap(prefectures, boundsOf(prefectures), { width: 700, height: 540, clickable: true, label: "直近10問の正誤を示す日本白地図" });
+  const svg = ui.studyMapCanvas.querySelector("svg");
+  const paths = [...svg.querySelectorAll(".map-prefecture[data-code]")];
+  paths.forEach((path) => {
+    const prefecture = prefectures.find((item) => item.code === path.dataset.code);
+    const record = latest.get(path.dataset.code);
+    const status = record ? record.correct ? "直近10問で正解" : record.timedOut ? "直近10問で時間切れ" : "直近10問で不正解" : "直近10問では未出題";
+    path.classList.toggle("recent-correct", record?.correct === true);
+    path.classList.toggle("recent-incorrect", !!record && !record.correct);
+    path.setAttribute("aria-label", `${prefecture.name}、${status}`);
+  });
+
+  const showCode = (code) => {
+    const prefecture = prefectures.find((item) => item.code === code);
+    if (prefecture) renderStudyMapDetail(prefecture, recent);
+  };
+  svg.addEventListener("pointerover", (event) => showCode(event.target.closest?.("[data-code]")?.dataset.code));
+  svg.addEventListener("focusin", (event) => showCode(event.target.closest?.(".map-prefecture[data-code]")?.dataset.code));
+  svg.addEventListener("click", (event) => {
+    const hitCode = event.target.closest?.(".map-prefecture[data-code], .map-hit[data-code]")?.dataset.code;
+    if (hitCode) { showCode(hitCode); return; }
+    const point = new DOMPoint(event.clientX, event.clientY).matrixTransform(svg.getScreenCTM().inverse());
+    const nearest = paths.map((path) => ({ code: path.dataset.code, distance: Math.hypot(point.x - Number(path.dataset.centerX), point.y - Number(path.dataset.centerY)) })).sort((a, b) => a.distance - b.distance)[0];
+    if (nearest) showCode(nearest.code);
+  });
+  paths.forEach((path) => path.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" || event.key === " ") { event.preventDefault(); showCode(path.dataset.code); }
+    else if (["ArrowRight", "ArrowDown", "ArrowLeft", "ArrowUp"].includes(event.key)) {
+      event.preventDefault();
+      const nextCode = spatialNeighbor(path.dataset.code, event.key, prefectures);
+      const next = paths.find((item) => item.dataset.code === nextCode);
+      if (next) {
+        paths.forEach((item) => { item.tabIndex = item === next ? 0 : -1; });
+        next.focus();
+      }
+    }
+  }));
+  const initial = prefectures.find((item) => item.code === recent[0]?.code) || prefectures[0];
+  const initialPath = paths.find((path) => path.dataset.code === initial.code);
+  if (initialPath) paths.forEach((path) => { path.tabIndex = path === initialPath ? 0 : -1; });
+  renderStudyMapDetail(initial, recent);
+}
+
+function renderStudyMapDetail(prefecture, recent) {
+  const history = recent.map((item, index) => ({ ...item, ago: index + 1 })).filter((item) => item.code === prefecture.code);
+  const latest = history[0];
+  const status = latest ? latest.correct ? "○ 直近10問で正解" : latest.timedOut ? "× 直近10問で時間切れ" : "× 直近10問で不正解" : "－ 直近10問では未出題";
+  $("study-map-status").textContent = status;
+  $("study-map-status").className = `study-map-status${latest ? latest.correct ? " correct" : " incorrect" : ""}`;
+  $("study-map-name").textContent = prefecture.name;
+  $("study-map-region").textContent = prefecture.region;
+  $("study-map-capital").textContent = prefecture.capital;
+  $("study-map-dish").textContent = prefecture.dish;
+  const list = $("study-map-history");
+  list.replaceChildren();
+  if (!history.length) {
+    const item = document.createElement("li");
+    item.textContent = "この県の記録はまだありません";
+    list.append(item);
+  } else history.forEach((record) => {
+    const item = document.createElement("li");
+    const result = document.createElement("strong");
+    result.textContent = record.correct ? "○ 正解" : record.timedOut ? "× 時間切れ" : "× 不正解";
+    item.append(result, `${record.ago}問前・${SKILLS[record.skill].name}`);
+    list.append(item);
+  });
 }
 
 function progressKey(code, skill) { return `${code}:${skill}`; }
@@ -655,23 +733,24 @@ function completeAnswer(answer, timedOut) {
   session.maxCombo = Math.max(session.maxCombo, session.combo);
   const remainingSeconds = Math.max(0, Math.ceil((session.deadline - answeredAt) / 1000));
   const points = correct ? 100 + remainingSeconds * 10 + previousCombo * 25 : 0;
+  const selectedCode = prefectures.find((prefecture) => prefecture.name === answer)?.code || "";
   session.score += points;
-  session.answers.push({ code: question.prefecture.code, skill: question.skill, type: question.type, correct, timedOut, responseMs });
-  updateLearning(question, correct, timedOut, responseMs);
+  session.answers.push({ code: question.prefecture.code, skill: question.skill, type: question.type, correct, timedOut, responseMs, answer, selectedCode });
+  updateLearning(question, correct, timedOut, responseMs, answer, selectedCode);
   if (!correct && questionEvidence(question.type) === 1) session.retries.push({ code: question.prefecture.code, skill: question.skill, dueAt: session.answers.length + 4 });
   ui.combo.textContent = session.combo;
   ui.score.textContent = session.score;
   playTone(correct ? "correct" : "incorrect");
-  showFeedback(question, correct, timedOut, points);
+  showFeedback(question, correct, timedOut, points, answer);
 }
 
-function updateLearning(question, correct, timedOut, responseMs) {
+function updateLearning(question, correct, timedOut, responseMs, answer, selectedCode) {
   const key = progressKey(question.prefecture.code, question.skill);
   const evidence = questionEvidence(question.type);
   const previous = getProgress(question.prefecture.code, question.skill);
   const item = recordAnswer(previous, { correct, timedOut, responseMs, evidence });
   saved.progress[key] = item;
-  saved.recent.unshift({ code: question.prefecture.code, skill: question.skill, type: question.type, correct, timedOut, newItem: !previous.attempts, at: Date.now() });
+  saved.recent.unshift({ code: question.prefecture.code, skill: question.skill, type: question.type, correct, timedOut, newItem: !previous.attempts, at: Date.now(), answer, selectedCode });
   saved.recent = saved.recent.slice(0, 30);
   persist();
 }
@@ -680,16 +759,49 @@ function questionEvidence(type) {
   return ["mapMemory", "mapFlash"].includes(type) ? .4 : ["capitalShape", "dishMap"].includes(type) ? .65 : 1;
 }
 
-function showFeedback(question, correct, timedOut, points) {
+function showFeedback(question, correct, timedOut, points, answer) {
   ui.feedback.classList.toggle("incorrect", !correct);
   ui.feedbackMark.textContent = correct ? "○" : timedOut ? "⌛" : "×";
   ui.feedbackKicker.textContent = correct ? "CORRECT" : timedOut ? "TIME UP" : "MISS";
   ui.feedbackTitle.textContent = correct ? randomOf(["正解！", "やった！", "その調子！"]) : timedOut ? "時間切れ" : "おしい！";
   ui.feedbackDetail.textContent = feedbackDetail(question);
+  renderFeedbackComparison(question, answer, correct, timedOut);
   const canRetryThisRound = !session.limit || session.answers.length + 3 < session.limit;
   ui.feedbackPoints.textContent = points ? `+${points}点${session.combo >= 2 ? `・${session.combo}コンボ` : ""}` : canRetryThisRound && questionEvidence(question.type) === 1 ? "3問はさんで、もう一度出題します" : "次回、優先して復習します";
   $("next-question-button").textContent = session.limit && session.answers.length >= session.limit ? "結果を見る" : "次の問題";
   ui.feedback.showModal();
+}
+
+function renderFeedbackComparison(question, answer, correct, timedOut) {
+  const selectedPrefecture = prefectures.find((prefecture) => prefecture.name === answer);
+  ui.feedbackComparison.classList.toggle("is-correct", correct);
+  const correctNote = question.correct === question.prefecture.name ? `${question.prefecture.region}・県庁所在地 ${question.prefecture.capital}` : `答え：${question.correct}`;
+  if (correct) {
+    ui.feedbackComparison.replaceChildren(feedbackShapeCard("形を再確認", question.prefecture, question.prefecture.name, correctNote, "correct-answer"));
+    return;
+  }
+  const selectedValue = timedOut ? "時間切れ" : answer;
+  ui.feedbackComparison.replaceChildren(
+    feedbackShapeCard("あなたの回答", selectedPrefecture, selectedValue, selectedPrefecture ? selectedPrefecture.region : "県名以外の回答", "selected-wrong"),
+    feedbackShapeCard("正解の県", question.prefecture, question.prefecture.name, correctNote, "correct-answer")
+  );
+}
+
+function feedbackShapeCard(title, prefecture, value, note, className) {
+  const card = document.createElement("article");
+  card.className = `feedback-shape-card ${className}`;
+  card.dataset.code = prefecture?.code || "";
+  const label = document.createElement("span");
+  label.textContent = title;
+  const visual = document.createElement("div");
+  if (prefecture) visual.innerHTML = silhouetteSvg(prefecture);
+  else { visual.className = "feedback-no-shape"; visual.textContent = "？"; }
+  const name = document.createElement("strong");
+  name.textContent = value;
+  const detail = document.createElement("small");
+  detail.textContent = note;
+  card.append(label, visual, name, detail);
+  return card;
 }
 
 function feedbackDetail(question) {
@@ -799,6 +911,7 @@ function shuffle(items) {
 $("retry-button").addEventListener("click", loadData);
 $("start-ten-button").addEventListener("click", () => startGame(10));
 $("start-endless-button").addEventListener("click", () => startGame(null));
+$("study-map-button").addEventListener("click", () => { renderStudyMap(); ui.studyMap.showModal(); });
 ui.submit.addEventListener("click", submitSelectedAnswer);
 $("next-question-button").addEventListener("click", nextAfterFeedback);
 $("quit-game-button").addEventListener("click", finishGame);
@@ -836,7 +949,7 @@ $("confirm-reset-button").addEventListener("click", () => {
 });
 
 document.addEventListener("keydown", (event) => {
-  if (ui.feedback.open || ui.settings.open || ui.progress.open || ui.resetConfirm.open || ui.game.hidden || !session || session.answered || session.locationLocked) return;
+  if (ui.feedback.open || ui.settings.open || ui.progress.open || ui.studyMap.open || ui.resetConfirm.open || ui.game.hidden || !session || session.answered || session.locationLocked) return;
   const number = Number(event.key);
   const isLocation = ["locate", "locateJapan", "mapMemory"].includes(session.current.type);
   if (!isLocation && number >= 1 && number <= 4) {
