@@ -102,6 +102,9 @@ button.secondary-button:hover { border-color: #a8b1ab; background: white; }
 .map-prefecture.selected { fill: var(--sun); stroke: #a26300; stroke-width: 3; }
 .nationwide-stage svg { cursor: crosshair; touch-action: manipulation; }
 .memory-status { position: absolute; top: 12px; left: 50%; padding: 5px 10px; color: white; border-radius: 999px; background: rgba(18,32,27,.82); font-size: .72rem; font-weight: 800; transform: translateX(-50%); }
+.memory-teach { position: absolute; right: 12px; bottom: 12px; display: grid; gap: 1px; padding: 8px 13px; border: 1px solid var(--line); border-radius: 12px; background: rgba(255,255,255,.94); box-shadow: var(--shadow); }
+.memory-teach span { color: var(--muted); font-size: .65rem; font-weight: 800; }
+.memory-teach strong { font-size: 1.15rem; }
 .silhouette { fill: var(--accent); stroke: var(--accent-dark); stroke-width: 3; vector-effect: non-scaling-stroke; }
 .stage-corner-label { position: absolute; right: 12px; bottom: 10px; padding: 3px 8px; color: var(--muted); border-radius: 8px; background: rgba(255,255,255,.82); font-size: .66rem; }
 .spotlight-path { fill: var(--sun); stroke: #ffe5a3; stroke-width: 4; vector-effect: non-scaling-stroke; }
