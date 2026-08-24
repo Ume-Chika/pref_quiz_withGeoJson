@@ -65,7 +65,7 @@ try {
   await cdp.command("Network.enable");
 
   const errors = [];
-  cdp.on("Runtime.exceptionThrown", ({ exceptionDetails }) => errors.push(exceptionDetails.text));
+  cdp.on("Runtime.exceptionThrown", ({ exceptionDetails }) => errors.push(exceptionDetails.exception?.description || exceptionDetails.text));
   cdp.on("Log.entryAdded", ({ entry }) => entry.level === "error" && !/net::ERR_BLOCKED_BY_CLIENT/.test(entry.text) && errors.push(entry.text));
   await cdp.command("Log.enable");
   await cdp.command("Page.navigate", { url: `http://127.0.0.1:4173${base}` });
