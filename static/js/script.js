@@ -600,7 +600,7 @@ function renderVisual(question, token) {
     }, 2000);
   } else if (["capitalMap", "dishMap"].includes(type)) {
     const localBounds = expandedBounds(boundsOf([prefecture.mainGeometry]), 1.65);
-    ui.stage.innerHTML = svgMap(prefectures, localBounds, { targetCode: prefecture.code, label: type === "capitalMap" ? "県庁所在地を答える対象県の周辺地図" : "郷土料理を答える対象県の周辺地図" });
+    ui.stage.innerHTML = svgMap(prefectures, localBounds, { targetCode: prefecture.code, label: type === "capitalMap" ? "県庁所在地を答える対象都道府県の周辺地図" : "郷土料理を答える対象都道府県の周辺地図" });
   } else if (type === "capitalShape") {
     ui.stage.innerHTML = silhouetteSvg(prefecture);
   } else if (type === "regionMap") {
@@ -796,7 +796,8 @@ function renderFeedbackComparison(question, answer, correct, timedOut) {
   }
   if (!canCompare) {
     const result = timedOut ? "時間切れ" : `あなたの回答：${answer}`;
-    ui.feedbackComparison.replaceChildren(feedbackShapeCard("正解の都道府県", question.prefecture, question.prefecture.name, `${result}／正解：${question.correct}`, "correct-answer"));
+    const title = question.correct === question.prefecture.name ? "正解の都道府県" : "問題の都道府県";
+    ui.feedbackComparison.replaceChildren(feedbackShapeCard(title, question.prefecture, question.prefecture.name, `${result}／正解：${question.correct}`, "correct-answer"));
     return;
   }
   ui.feedbackComparison.replaceChildren(
