@@ -30,7 +30,7 @@ function buildPrefecture(name, pref) {
   if (!feature?.geometry) throw new Error(`${name}: no polygon`);
 
   const clean = polygons(feature.geometry)
-    .map((polygon) => polygon.map((ring) => simplifyClosed(ring, 0.01)))
+    .map((polygon) => polygon.map((ring) => simplifyClosed(ring, 0.005)))
     .filter(([outer]) => Math.abs(area(outer)) >= 0.001);
   if (!clean.length) throw new Error(`${name}: no polygon after simplification`);
 
