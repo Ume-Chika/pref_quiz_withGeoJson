@@ -80,6 +80,7 @@ try {
   assert(await evaluate(cdp, `document.documentElement.scrollWidth <= document.documentElement.clientWidth`), "スマートフォン幅で横スクロールが発生しています");
   assert(await evaluate(cdp, `[...document.querySelectorAll('button')].filter(button => button.getClientRects().length).every(button => button.getBoundingClientRect().height >= 44)`), "操作ボタンが44px未満です");
   assert(await evaluate(cdp, `!document.querySelector('#sound-setting').checked`), "効果音の初期値がOFFではありません");
+  assert(await evaluate(cdp, `document.querySelector('#visual-effects-setting').checked`), "視覚効果の初期値がONではありません");
   assert(await evaluate(cdp, `document.querySelector('#volume-setting').disabled && document.querySelector('#volume-setting').value === '0.5'`), "音量の初期値が不正です");
   assert(await evaluate(cdp, `fetch('./sources.html').then(r => r.ok)`), "出典ページを取得できません");
   await evaluate(cdp, `document.querySelector('#progress-button').click(); true`);
@@ -101,20 +102,24 @@ try {
   for (const scenario of [{ type: "silhouetteReverse", skill: "A", code: "01" }, { type: "locateJapan", skill: "B", code: "01" }]) {
     await evaluate(cdp, `globalThis.__prefQuizTest=${JSON.stringify(scenario)}; document.querySelector('#start-endless-button').click(); true`);
     await waitFor(cdp, `document.querySelector('#game-screen:not([hidden])') && document.querySelector('#game-screen').dataset.quizType==='${scenario.type}'`);
-    assert(await evaluate(cdp, `(() => { const items=[...document.querySelectorAll('.answer-option label'),document.querySelector('#visual-stage'),document.querySelector('#submit-answer-button'),document.querySelector('#keyboard-hint')].filter(item=>item.getClientRects().length); return items.every(item=>item.getBoundingClientRect().bottom<=innerHeight); })()`), `320×568画面で${scenario.type}の回答操作が画面内に収まりません`);
+    const mobileLayout = await evaluate(cdp, `(() => { const items=[...document.querySelectorAll('.answer-option label'),document.querySelector('#visual-stage'),document.querySelector('#submit-answer-button'),document.querySelector('#keyboard-hint')].filter(item=>item.getClientRects().length).map(item=>({name:item.id||item.className,top:Math.round(item.getBoundingClientRect().top),bottom:Math.round(item.getBoundingClientRect().bottom)})); return {height:innerHeight,items}; })()`);
+    assert(mobileLayout.items.every((item) => item.bottom <= mobileLayout.height), `320×568画面で${scenario.type}の回答操作が収まりません: ${JSON.stringify(mobileLayout)}`);
     await evaluate(cdp, `document.querySelector('#quit-game-button').click(); true`);
     await waitFor(cdp, `document.querySelector('#home-screen:not([hidden])')`);
   }
   await evaluate(cdp, `delete globalThis.__prefQuizTest; true`);
   await cdp.command("Emulation.clearDeviceMetricsOverride");
 
-  await cdp.command("Emulation.setEmulatedMedia", { features: [{ name: "prefers-reduced-motion", value: "reduce" }] });
   await evaluate(cdp, `globalThis.__prefQuizTest={type:'spotlight',skill:'A',code:'01'}; document.querySelector('#start-endless-button').click(); true`);
   await waitFor(cdp, `document.querySelector('#game-screen:not([hidden])') && document.querySelector('#game-screen').dataset.quizType==='spotlight'`);
-  assert(await evaluate(cdp, `document.querySelector('#question-help').textContent.includes('端末のアクセシビリティ設定を検知') && !document.querySelector('#visual-stage animate')`), "動作軽減の出所説明または静止表示が不正です");
-  await evaluate(cdp, `document.querySelector('#quit-game-button').click(); delete globalThis.__prefQuizTest; true`);
+  assert(await evaluate(cdp, `document.querySelectorAll('#visual-stage animate').length===2`), "初期状態でスポットライトが動きません");
+  await evaluate(cdp, `document.querySelector('#quit-game-button').click(); document.querySelector('#settings-button').click(); document.querySelector('#visual-effects-setting').click(); document.querySelector('#settings-dialog .close-button').click(); true`);
   await waitFor(cdp, `document.querySelector('#home-screen:not([hidden])')`);
-  await cdp.command("Emulation.setEmulatedMedia", { features: [] });
+  await evaluate(cdp, `document.querySelector('#start-endless-button').click(); true`);
+  await waitFor(cdp, `document.querySelector('#game-screen:not([hidden])') && document.querySelector('#game-screen').dataset.quizType==='spotlight'`);
+  assert(await evaluate(cdp, `document.querySelector('#question-help').textContent.includes('設定で視覚効果がOFF') && !document.querySelector('#visual-stage animate') && document.documentElement.classList.contains('reduce-motion')`), "視覚効果OFFの説明または静止表示が不正です");
+  await evaluate(cdp, `document.querySelector('#quit-game-button').click(); delete globalThis.__prefQuizTest; document.querySelector('#settings-button').click(); document.querySelector('#visual-effects-setting').click(); document.querySelector('#settings-dialog .close-button').click(); true`);
+  await waitFor(cdp, `document.querySelector('#home-screen:not([hidden])')`);
 
   await cdp.command("Network.setBlockedURLs", { urls: ["*prefecture_facts.json"] });
   await evaluate(cdp, `location.reload(); true`);
@@ -173,7 +178,7 @@ try {
   await evaluate(cdp, `Math.random=globalThis.__nativeRandom; delete globalThis.__nativeRandom; true`);
   const state = await evaluate(cdp, `JSON.parse(localStorage.getItem('prefecture-minigame-v2'))`);
   assert(state.schema === 2, "保存スキーマが不正です");
-  assert(state.settings.sound === false && state.settings.volume === .5 && state.settings.answerMode === "confirm", "壊れた設定値を復旧できません");
+  assert(state.settings.sound === false && state.settings.volume === .5 && state.settings.answerMode === "confirm" && state.settings.visualEffects === true, "設定値を安全な初期値へ復旧できません");
   assert(Object.values(state.progress).reduce((sum, item) => sum + item.attempts, 0) === 10, "10問分の学習履歴を保存できません");
   assert(Object.values(state.progress).reduce((sum, item) => sum + item.correct, 0) === 10, "10問分の正答を記録できません");
   assert(Object.values(state.progress).filter((item) => item.attempts > 0).length === 4, "10問で新規項目がちょうど4件に制限されていません");
