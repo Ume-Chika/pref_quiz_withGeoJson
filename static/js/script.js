@@ -39,6 +39,19 @@ function freshSaved() {
   return { schema: 2, settings: { sound: false, volume: .5, answerMode: "confirm", visualEffects: true }, progress: {}, highScore: 0, unlockedBasic: 0, recent: [], pendingReviews: [] };
 }
 
+function normalizePendingReviews(value) {
+  if (!Array.isArray(value)) return [];
+  const reviews = [];
+  value.forEach((item) => {
+    if (!item || !/^(0[1-9]|[1-3]\d|4[0-7])$/.test(item.code) || !SKILLS[item.skill]) return;
+    const review = { code: item.code, skill: item.skill, type: ["silhouette", "map"].includes(item.type) ? item.type : "", remaining: Math.floor(finiteNumber(item.remaining, 0, 0, 3)) };
+    const previous = reviews.find((candidate) => candidate.code === review.code && candidate.skill === review.skill);
+    if (!previous) reviews.push(review);
+    else if (review.remaining < previous.remaining) Object.assign(previous, review);
+  });
+  return reviews.slice(0, 20);
+}
+
 function loadSaved() {
   try {
     const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY));
@@ -70,9 +83,7 @@ function loadSaved() {
       progress,
       highScore: finiteNumber(parsed.highScore, 0, 0, 1e9),
       unlockedBasic: Math.max(inferredUnlock, Math.floor(finiteNumber(parsed.unlockedBasic, 0, 0, 47))),
-      pendingReviews: Array.isArray(parsed.pendingReviews) ? parsed.pendingReviews.filter((item) => item && /^(0[1-9]|[1-3]\d|4[0-7])$/.test(item.code) && SKILLS[item.skill]).slice(0, 20).map((item) => ({
-        code: item.code, skill: item.skill, type: typeof item.type === "string" ? item.type.slice(0, 40) : "", remaining: Math.floor(finiteNumber(item.remaining, 0, 0, 3))
-      })) : [],
+      pendingReviews: normalizePendingReviews(parsed.pendingReviews),
       recent: Array.isArray(parsed.recent) ? parsed.recent.filter((item) => item && /^(0[1-9]|[1-3]\d|4[0-7])$/.test(item.code) && SKILLS[item.skill] && typeof item.type === "string").slice(0, 30).map((item) => ({
         code: item.code, skill: item.skill, type: item.type.slice(0, 40), correct: item.correct === true, timedOut: item.timedOut === true,
         newItem: item.newItem === true, at: finiteNumber(item.at, 0, 0, Date.now() + 86_400_000),
@@ -439,6 +450,12 @@ function chooseQuestion() {
     const bucket = waiting ? 0 : item.attempts && item.nextDue <= now ? 3 : item.attempts ? 1 : allowUnseen && basicReady ? 2 : 0;
     return { prefecture, skill, bucket, priority: schedulingPriority(item, { now, recentlyShown: recentCodes.includes(prefecture.code) }) };
   })).filter(({ bucket }) => bucket > 0);
+  if (!candidates.length) {
+    const retry = session.retries.sort((a, b) => a.dueAt - b.dueAt).shift();
+    const question = retry ? buildQuestion(prefectures.find((prefecture) => prefecture.code === retry.code), retry.skill, retry.type) : buildQuestion(prefectures[0], "A");
+    if (retry) question.pendingReview = retry;
+    return question;
+  }
   candidates.sort((a, b) => b.bucket - a.bucket || b.priority - a.priority);
   const bestBucket = candidates[0]?.bucket;
   const pool = candidates.filter(({ bucket }) => bucket === bestBucket).slice(0, 12);
