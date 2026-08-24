@@ -34,7 +34,7 @@ let audioContext = null;
 let session = null;
 
 function freshSaved() {
-  return { schema: 2, settings: { sound: false, volume: .5, answerMode: "confirm" }, progress: {}, highScore: 0, unlockedBasic: 0, recent: [] };
+  return { schema: 2, settings: { sound: false, volume: .5, answerMode: "confirm", visualEffects: true }, progress: {}, highScore: 0, unlockedBasic: 0, recent: [] };
 }
 
 function loadSaved() {
@@ -59,7 +59,8 @@ function loadSaved() {
       settings: {
         sound: parsed.settings?.sound === true,
         volume: finiteNumber(parsed.settings?.volume, .5, .1, 1),
-        answerMode: ["confirm", "instant"].includes(parsed.settings?.answerMode) ? parsed.settings.answerMode : "confirm"
+        answerMode: ["confirm", "instant"].includes(parsed.settings?.answerMode) ? parsed.settings.answerMode : "confirm",
+        visualEffects: parsed.settings?.visualEffects !== false
       },
       progress,
       highScore: finiteNumber(parsed.highScore, 0, 0, 1e9),
@@ -84,6 +85,12 @@ function persist() {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(saved)); } catch (_) { /* Storage can be unavailable. */ }
 }
 
+function applyVisualEffects() {
+  document.documentElement.classList.toggle("reduce-motion", !saved.settings.visualEffects);
+}
+
+applyVisualEffects();
+
 function showScreen(target) {
   screens.forEach((screen) => { screen.hidden = screen !== target; });
   const playing = target === ui.game;
@@ -92,7 +99,7 @@ function showScreen(target) {
   $("progress-button").disabled = playing || !prefectures.length;
   $("study-map-button").disabled = playing || !prefectures.length;
   requestAnimationFrame(() => ui.app.focus({ preventScroll: true }));
-  window.scrollTo({ top: 0, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+  window.scrollTo({ top: 0, behavior: saved.settings.visualEffects ? "smooth" : "auto" });
 }
 
 async function loadData() {
@@ -238,7 +245,7 @@ function silhouetteSvg(prefecture, effect = "plain") {
   const geometry = silhouetteGeometry(prefecture);
   const project = projector(silhouetteViewBounds(prefecture), width, height, 38);
   const path = geometryPath(geometry, project);
-  if (matchMedia("(prefers-reduced-motion: reduce)").matches) effect = "plain";
+  if (!saved.settings.visualEffects) effect = "plain";
   if (effect === "spotlight") {
     return `<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="暗闇を動くスポットライトで照らされた都道府県の形">
       <defs><mask id="moving-spot"><rect width="100%" height="100%" fill="black"/><circle cy="205" r="92" fill="white"><animate attributeName="cx" values="40;610;150;500;40" dur="7s" repeatCount="indefinite"/><animate attributeName="cy" values="90;260;330;100;90" dur="5.3s" repeatCount="indefinite"/></circle></mask></defs>
@@ -575,15 +582,15 @@ function setQuestionCopy(question) {
     dishLocate: ["郷土料理→地図", `農林水産省の郷土料理百選で「${question.prefecture.dish}」が選ばれた都道府県は？`, "日本地図から場所を選んでください。"]
   }[question.type];
   if (["locate", "mapMemory"].includes(question.type)) copy[2] = `${question.prefecture.region}周辺の地図から選んでください。`;
-  if (matchMedia("(prefers-reduced-motion: reduce)").matches && ["spotlight", "reveal", "flash", "mapFlash"].includes(question.type)) {
-    copy[2] = question.type === "mapFlash" ? "端末のアクセシビリティ設定を検知し、位置を静止表示しています。" : "端末のアクセシビリティ設定を検知し、輪郭を静止表示しています。";
+  if (!saved.settings.visualEffects && ["spotlight", "reveal", "flash", "mapFlash"].includes(question.type)) {
+    copy[2] = question.type === "mapFlash" ? "設定で視覚効果がOFFのため、位置を静止表示しています。" : "設定で視覚効果がOFFのため、輪郭を静止表示しています。";
   }
   [ui.type.textContent, ui.title.textContent, ui.help.textContent] = copy;
 }
 
 function renderVisual(question, token) {
   const { prefecture, type } = question;
-  const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const reducedMotion = !saved.settings.visualEffects;
   if (type === "shapeMemory") {
     ui.stage.innerHTML = `${silhouetteSvg(prefecture)}<div class="memory-teach"><span>形の見本</span><strong>${prefecture.name}</strong></div><div class="memory-curtain">思い出して答えよう</div>`;
     ui.answerFieldset.hidden = true;
@@ -1059,6 +1066,7 @@ $("settings-button").addEventListener("click", () => {
   $("volume-value").textContent = `${Math.round(saved.settings.volume * 100)}%`;
   $("volume-setting").disabled = !saved.settings.sound;
   $("answer-mode-setting").value = saved.settings.answerMode;
+  $("visual-effects-setting").checked = saved.settings.visualEffects;
   ui.settings.showModal();
 });
 $("sound-setting").addEventListener("change", (event) => {
@@ -1073,11 +1081,16 @@ $("volume-setting").addEventListener("input", (event) => {
   persist();
 });
 $("answer-mode-setting").addEventListener("change", (event) => { saved.settings.answerMode = event.target.value; persist(); });
+$("visual-effects-setting").addEventListener("change", (event) => {
+  saved.settings.visualEffects = event.target.checked;
+  applyVisualEffects();
+  persist();
+});
 $("progress-button").addEventListener("click", () => { if (!ui.game.hidden) return; renderProgress(); ui.progress.showModal(); });
 $("reset-data-button").addEventListener("click", () => ui.resetConfirm.showModal());
 $("cancel-reset-button").addEventListener("click", () => ui.resetConfirm.close());
 $("confirm-reset-button").addEventListener("click", () => {
-  saved = freshSaved(); persist(); ui.resetConfirm.close(); ui.settings.close(); renderHome();
+  saved = freshSaved(); applyVisualEffects(); persist(); ui.resetConfirm.close(); ui.settings.close(); renderHome();
 });
 
 document.addEventListener("keydown", (event) => {
