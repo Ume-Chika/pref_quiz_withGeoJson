@@ -475,7 +475,7 @@ function renderVisual(question, token) {
     });
     const keyboardPaths = [...ui.stage.querySelectorAll(".map-prefecture[data-code]")];
     if (type === "locateJapan") ui.stage.querySelector("svg").addEventListener("click", (event) => {
-      if (event.target.closest("[data-code]")) return;
+      if (event.target.closest(".map-prefecture[data-code], .map-hit[data-code]")) return;
       const svg = event.currentTarget;
       const point = new DOMPoint(event.clientX, event.clientY).matrixTransform(svg.getScreenCTM().inverse());
       const nearest = keyboardPaths.map((path) => ({
