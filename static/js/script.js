@@ -369,7 +369,7 @@ function chooseQuestion() {
   const dueRetryIndex = session.retries.findIndex((retry) => retry.dueAt <= session.answers.length + 1);
   if (dueRetryIndex >= 0) {
     const retry = session.retries.splice(dueRetryIndex, 1)[0];
-    return buildQuestion(prefectures.find((prefecture) => prefecture.code === retry.code), retry.skill);
+    return buildQuestion(prefectures.find((prefecture) => prefecture.code === retry.code), retry.skill, retry.type || "");
   }
   const now = Date.now();
   const recentCodes = session.recentCodes.slice(-3);
@@ -399,11 +399,11 @@ function buildQuestion(prefecture, skill, forcedType = "") {
   const mastery = item.mastery || 0;
   let type;
   if (skill === "A") {
-    const modes = mastery < .15 ? ["silhouette", "reveal"] : mastery < .45 ? ["silhouette", "reveal", "spotlight", "silhouetteReverse"] : ["spotlight", "flash", "reveal", "silhouette", "silhouetteReverse"];
+    const modes = !item.attempts ? ["shapeMemory"] : mastery < .15 ? ["silhouette", "reveal"] : mastery < .45 ? ["silhouette", "reveal", "spotlight", "silhouetteReverse"] : ["spotlight", "flash", "reveal", "silhouette", "silhouetteReverse"];
     if (canUseIntegratedMode(mastery, getProgress(prefecture.code, "B").mastery)) modes.push("mapShape");
     type = randomOf(modes);
   } else if (skill === "B") {
-    const modes = mastery < .2 ? ["map"] : mastery < .55 ? ["map", "mapChoice", "locate", "mapMemory", "mapFlash"] : ["map", "mapChoice", "locate", "locateJapan", "mapMemory", "mapFlash", "compass"];
+    const modes = !item.attempts ? ["mapMemory"] : mastery < .2 ? ["map"] : mastery < .55 ? ["map", "mapChoice", "locate", "mapMemory", "mapFlash"] : ["map", "mapChoice", "locate", "locateJapan", "mapMemory", "mapFlash", "compass"];
     if (canUseIntegratedMode(mastery, getProgress(prefecture.code, "A").mastery)) modes.push("shapeLocate");
     type = randomOf(modes);
   } else if (skill === "C") {
@@ -425,8 +425,8 @@ function buildQuestion(prefecture, skill, forcedType = "") {
   }
   type = forcedType || type;
 
-  const question = { prefecture, skill, type, choices: [], correct: "" };
-  if (["silhouette", "reveal", "spotlight", "flash", "silhouetteReverse", "mapShape", "map", "mapChoice", "mapFlash", ...LOCATION_TYPES].includes(type)) {
+  const question = { prefecture, skill, type, isNew: !item.attempts, choices: [], correct: "" };
+  if (["shapeMemory", "silhouette", "reveal", "spotlight", "flash", "silhouetteReverse", "mapShape", "map", "mapChoice", "mapFlash", ...LOCATION_TYPES].includes(type)) {
     question.correct = prefecture.name;
     question.choices = nameChoices(prefecture, type === "mapChoice" ? Math.max(.3, mastery) : mastery, skill === "A" ? "shape" : "geo");
   } else if (["capital", "capitalMap", "capitalShape"].includes(type)) {
@@ -517,6 +517,7 @@ function renderQuestion() {
 
 function setQuestionCopy(question) {
   const copy = {
+    shapeMemory: ["形の見本", "県名と形をセットで覚えよう", "見本が消えたら、4択で答えてください。"],
     silhouette: ["シルエット", "この都道府県はどこ？", "輪郭を見て答えてください。"],
     reveal: ["じわじわ表示", "だんだん見える県はどこ？", "早く分かるほど高得点です。"],
     spotlight: ["スポットライト", "暗闇に隠れた県はどこ？", "動く光から輪郭をつかんでください。"],
@@ -557,7 +558,18 @@ function setQuestionCopy(question) {
 function renderVisual(question, token) {
   const { prefecture, type } = question;
   const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
-  if (["silhouette", "reveal", "spotlight", "flash"].includes(type)) {
+  if (type === "shapeMemory") {
+    ui.stage.innerHTML = `${silhouetteSvg(prefecture)}<div class="memory-teach"><span>形の見本</span><strong>${prefecture.name}</strong></div><div class="memory-curtain">思い出して答えよう</div>`;
+    ui.answerFieldset.hidden = true;
+    ui.submit.hidden = true;
+    ui.keyboardHint.textContent = "1.7秒だけ見本を表示します";
+    lockPreview(token, 1750, () => {
+      ui.stage.querySelector(".memory-teach")?.remove();
+      ui.answerFieldset.hidden = false;
+      ui.submit.hidden = saved.settings.answerMode === "instant";
+      ui.keyboardHint.innerHTML = saved.settings.answerMode === "instant" ? "<kbd>1</kbd>–<kbd>4</kbd> で回答" : "<kbd>1</kbd>–<kbd>4</kbd> 選択　<kbd>Enter</kbd> 決定";
+    });
+  } else if (["silhouette", "reveal", "spotlight", "flash"].includes(type)) {
     ui.stage.classList.toggle("dark", type === "spotlight" || type === "flash");
     ui.stage.innerHTML = silhouetteSvg(prefecture, type === "spotlight" ? "spotlight" : type === "reveal" ? "reveal" : "plain");
     if (type === "flash" && !reducedMotion) {
@@ -802,7 +814,11 @@ function completeAnswer(answer, timedOut) {
   session.score += points;
   session.answers.push({ code: question.prefecture.code, skill: question.skill, type: question.type, correct, timedOut, responseMs, answer, selectedCode });
   updateLearning(question, correct, timedOut, responseMs, answer, selectedCode);
-  if (!correct && questionEvidence(question.type) === 1) session.retries.push({ code: question.prefecture.code, skill: question.skill, dueAt: session.answers.length + 4 });
+  if (question.isNew && ["shapeMemory", "mapMemory"].includes(question.type)) {
+    session.retries.push({ code: question.prefecture.code, skill: question.skill, type: question.skill === "A" ? "silhouette" : "map", dueAt: session.answers.length + 4 });
+  } else if (!correct && questionEvidence(question.type) === 1) {
+    session.retries.push({ code: question.prefecture.code, skill: question.skill, dueAt: session.answers.length + 4 });
+  }
   ui.combo.textContent = session.combo;
   ui.score.textContent = session.score;
   playTone(correct ? "correct" : "incorrect");
@@ -821,7 +837,7 @@ function updateLearning(question, correct, timedOut, responseMs, answer, selecte
 }
 
 function questionEvidence(type) {
-  return ["mapMemory", "mapFlash"].includes(type) ? .4 : ["mapShape", "shapeLocate", "capitalMap", "capitalShape", "capitalLocate", "regionMap", "shapeRegion", "capitalRegion", "dishMap", "dishShapeChoice", "dishLocate"].includes(type) ? .65 : 1;
+  return ["shapeMemory", "mapMemory", "mapFlash"].includes(type) ? .4 : ["mapShape", "shapeLocate", "capitalMap", "capitalShape", "capitalLocate", "regionMap", "shapeRegion", "capitalRegion", "dishMap", "dishShapeChoice", "dishLocate"].includes(type) ? .65 : 1;
 }
 
 function showFeedback(question, correct, timedOut, points, answer) {
