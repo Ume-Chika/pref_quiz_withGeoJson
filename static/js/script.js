@@ -382,7 +382,8 @@ function chooseQuestion() {
     return { prefecture, skill, bucket, priority: schedulingPriority(item, { now, recentlyShown: recentCodes.includes(prefecture.code) }) };
   })).filter(({ bucket }) => bucket > 0);
   candidates.sort((a, b) => b.bucket - a.bucket || b.priority - a.priority);
-  const pool = candidates.slice(0, Math.min(12, candidates.length));
+  const bestBucket = candidates[0]?.bucket;
+  const pool = candidates.filter(({ bucket }) => bucket === bestBucket).slice(0, 12);
   let question = null;
   for (const candidate of shuffle(pool)) {
     const built = buildQuestion(candidate.prefecture, candidate.skill);
