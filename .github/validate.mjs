@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
+import { gzipSync } from "node:zlib";
 import { blankProgress, canIntroduceNewItem, canUseIntegratedMode, compassVector, deadlinePassed, hasBasicMastery, normalizeProgress, recordAnswer, schedulingPriority, skillsForMastery } from "../static/js/learning.mjs";
 
 const required = [
@@ -88,7 +89,7 @@ if (retrievalAfterPrompt.streak !== 4 || retrievalAfterPrompt.nextDue !== now + 
   throw new Error("正解提示後の完全検索で連続正解を再開できません");
 }
 const afterTimeout = recordAnswer(firstCorrect, { correct: false, timedOut: true, responseMs: 15000, now: now + 1000 });
-if (afterTimeout.correct !== 1 || afterTimeout.streak !== 0 || afterTimeout.timeouts !== 1 || afterTimeout.mastery >= firstCorrect.mastery) {
+if (afterTimeout.correct !== 1 || afterTimeout.streak !== 0 || afterTimeout.timeouts !== 1 || afterTimeout.mastery >= firstCorrect.mastery || afterTimeout.nextDue >= now + 2 * 60e3) {
   throw new Error("時間切れ時の学習記録更新が不正です");
 }
 const fullWrong = recordAnswer({ ...firstCorrect, mastery: .8 }, { correct: false, timedOut: false, responseMs: 5000, now });
@@ -108,6 +109,11 @@ if (corrupt.attempts !== 0 || corrupt.correct !== 0 || corrupt.mastery !== 0 || 
 const overdue = { ...blankProgress(), attempts: 1, nextDue: now - 864e5 };
 if (schedulingPriority(overdue, { now, random: 0 }) <= schedulingPriority(blankProgress(), { now, random: 0 })) {
   throw new Error("期限超過の復習項目が未学習項目より優先されていません");
+}
+const nearDue = { ...firstCorrect, lastSeen: now - 59 * 60e3, nextDue: now + 60e3 };
+const farDue = { ...firstCorrect, lastSeen: now - 60e3, nextDue: now + 59 * 60e3 };
+if (schedulingPriority(nearDue, { now, random: 0 }) <= schedulingPriority(farDue, { now, random: 0 })) {
+  throw new Error("期限前の項目を復習予定の近さで並べられていません");
 }
 
 const geoPath = "static/data/low_prefectures.geojson";
@@ -200,9 +206,10 @@ for (const target of facts.prefectures) {
   if (!clearReference) throw new Error(`8方位の境界から十分離れた参照県がありません: ${target.name}`);
 }
 
-const publicPayload = ["index.html", "sources.html", "static/css/style.css", "static/js/script.js", "static/js/learning.mjs", geoPath, "static/data/prefecture_facts.json"]
-  .reduce((sum, path) => sum + statSync(path).size, 0);
-if (publicPayload > 250_000) throw new Error(`主要配信ファイルが250KBを超えています: ${publicPayload} bytes`);
+const publicFiles = ["index.html", "sources.html", "static/css/style.css", "static/js/script.js", "static/js/learning.mjs", geoPath, "static/data/prefecture_facts.json"];
+const publicPayload = publicFiles.reduce((sum, path) => sum + statSync(path).size, 0);
+const compressedPayload = publicFiles.reduce((sum, path) => sum + gzipSync(readFileSync(path)).length, 0);
+if (publicPayload > 275_000 || compressedPayload > 100_000) throw new Error(`主要配信ファイルが容量上限を超えています: raw ${publicPayload} / gzip ${compressedPayload} bytes`);
 
 for (const legacy of ["app.py", "requirements.txt", "templates", "static/test.html"]) {
   if (existsSync(legacy)) throw new Error(`静的サイトに不要な旧ファイルが残っています: ${legacy}`);

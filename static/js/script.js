@@ -9,7 +9,7 @@ const SKILLS = {
 };
 const LOCATION_TYPES = ["locate", "locateJapan", "mapMemory", "shapeLocate", "capitalLocate", "dishLocate"];
 const NATIONWIDE_LOCATION_TYPES = ["locateJapan", "shapeLocate", "capitalLocate", "dishLocate"];
-const ANIMATED_TYPES = ["shapeMemory", "spotlight", "reveal", "flash", "mapFlash", "shapeLocate"];
+const ANIMATED_TYPES = ["shapeMemory", "spotlight", "reveal", "flash", "mapMemory", "mapFlash", "shapeLocate"];
 
 const $ = (id) => document.getElementById(id);
 const screens = ["loading-screen", "error-screen", "home-screen", "game-screen", "result-screen"].map($);
@@ -48,7 +48,10 @@ function loadSaved() {
     for (const [key, value] of Object.entries(parsed.progress || {})) {
       if (/^(0[1-9]|[1-3]\d|4[0-7]):[A-E]$/.test(key)) {
         const item = normalizeProgress(value);
-        item.lastSeen = Math.min(item.lastSeen, now);
+        if (item.lastSeen > now) {
+          item.nextDue = now + Math.max(0, item.nextDue - item.lastSeen);
+          item.lastSeen = now;
+        }
         item.nextDue = Math.min(item.nextDue, now + 30 * 86_400_000);
         progress[key] = item;
       }
@@ -426,7 +429,8 @@ function chooseQuestion() {
   const allowUnseen = hasRetryRoom && (canIntroduceNewItem(saved.recent) || !hasEligiblePractice);
   const candidates = skills.flatMap((skill) => prefectures.map((prefecture) => {
     const item = getProgress(prefecture.code, skill);
-    const bucket = item.attempts && item.nextDue <= now ? 3 : item.attempts ? 1 : allowUnseen ? 2 : 0;
+    const basicReady = ["A", "B"].includes(skill) || hasBasicMastery(getProgress(prefecture.code, "A").mastery, getProgress(prefecture.code, "B").mastery);
+    const bucket = item.attempts && item.nextDue <= now ? 3 : item.attempts ? 1 : allowUnseen && basicReady ? 2 : 0;
     return { prefecture, skill, bucket, priority: schedulingPriority(item, { now, recentlyShown: recentCodes.includes(prefecture.code) }) };
   })).filter(({ bucket }) => bucket > 0);
   candidates.sort((a, b) => b.bucket - a.bucket || b.priority - a.priority);
@@ -450,7 +454,7 @@ function buildQuestion(prefecture, skill, forcedType = "") {
     if (canUseIntegratedMode(mastery, getProgress(prefecture.code, "B").mastery)) modes.push("mapShape");
     type = randomMode(modes, "silhouette");
   } else if (skill === "B") {
-    const modes = !item.attempts ? ["map"] : mastery < .2 ? ["map"] : mastery < .55 ? ["map", "mapChoice", "locate", "mapFlash"] : ["map", "mapChoice", "locate", "locateJapan", "mapFlash", "compass"];
+    const modes = !item.attempts ? ["map"] : mastery < .2 ? ["map", "mapMemory"] : mastery < .55 ? ["map", "mapChoice", "locate", "mapMemory", "mapFlash"] : ["map", "mapChoice", "locate", "locateJapan", "mapMemory", "mapFlash", "compass"];
     if (canUseIntegratedMode(mastery, getProgress(prefecture.code, "A").mastery)) modes.push("shapeLocate");
     type = randomMode(modes, "map");
   } else if (skill === "C") {
@@ -616,11 +620,13 @@ function renderVisual(question, token) {
   const { prefecture, type } = question;
   const reducedMotion = !saved.settings.visualEffects;
   if (type === "shapeMemory") {
+    const islandCount = prefecture.feature.geometry.type === "MultiPolygon" ? prefecture.feature.geometry.coordinates.length : 1;
+    const previewMs = Math.min(4000, Math.round(2500 + (1 - getProgress(prefecture.code, "A").mastery) * 700 + (islandCount - 1) * 150));
     ui.stage.innerHTML = `${silhouetteSvg(prefecture)}<div class="memory-teach"><span>形の見本</span><strong>${prefecture.name}</strong></div><div class="memory-curtain">思い出して答えよう</div>`;
     ui.answerFieldset.hidden = true;
     ui.submit.hidden = true;
-    ui.keyboardHint.textContent = "1.7秒だけ見本を表示します";
-    lockPreview(token, 1750, () => {
+    ui.keyboardHint.textContent = `${(previewMs / 1000).toFixed(1)}秒だけ見本を表示します`;
+    lockPreview(token, previewMs, () => {
       ui.stage.querySelector(".memory-teach")?.remove();
       ui.type.textContent = "形を思い出す";
       ui.title.textContent = `${prefecture.name}の形はどれ？`;
@@ -638,6 +644,10 @@ function renderVisual(question, token) {
       curtain.textContent = "思い出して答えよう";
       ui.stage.append(curtain);
       lockPreview(token, 1750);
+    }
+    if (type === "reveal" && !reducedMotion) {
+      ui.keyboardHint.textContent = "6秒間は輪郭の変化を観察します";
+      lockPreview(token, 6000, () => {}, "観察中");
     }
   } else if (type === "silhouetteReverse") {
     ui.stage.innerHTML = `<div class="fact-prompt"><span>A</span><strong>${prefecture.name}</strong></div>`;
@@ -745,14 +755,16 @@ function spatialNeighbor(code, key, items) {
   return candidates[0]?.item.code || code;
 }
 
-function lockPreview(token, duration, beforeUnlock = () => {}) {
+function lockPreview(token, duration, beforeUnlock = () => {}, label = "記憶中") {
   session.locationLocked = true;
+  session.lockLabel = label;
   ui.answerGrid.querySelectorAll("input").forEach((input) => { input.disabled = true; });
   ui.submit.disabled = true;
   setTimeout(() => {
     if (token !== questionToken) return;
     beforeUnlock();
     session.locationLocked = false;
+    session.lockLabel = "";
     ui.answerGrid.querySelectorAll("input").forEach((input) => { input.disabled = false; });
     session.startedAt = Date.now();
     session.deadline = session.startedAt + QUESTION_SECONDS * 1000;
@@ -805,7 +817,7 @@ function updateTimer(token) {
   if (session.locationLocked) {
     ui.timer.style.transform = "scaleX(1)";
     ui.timerRoot.setAttribute("aria-valuenow", String(QUESTION_SECONDS));
-    ui.timerText.textContent = "記憶中";
+    ui.timerText.textContent = session.lockLabel || "記憶中";
     timerFrame = requestAnimationFrame(() => updateTimer(token));
     return;
   }
@@ -897,7 +909,7 @@ function updateLearning(question, correct, timedOut, responseMs, answer, selecte
 }
 
 function questionEvidence(type, correct = true) {
-  return ["shapeMemory", "mapMemory", "mapFlash"].includes(type) ? correct ? .4 : 1 : ["mapShape", "shapeLocate", "capitalMap", "capitalShape", "capitalLocate", "regionMap", "shapeRegion", "capitalRegion", "dishMap", "dishShapeChoice", "dishLocate"].includes(type) ? .65 : 1;
+  return ["shapeMemory", "flash", "mapMemory", "mapFlash"].includes(type) ? correct ? .4 : 1 : ["mapShape", "shapeLocate", "capitalMap", "capitalShape", "capitalLocate", "regionMap", "shapeRegion", "capitalRegion", "dishMap", "dishShapeChoice", "dishLocate"].includes(type) ? .65 : 1;
 }
 
 function showFeedback(question, correct, timedOut, points, answer) {
@@ -981,7 +993,7 @@ function startGame(limit) {
     recentCodes: saved.recent.slice(0, 3).reverse().map((item) => item.code),
     recentTypes: saved.recent.slice(0, 2).reverse().map((item) => item.type),
     score: 0, combo: 0, maxCombo: 0, answered: false, current: null, deadline: 0, startedAt: 0,
-    selectedLocation: "", locationLocked: false
+    selectedLocation: "", locationLocked: false, lockLabel: ""
   };
   renderQuestion();
 }
@@ -1125,6 +1137,7 @@ $("confirm-reset-button").addEventListener("click", () => {
 });
 
 document.addEventListener("keydown", (event) => {
+  if (ui.feedback.open && event.key === "Enter" && !event.repeat) { event.preventDefault(); nextAfterFeedback(); return; }
   if (ui.feedback.open || ui.settings.open || ui.progress.open || ui.studyMap.open || ui.resetConfirm.open || ui.game.hidden || !session || session.answered || session.locationLocked) return;
   const number = Number(event.key);
   const isLocation = LOCATION_TYPES.includes(session.current.type);

@@ -18,6 +18,9 @@ GitHub Actionsでは次の公式Actionを利用します。これらは公開サ
 - `actions/setup-node`
 - `actions/configure-pages`
 - `actions/upload-pages-artifact`
+- [`actions/upload-artifact@v7`](https://github.com/actions/upload-artifact/tree/v7)（[MIT License](https://github.com/actions/upload-artifact/blob/v7/LICENSE)）
 - `actions/deploy-pages`
 
 各Actionのライセンスは、それぞれの配布元リポジトリに従います。
+
+性能検査には [`@lhci/cli@0.15.1`](https://github.com/GoogleChrome/lighthouse-ci/releases/tag/v0.15.1) を使用します。Lighthouse CIは [Apache License 2.0](https://github.com/GoogleChrome/lighthouse-ci/blob/v0.15.1/LICENSE) で提供されています。
