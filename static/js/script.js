@@ -240,8 +240,13 @@ function silhouetteSvg(prefecture, effect = "plain") {
     </svg>`;
   }
   if (effect === "reveal") {
+    const [revealX, revealY] = randomOf(coordinatesOf(prefecture.mainGeometry).map(project));
+    const revealRadius = Math.max(...coordinatesOf(geometry).map((point) => {
+      const [x, y] = project(point);
+      return Math.hypot(x - revealX, y - revealY);
+    })) + 8;
     return `<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="徐々に姿を現す都道府県の形">
-      <defs><mask id="reveal-mask"><rect width="100%" height="100%" fill="black"/><circle cx="325" cy="205" r="0" fill="white"><animate attributeName="r" from="0" to="430" dur="8s" fill="freeze"/></circle></mask></defs>
+      <defs><mask id="reveal-mask"><rect width="100%" height="100%" fill="black"/><circle cx="${revealX.toFixed(2)}" cy="${revealY.toFixed(2)}" r="0" fill="white"><animate attributeName="r" from="0" to="${revealRadius.toFixed(2)}" dur="12s" fill="freeze"/></circle></mask></defs>
       <path class="silhouette" d="${path}" mask="url(#reveal-mask)"/>
     </svg>`;
   }
@@ -533,7 +538,7 @@ function setQuestionCopy(question) {
   const copy = {
     shapeMemory: ["形の見本", "県名と形をセットで覚えよう", "見本が消えたら、4択で答えてください。"],
     silhouette: ["シルエット", "この都道府県はどこ？", "輪郭を見て答えてください。"],
-    reveal: ["じわじわ表示", "だんだん見える県はどこ？", "早く分かるほど高得点です。"],
+    reveal: ["じわじわ表示", "だんだん見える県はどこ？", "輪郭上のどこかから、ゆっくり形が広がります。"],
     spotlight: ["スポットライト", "暗闇に隠れた県はどこ？", "動く光から輪郭をつかんでください。"],
     flash: ["フラッシュ記憶", "さっき見えた県はどこ？", "形は一瞬だけ表示されます。"],
     silhouetteReverse: ["形を選ぶ", `${question.prefecture.name}の形はどれ？`, "4つの輪郭から選んでください。"],
