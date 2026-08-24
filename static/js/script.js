@@ -33,6 +33,7 @@ let timerFrame = 0;
 let questionToken = 0;
 let audioContext = null;
 let session = null;
+let studyMapZoom = 1;
 
 function freshSaved() {
   return { schema: 2, settings: { sound: false, volume: .5, answerMode: "confirm", visualEffects: true }, progress: {}, highScore: 0, unlockedBasic: 0, recent: [] };
@@ -276,6 +277,7 @@ function renderStudyMap() {
   const latest = new Map();
   recent.forEach((item) => { if (!latest.has(item.code)) latest.set(item.code, item); });
   ui.studyMapCanvas.innerHTML = svgMap(prefectures, boundsOf(prefectures), { width: 700, height: 540, clickable: true, label: "直近10問の正誤を示す日本白地図" });
+  setStudyMapZoom(1);
   const svg = ui.studyMapCanvas.querySelector("svg");
   const paths = [...svg.querySelectorAll(".map-prefecture[data-code]")];
   paths.forEach((path) => {
@@ -322,6 +324,27 @@ function renderStudyMap() {
   const initialPath = paths.find((path) => path.dataset.code === initial.code);
   if (initialPath) paths.forEach((path) => { path.tabIndex = path === initialPath ? 0 : -1; });
   showCode(initial.code);
+}
+
+function setStudyMapZoom(nextZoom) {
+  const canvas = ui.studyMapCanvas;
+  const svg = canvas.querySelector("svg");
+  studyMapZoom = Math.max(1, Math.min(2.5, nextZoom));
+  if (svg) {
+    const centerX = canvas.scrollWidth ? (canvas.scrollLeft + canvas.clientWidth / 2) / canvas.scrollWidth : .5;
+    const centerY = canvas.scrollHeight ? (canvas.scrollTop + canvas.clientHeight / 2) / canvas.scrollHeight : .5;
+    const baseHeight = matchMedia("(max-width: 620px)").matches ? 300 : 350;
+    svg.style.width = `${studyMapZoom * 100}%`;
+    svg.style.height = `${studyMapZoom * baseHeight}px`;
+    requestAnimationFrame(() => {
+      canvas.scrollLeft = centerX * canvas.scrollWidth - canvas.clientWidth / 2;
+      canvas.scrollTop = centerY * canvas.scrollHeight - canvas.clientHeight / 2;
+    });
+  }
+  $("study-map-zoom-value").textContent = `${Math.round(studyMapZoom * 100)}%`;
+  $("study-map-zoom-out").disabled = studyMapZoom <= 1;
+  $("study-map-zoom-in").disabled = studyMapZoom >= 2.5;
+  $("study-map-zoom-reset").disabled = studyMapZoom === 1;
 }
 
 function renderStudyMapDetail(prefecture, recent) {
@@ -1056,6 +1079,9 @@ $("retry-button").addEventListener("click", loadData);
 $("start-ten-button").addEventListener("click", () => startGame(10));
 $("start-endless-button").addEventListener("click", () => startGame(null));
 $("study-map-button").addEventListener("click", () => { renderStudyMap(); ui.studyMap.showModal(); });
+$("study-map-zoom-out").addEventListener("click", () => setStudyMapZoom(studyMapZoom - .25));
+$("study-map-zoom-in").addEventListener("click", () => setStudyMapZoom(studyMapZoom + .25));
+$("study-map-zoom-reset").addEventListener("click", () => setStudyMapZoom(1));
 ui.submit.addEventListener("click", submitSelectedAnswer);
 $("next-question-button").addEventListener("click", nextAfterFeedback);
 $("quit-game-button").addEventListener("click", finishGame);

@@ -199,6 +199,12 @@
       <div class="dialog-header"><div><p class="eyebrow">RECENT 10</p><h2 id="study-map-title">白地図を眺める</h2></div><button class="close-button" value="close" aria-label="閉じる">×</button></div>
       <p class="study-map-help">都道府県に触れると詳しく見られます。同じ都道府県は直近の回答を表示します。</p>
       <div class="study-map-legend" aria-label="地図の凡例"><span><i class="legend-correct">○</i>正解</span><span><i class="legend-incorrect">×</i>不正解・時間切れ</span><span><i class="legend-neutral">－</i>未出題</span></div>
+      <div class="study-map-toolbar" aria-label="地図の拡大縮小">
+        <button id="study-map-zoom-out" type="button" aria-label="地図を縮小">−</button>
+        <output id="study-map-zoom-value" aria-live="polite">100%</output>
+        <button id="study-map-zoom-in" type="button" aria-label="地図を拡大">＋</button>
+        <button id="study-map-zoom-reset" type="button">元に戻す</button>
+      </div>
       <div id="study-map-canvas" class="study-map-canvas"></div>
       <section id="study-map-detail" class="study-map-detail" aria-live="polite">
         <p id="study-map-status" class="study-map-status">直近10問では未出題</p>
