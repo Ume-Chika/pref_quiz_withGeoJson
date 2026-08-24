@@ -65,6 +65,7 @@
             <span>10問チャレンジ</span><small>おすすめ</small>
           </button>
           <button id="start-endless-button" class="secondary-button" type="button">エンドレスで遊ぶ</button>
+          <button id="study-map-button" class="secondary-button" type="button">白地図を眺める</button>
           <p id="next-review-hint" class="subtle-hint">最初は基本の形から出題します。</p>
         </div>
 
@@ -148,6 +149,7 @@
     <p id="feedback-kicker" class="eyebrow">CORRECT</p>
     <h2 id="feedback-title">正解！</h2>
     <p id="feedback-detail">正解は東京都です。</p>
+    <div id="feedback-comparison" class="feedback-comparison" aria-label="回答した県と正解の県の形"></div>
     <p id="feedback-points" class="feedback-points">+250点</p>
     <div class="dialog-actions">
       <button id="next-question-button" class="primary-button" type="button">次の問題</button>
@@ -185,6 +187,23 @@
       <div class="dialog-header"><div><p class="eyebrow">LEARNING</p><h2 id="progress-title">学習記録</h2></div><button class="close-button" value="close" aria-label="閉じる">×</button></div>
       <div id="skill-progress" class="skill-progress"></div>
       <section class="weak-section"><h3>いま復習したい県</h3><div id="weak-prefectures" class="weak-list"></div></section>
+    </form>
+  </dialog>
+
+  <dialog id="study-map-dialog" class="app-dialog study-map-dialog" aria-labelledby="study-map-title">
+    <form method="dialog">
+      <div class="dialog-header"><div><p class="eyebrow">RECENT 10</p><h2 id="study-map-title">白地図を眺める</h2></div><button class="close-button" value="close" aria-label="閉じる">×</button></div>
+      <p class="study-map-help">県に触れると詳しく見られます。同じ県は直近の回答を表示します。</p>
+      <div class="study-map-legend" aria-label="地図の凡例"><span><i class="legend-correct">○</i>正解</span><span><i class="legend-incorrect">×</i>不正解・時間切れ</span><span><i class="legend-neutral">－</i>未出題</span></div>
+      <div id="study-map-canvas" class="study-map-canvas"></div>
+      <section id="study-map-detail" class="study-map-detail" aria-live="polite">
+        <p id="study-map-status" class="study-map-status">直近10問では未出題</p>
+        <h3 id="study-map-name">都道府県</h3>
+        <p><span id="study-map-region">地方</span>・県庁所在地 <strong id="study-map-capital">—</strong></p>
+        <p>郷土料理百選 <strong id="study-map-dish">—</strong></p>
+        <ul id="study-map-history" class="study-map-history"></ul>
+      </section>
+      <p class="keyboard-hint"><kbd>Tab</kbd> 地図へ　<kbd>矢印</kbd> 県を移動　<kbd>Enter</kbd> 詳細</p>
     </form>
   </dialog>
 

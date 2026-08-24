@@ -133,6 +133,16 @@ try {
   const resetState = await evaluate(cdp, `JSON.parse(localStorage.getItem('prefecture-minigame-v2'))`);
   assert(Object.keys(resetState.progress).length === 0 && resetState.settings.sound === false && resetState.settings.volume === .5 && resetState.settings.answerMode === "confirm", "全消去で初期状態へ戻りません");
 
+  await evaluate(cdp, `(() => { const state={schema:2,settings:{sound:false,volume:.5,answerMode:'confirm'},progress:{},highScore:0,recent:[{code:'01',skill:'A',type:'silhouette',correct:false,timedOut:false,at:4},{code:'02',skill:'B',type:'map',correct:true,timedOut:false,at:3},{code:'01',skill:'B',type:'map',correct:true,timedOut:false,at:2},{code:'13',skill:'A',type:'silhouette',correct:false,timedOut:true,at:1}]}; localStorage.setItem('prefecture-minigame-v2',JSON.stringify(state)); location.reload(); return true; })()`);
+  await waitFor(cdp, `document.querySelector('#home-screen:not([hidden])')`, 10_000);
+  await evaluate(cdp, `document.querySelector('#study-map-button').click(); true`);
+  await waitFor(cdp, `document.querySelector('#study-map-dialog').open`);
+  assert(await evaluate(cdp, `(() => { const map=document.querySelector('#study-map-canvas'); const path=code=>map.querySelector('.map-prefecture[data-code="'+code+'"]'); return map.querySelectorAll('.map-prefecture[data-code]').length===47 && path('01').classList.contains('recent-incorrect') && !path('01').classList.contains('recent-correct') && path('02').classList.contains('recent-correct') && path('13').classList.contains('recent-incorrect') && !path('03').classList.contains('recent-correct') && !path('03').classList.contains('recent-incorrect'); })()`), "白地図の直近10問・最新回答優先の色分けが不正です");
+  assert(await evaluate(cdp, `(() => { const path=document.querySelector('#study-map-canvas .map-prefecture[data-code="02"]'); path.dispatchEvent(new MouseEvent('click',{bubbles:true})); return document.querySelector('#study-map-name').textContent==='青森県' && document.querySelector('#study-map-status').textContent.includes('正解') && document.querySelector('#study-map-capital').textContent==='青森市'; })()`), "白地図をタップして県の詳細を表示できません");
+  assert(await evaluate(cdp, `(() => { const svg=document.querySelector('#study-map-canvas svg'); const tokyo=svg.querySelector('.map-prefecture[data-code="13"]'); const point=new DOMPoint(Number(tokyo.dataset.centerX),Number(tokyo.dataset.centerY)).matrixTransform(svg.getScreenCTM()); svg.dispatchEvent(new MouseEvent('click',{bubbles:true,clientX:point.x,clientY:point.y})); tokyo.focus(); tokyo.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true})); return document.querySelector('#study-map-name').textContent==='東京都' && tokyo.getAttribute('aria-label').includes('時間切れ'); })()`), "白地図の余白タップ・キー操作・文字状態が不正です");
+  await evaluate(cdp, `document.querySelector('#study-map-dialog .close-button').click(); localStorage.removeItem('prefecture-minigame-v2'); location.reload(); true`);
+  await waitFor(cdp, `document.querySelector('#home-screen:not([hidden])')`, 10_000);
+
   const modes = [
     ["silhouette", "A", "01", "北海道"], ["reveal", "A", "01", "北海道"], ["spotlight", "A", "01", "北海道"],
     ["flash", "A", "01", "北海道"], ["silhouetteReverse", "A", "01", "北海道"],
@@ -173,12 +183,20 @@ try {
     }
     await waitFor(cdp, `document.querySelector('#feedback-dialog').open`);
     assert(await evaluate(cdp, `document.querySelector('#feedback-kicker').textContent === 'CORRECT' && document.querySelector('#feedback-detail').textContent.length > 5`), `${type}: 正答または解説が不正です`);
+    assert(await evaluate(cdp, `document.querySelectorAll('#feedback-comparison .feedback-shape-card').length === 1 && document.querySelector('#feedback-comparison .correct-answer[data-code="${code}"] svg')`), `${type}: 正解県の形を1枚で再確認できません`);
     await evaluate(cdp, `document.querySelector('#quit-game-button').click(); true`);
     await waitFor(cdp, `document.querySelector('#result-screen:not([hidden])')`);
     await evaluate(cdp, `document.querySelector('#result-home-button').click(); true`);
     await waitFor(cdp, `document.querySelector('#home-screen:not([hidden])')`);
   }
   await evaluate(cdp, `delete globalThis.__prefQuizTest; true`);
+
+  await evaluate(cdp, `globalThis.__prefQuizTest={type:'locate',skill:'B',code:'01'}; document.querySelector('#start-endless-button').click(); true`);
+  await waitFor(cdp, `document.querySelector('#game-screen:not([hidden])') && document.querySelector('#game-screen').dataset.quizType === 'locate'`);
+  await evaluate(cdp, `document.querySelector('.map-prefecture[data-code="02"]').dispatchEvent(new MouseEvent('click',{bubbles:true})); document.querySelector('#submit-answer-button').click(); true`);
+  await waitFor(cdp, `document.querySelector('#feedback-dialog').open`);
+  assert(await evaluate(cdp, `(() => { const cards=[...document.querySelectorAll('#feedback-comparison .feedback-shape-card')]; const recent=JSON.parse(localStorage.getItem('prefecture-minigame-v2')).recent[0]; return document.querySelector('#feedback-kicker').textContent==='MISS' && cards.length===2 && cards[0].dataset.code==='02' && cards[1].dataset.code==='01' && cards.every(card=>card.querySelector('svg')) && recent.answer==='青森県' && recent.selectedCode==='02'; })()`), "誤答時に選択県と正解県の形を比較できません");
+  await evaluate(cdp, `document.querySelector('#quit-game-button').click(); document.querySelector('#result-home-button').click(); delete globalThis.__prefQuizTest; true`);
 
   await evaluate(cdp, `globalThis.__prefQuizTest={type:'silhouette',skill:'A',code:'01'}; document.querySelector('#start-endless-button').click(); true`);
   for (let round = 1; round <= 2; round++) {
@@ -195,7 +213,7 @@ try {
   assert(await evaluate(cdp, `document.querySelector('#feedback-kicker').textContent === 'TIME UP' && JSON.parse(localStorage.getItem('prefecture-minigame-v2')).recent[0].timedOut === true`), "時間切れを区別して記録できません");
   await evaluate(cdp, `document.querySelector('#quit-game-button').click(); document.querySelector('#result-home-button').click(); delete globalThis.__prefQuizTest; true`);
   assert(errors.length === 0, `Chromeでエラーが発生しました: ${errors.join(" / ")}`);
-  console.log("Chromeで22形式、10問、即時・地図・キー操作、時間切れ、保存、通信復旧、全消去の確認に成功しました。");
+  console.log("Chromeで22形式、白地図、形比較、10問、即時・地図・キー操作、時間切れ、保存、通信復旧、全消去の確認に成功しました。");
 } finally {
   cdp?.close();
   chrome.kill("SIGTERM");
