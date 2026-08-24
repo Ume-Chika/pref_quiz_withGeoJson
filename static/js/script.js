@@ -9,6 +9,7 @@ const SKILLS = {
 };
 const LOCATION_TYPES = ["locate", "locateJapan", "mapMemory", "shapeLocate", "capitalLocate", "dishLocate"];
 const NATIONWIDE_LOCATION_TYPES = ["locateJapan", "shapeLocate", "capitalLocate", "dishLocate"];
+const ANIMATED_TYPES = ["spotlight", "reveal", "flash", "mapFlash"];
 
 const $ = (id) => document.getElementById(id);
 const screens = ["loading-screen", "error-screen", "home-screen", "game-screen", "result-screen"].map($);
@@ -446,6 +447,7 @@ function buildQuestion(prefecture, skill, forcedType = "") {
     if (canUseIntegratedMode(mastery, getProgress(prefecture.code, "A").mastery)) modes.push("dishShapeChoice");
     type = randomOf(modes);
   }
+  if (!saved.settings.visualEffects && ANIMATED_TYPES.includes(type)) type = skill === "A" ? "silhouette" : "map";
   type = forcedType || type;
 
   const question = { prefecture, skill, type, isNew: !item.attempts, choices: [], correct: "" };
@@ -582,7 +584,7 @@ function setQuestionCopy(question) {
     dishLocate: ["郷土料理→地図", `農林水産省の郷土料理百選で「${question.prefecture.dish}」が選ばれた都道府県は？`, "日本地図から場所を選んでください。"]
   }[question.type];
   if (["locate", "mapMemory"].includes(question.type)) copy[2] = `${question.prefecture.region}周辺の地図から選んでください。`;
-  if (!saved.settings.visualEffects && ["spotlight", "reveal", "flash", "mapFlash"].includes(question.type)) {
+  if (!saved.settings.visualEffects && ANIMATED_TYPES.includes(question.type)) {
     copy[2] = question.type === "mapFlash" ? "設定で視覚効果がOFFのため、位置を静止表示しています。" : "設定で視覚効果がOFFのため、輪郭を静止表示しています。";
   }
   [ui.type.textContent, ui.title.textContent, ui.help.textContent] = copy;
