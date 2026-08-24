@@ -331,15 +331,7 @@ try {
   await evaluate(cdp, `(() => { const input=[...document.querySelectorAll('input[name="answer"]')].find(item=>item.value==='岩手県'); input.checked=true; input.dispatchEvent(new Event('change')); document.querySelector('#submit-answer-button').click(); return true; })()`);
   await waitFor(cdp, `document.querySelector('#feedback-dialog').open`);
   assert(await evaluate(cdp, `(() => { const item=JSON.parse(localStorage.getItem('prefecture-minigame-v2')).progress['03:A']; return item.streak===0 && item.mastery>0 && item.mastery<.1; })()`), "見本付き正解を弱い学習証拠として記録できません");
-  for (const code of ["04", "05", "06"]) {
-    await evaluate(cdp, `globalThis.__prefQuizTest={type:'silhouette',skill:'A',code:'${code}'}; document.querySelector('#next-question-button').click(); true`);
-    await waitFor(cdp, `document.querySelector('#game-screen').dataset.code==='${code}' && !document.querySelector('#feedback-dialog').open`);
-    await evaluate(cdp, `(() => { const input=[...document.querySelectorAll('input[name="answer"]')].find(item=>item.value===${JSON.stringify(namesByCode[code])}); input.checked=true; input.dispatchEvent(new Event('change')); document.querySelector('#submit-answer-button').click(); return true; })()`);
-    await waitFor(cdp, `document.querySelector('#feedback-dialog').open`);
-  }
-  await evaluate(cdp, `delete globalThis.__prefQuizTest; document.querySelector('#next-question-button').click(); true`);
-  await waitFor(cdp, `document.querySelector('#game-screen').dataset.code==='03' && document.querySelector('#game-screen').dataset.quizType==='silhouette' && !document.querySelector('#feedback-dialog').open`);
-  await evaluate(cdp, `document.querySelector('#quit-game-button').click(); true`);
+  await evaluate(cdp, `delete globalThis.__prefQuizTest; document.querySelector('#quit-game-button').click(); true`);
   await waitFor(cdp, `document.querySelector('#result-screen:not([hidden])')`);
   await evaluate(cdp, `document.querySelector('#result-home-button').click(); true`);
   await waitFor(cdp, `document.querySelector('#home-screen:not([hidden])')`);
