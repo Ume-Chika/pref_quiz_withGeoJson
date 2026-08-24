@@ -7,7 +7,7 @@
 ## 特徴
 
 - 10問モードとエンドレスモード
-- 逆シルエット、地図選択、地図フラッシュ、全国地図タップ、方角、県庁所在地・郷土料理からの地図タップなどを含む24種類の出題
+- 逆シルエット、地図と形の相互問題、地図フラッシュ、全国地図タップ、方角、県庁所在地から地方、県庁所在地・郷土料理からの地図タップなどを含む27種類の出題
 - 15秒タイマー、スコア、コンボ、ハイスコア
 - 都道府県・分野ごとの学習履歴と間隔反復
 - 直近10問の正誤を色分けし、県の詳細を調べられる白地図
@@ -66,7 +66,10 @@ static/data/        公開用の問題・地理データ
 
 ```sh
 node .github/validate.mjs
+CHROME_BIN="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" node .github/chrome-smoke.mjs
 ```
+
+2行目はmacOS版Chromeの例です。ほかの環境では `CHROME_BIN` にChrome実行ファイルを指定してください。
 
 GitHubリポジトリの **Settings → Pages → Build and deployment → Source** は **GitHub Actions** を選択してください。
 

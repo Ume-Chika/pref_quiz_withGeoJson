@@ -16,6 +16,10 @@ export function skillsForMastery(mastered) {
   return ["A", "B", ...(mastered >= 3 ? ["C"] : []), ...(mastered >= 8 ? ["D"] : []), ...(mastered >= 15 ? ["E"] : [])];
 }
 
+export function hasBasicMastery(shapeMastery, locationMastery) {
+  return shapeMastery >= .45 && locationMastery >= .45;
+}
+
 export function canUseIntegratedMode(targetMastery, prerequisiteMastery) {
   return targetMastery >= .55 && prerequisiteMastery >= .45;
 }

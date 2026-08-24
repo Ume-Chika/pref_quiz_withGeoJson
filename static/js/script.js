@@ -1,14 +1,14 @@
 "use strict";
 
-import { blankProgress, canIntroduceNewItem, canUseIntegratedMode, compassVector, deadlinePassed, normalizeProgress, recordAnswer, schedulingPriority, skillsForMastery } from "./learning.mjs";
+import { blankProgress, canIntroduceNewItem, canUseIntegratedMode, compassVector, deadlinePassed, hasBasicMastery, normalizeProgress, recordAnswer, schedulingPriority, skillsForMastery } from "./learning.mjs";
 
 const STORAGE_KEY = "prefecture-minigame-v2";
 const QUESTION_SECONDS = 15;
 const SKILLS = {
   A: { name: "形" }, B: { name: "位置" }, C: { name: "県庁所在地" }, D: { name: "地方区分" }, E: { name: "郷土料理" }
 };
-const LOCATION_TYPES = ["locate", "locateJapan", "mapMemory", "capitalLocate", "dishLocate"];
-const NATIONWIDE_LOCATION_TYPES = ["locateJapan", "capitalLocate", "dishLocate"];
+const LOCATION_TYPES = ["locate", "locateJapan", "mapMemory", "shapeLocate", "capitalLocate", "dishLocate"];
+const NATIONWIDE_LOCATION_TYPES = ["locateJapan", "shapeLocate", "capitalLocate", "dishLocate"];
 
 const $ = (id) => document.getElementById(id);
 const screens = ["loading-screen", "error-screen", "home-screen", "game-screen", "result-screen"].map($);
@@ -337,7 +337,7 @@ function unlockedSkills() {
 }
 
 function basicMasteredCount() {
-  return prefectures.filter((prefecture) => (getProgress(prefecture.code, "A").mastery + getProgress(prefecture.code, "B").mastery) / 2 >= .45).length;
+  return prefectures.filter((prefecture) => hasBasicMastery(getProgress(prefecture.code, "A").mastery, getProgress(prefecture.code, "B").mastery)).length;
 }
 
 function chooseQuestion() {
@@ -377,16 +377,21 @@ function buildQuestion(prefecture, skill, forcedType = "") {
   let type;
   if (skill === "A") {
     const modes = mastery < .15 ? ["silhouette", "reveal"] : mastery < .45 ? ["silhouette", "reveal", "spotlight", "silhouetteReverse"] : ["spotlight", "flash", "reveal", "silhouette", "silhouetteReverse"];
+    if (canUseIntegratedMode(mastery, getProgress(prefecture.code, "B").mastery)) modes.push("mapShape");
     type = randomOf(modes);
   } else if (skill === "B") {
-    type = mastery < .2 ? "map" : mastery < .55 ? randomOf(["map", "mapChoice", "locate", "mapMemory", "mapFlash"]) : randomOf(["map", "mapChoice", "locate", "locateJapan", "mapMemory", "mapFlash", "compass"]);
+    const modes = mastery < .2 ? ["map"] : mastery < .55 ? ["map", "mapChoice", "locate", "mapMemory", "mapFlash"] : ["map", "mapChoice", "locate", "locateJapan", "mapMemory", "mapFlash", "compass"];
+    if (canUseIntegratedMode(mastery, getProgress(prefecture.code, "A").mastery)) modes.push("shapeLocate");
+    type = randomOf(modes);
   } else if (skill === "C") {
     const modes = ["capital", "capitalReverse", "capitalMap"];
     if (canUseIntegratedMode(mastery, getProgress(prefecture.code, "A").mastery)) modes.push("capitalShape");
     if (canUseIntegratedMode(mastery, getProgress(prefecture.code, "B").mastery)) modes.push("capitalLocate");
     type = randomOf(modes);
   } else if (skill === "D") {
-    type = randomOf(["region", "regionMember", "regionMap"]);
+    const modes = ["region", "regionMember", "regionMap"];
+    if (canUseIntegratedMode(mastery, getProgress(prefecture.code, "C").mastery)) modes.push("capitalRegion");
+    type = randomOf(modes);
   } else {
     const modes = ["dish", "dishReverse"];
     if (canUseIntegratedMode(mastery, getProgress(prefecture.code, "B").mastery)) modes.push("dishMap", "dishLocate");
@@ -395,7 +400,7 @@ function buildQuestion(prefecture, skill, forcedType = "") {
   type = forcedType || type;
 
   const question = { prefecture, skill, type, choices: [], correct: "" };
-  if (["silhouette", "reveal", "spotlight", "flash", "silhouetteReverse", "map", "mapChoice", "mapFlash", ...LOCATION_TYPES].includes(type)) {
+  if (["silhouette", "reveal", "spotlight", "flash", "silhouetteReverse", "mapShape", "map", "mapChoice", "mapFlash", ...LOCATION_TYPES].includes(type)) {
     question.correct = prefecture.name;
     question.choices = nameChoices(prefecture, type === "mapChoice" ? Math.max(.3, mastery) : mastery, skill === "A" ? "shape" : "geo");
   } else if (["capital", "capitalMap", "capitalShape"].includes(type)) {
@@ -404,7 +409,7 @@ function buildQuestion(prefecture, skill, forcedType = "") {
   } else if (type === "capitalReverse") {
     question.correct = prefecture.name;
     question.choices = nameChoices(prefecture, mastery);
-  } else if (["region", "regionMap"].includes(type)) {
+  } else if (["region", "regionMap", "capitalRegion"].includes(type)) {
     question.correct = prefecture.region;
     question.choices = shuffle([prefecture.region, ...shuffle([...new Set(facts.map((fact) => fact.region))].filter((region) => region !== prefecture.region)).slice(0, 3)]);
   } else if (type === "regionMember") {
@@ -488,11 +493,13 @@ function setQuestionCopy(question) {
     spotlight: ["スポットライト", "暗闇に隠れた県はどこ？", "動く光から輪郭をつかんでください。"],
     flash: ["フラッシュ記憶", "さっき見えた県はどこ？", "形は一瞬だけ表示されます。"],
     silhouetteReverse: ["形を選ぶ", `${question.prefecture.name}の形はどれ？`, "4つの輪郭から選んでください。"],
+    mapShape: ["地図→形", "黄色く光る県の形はどれ？", "位置と形を結びつけましょう。"],
     map: ["周辺地図", "黄色く光る都道府県はどこ？", "周りの県との位置関係も手がかりです。"],
     mapChoice: ["地図を選ぶ", `${question.prefecture.name}はどの地図？`, "4つの周辺地図から選んでください。"],
     locate: ["場所タップ", `${question.prefecture.name}はどこ？`, "日本地図から直接タップしてください。"],
     locateJapan: ["全国地図タップ", `${question.prefecture.name}はどこ？`, "日本全体の地図で、県の中心付近をタップしてください。"],
     mapMemory: ["地図記憶", `${question.prefecture.name}はどこ？`, "最初の2秒だけ正解の場所が光ります。"],
+    shapeLocate: ["形→地図", "この形の都道府県はどこ？", "形を覚えて、全国地図から選んでください。"],
     mapFlash: ["地図フラッシュ", "さっき光った都道府県はどこ？", "位置を短時間で記憶してください。"],
     compass: ["方角", `${question.reference?.name || "基準の県"}から見て${question.prefecture.name}はどちら？`, "中心位置を基準にした、おおよその方角です。"],
     capital: ["県庁所在地", `${question.prefecture.name}の県庁所在地は？`, "正しい市区を選んでください。"],
@@ -503,6 +510,7 @@ function setQuestionCopy(question) {
     region: ["地方区分", `${question.prefecture.name}が属する地方は？`, "本アプリでは内閣府資料の8区分を使います。"],
     regionMember: ["地方区分", `${question.prefecture.region}に含まれるのは？`, "当てはまる都道府県を選んでください。"],
     regionMap: ["地方地図", "黄色くまとまった地方はどこ？", "地方の広がりを地図で確認してください。"],
+    capitalRegion: ["県庁所在地→地方", `${question.prefecture.capital}が県庁所在地の都道府県は何地方？`, "県庁所在地から地方まで思い出してください。"],
     dish: ["郷土料理", `農林水産省の郷土料理百選で「${question.prefecture.dish}」が選ばれた都道府県は？`, "正しい都道府県を選んでください。"],
     dishReverse: ["郷土料理", `${question.prefecture.name}で選ばれた郷土料理は？`, "農林水産省の郷土料理百選から選んでください。"],
     dishMap: ["地図＋郷土料理", "地図で光る県の郷土料理は？", "位置と郷土料理を結びつけましょう。"],
@@ -530,7 +538,7 @@ function renderVisual(question, token) {
     }
   } else if (type === "silhouetteReverse") {
     ui.stage.innerHTML = `<div class="fact-prompt"><span>A</span><strong>${prefecture.name}</strong></div>`;
-  } else if (type === "map") {
+  } else if (["map", "mapShape"].includes(type)) {
     const localBounds = expandedBounds(boundsOf([prefecture.mainGeometry]), 1.65);
     ui.stage.innerHTML = svgMap(prefectures, localBounds, { targetCode: prefecture.code, label: "対象の都道府県を強調した周辺地図" }) + '<span class="stage-corner-label">周辺の位置関係</span>';
   } else if (type === "mapChoice") {
@@ -552,15 +560,16 @@ function renderVisual(question, token) {
     const visiblePrefectures = nationwide ? prefectures : regional;
     const viewBounds = expandedBounds(boundsOf(visiblePrefectures.map((item) => item.mainGeometry)), regional.length > 1 ? .62 : .55);
     const targetCode = type === "mapMemory" ? prefecture.code : "";
-    const label = type === "capitalLocate" ? "県庁所在地を手がかりに都道府県を選ぶ日本地図" : type === "dishLocate" ? "郷土料理を手がかりに都道府県を選ぶ日本地図" : nationwide ? `${prefecture.name}の位置を選ぶ日本地図` : `${prefecture.name}の位置を選ぶ${prefecture.region}周辺の地図`;
+    const label = type === "capitalLocate" ? "県庁所在地を手がかりに都道府県を選ぶ日本地図" : type === "dishLocate" ? "郷土料理を手がかりに都道府県を選ぶ日本地図" : type === "shapeLocate" ? "シルエットを手がかりに都道府県を選ぶ日本地図" : nationwide ? `${prefecture.name}の位置を選ぶ日本地図` : `${prefecture.name}の位置を選ぶ${prefecture.region}周辺の地図`;
     ui.stage.innerHTML = svgMap(visiblePrefectures, viewBounds, { targetCode, clickable: true, label });
     ui.stage.classList.toggle("nationwide-stage", nationwide);
     if (type === "mapMemory") ui.stage.insertAdjacentHTML("beforeend", '<span class="memory-status" aria-live="polite">2秒だけ記憶</span>');
+    if (type === "shapeLocate") ui.stage.insertAdjacentHTML("beforeend", `<div class="shape-location-preview">${silhouetteSvg(prefecture)}<span class="memory-status" aria-live="polite">1.5秒だけ形を記憶</span></div>`);
     ui.answerFieldset.hidden = true;
     ui.submit.hidden = saved.settings.answerMode === "instant";
     ui.submit.disabled = true;
     ui.keyboardHint.textContent = saved.settings.answerMode === "instant" ? "タップ／Tab・矢印で移動、Enterで回答" : "タップ／Tab・矢印で選び、Enterまたは「これで決定」";
-    session.locationLocked = type === "mapMemory";
+    session.locationLocked = ["mapMemory", "shapeLocate"].includes(type);
     ui.stage.querySelectorAll("[data-code]").forEach((path) => {
       path.addEventListener("click", () => selectLocation(path.dataset.code));
     });
@@ -589,15 +598,16 @@ function renderVisual(question, token) {
         }
       });
     });
-    if (type === "mapMemory") setTimeout(() => {
+    if (["mapMemory", "shapeLocate"].includes(type)) setTimeout(() => {
       if (token === questionToken) {
         ui.stage.querySelector(".target")?.classList.remove("target");
         ui.stage.querySelector(".memory-status")?.remove();
+        ui.stage.querySelector(".shape-location-preview")?.remove();
         session.locationLocked = false;
         session.startedAt = performance.now();
         session.deadline = session.startedAt + QUESTION_SECONDS * 1000;
       }
-    }, 2000);
+    }, type === "shapeLocate" ? 1500 : 2000);
   } else if (["capitalMap", "dishMap"].includes(type)) {
     const localBounds = expandedBounds(boundsOf([prefecture.mainGeometry]), 1.65);
     ui.stage.innerHTML = svgMap(prefectures, localBounds, { targetCode: prefecture.code, label: type === "capitalMap" ? "県庁所在地を答える対象都道府県の周辺地図" : "郷土料理を答える対象都道府県の周辺地図" });
@@ -609,7 +619,7 @@ function renderVisual(question, token) {
   } else if (type === "compass") {
     ui.stage.innerHTML = `<div class="compass-prompt"><span>基準<br><strong>${question.reference.name}</strong></span><b aria-hidden="true">→</b><span>どちら？<br><strong>${prefecture.name}</strong></span></div>`;
   } else {
-    const prompt = type === "capital" ? prefecture.name : type === "capitalReverse" ? prefecture.capital : type === "region" ? prefecture.name : type === "regionMember" ? prefecture.region : type === "dish" ? prefecture.dish : prefecture.name;
+    const prompt = type === "capital" ? prefecture.name : type === "capitalReverse" || type === "capitalRegion" ? prefecture.capital : type === "region" ? prefecture.name : type === "regionMember" ? prefecture.region : type === "dish" ? prefecture.dish : prefecture.name;
     ui.stage.innerHTML = `<div class="fact-prompt"><span>${question.skill}</span><strong>${prompt}</strong></div>`;
   }
 }
@@ -648,7 +658,7 @@ function lockPreview(token, duration, beforeUnlock = () => {}) {
 
 function renderAnswers(question) {
   ui.answerGrid.innerHTML = "";
-  const shapeChoices = question.type === "silhouetteReverse";
+  const shapeChoices = ["silhouetteReverse", "mapShape"].includes(question.type);
   const mapChoices = question.type === "mapChoice";
   const mapChoicePrefectures = mapChoices ? question.choices.map((choice) => prefectures.find((item) => item.name === choice)) : [];
   const mapChoiceFeatures = mapChoices ? [...new Map(mapChoicePrefectures.flatMap(regionPrefectures).map((item) => [item.code, item])).values()] : [];
@@ -769,7 +779,7 @@ function updateLearning(question, correct, timedOut, responseMs, answer, selecte
 }
 
 function questionEvidence(type) {
-  return ["mapMemory", "mapFlash"].includes(type) ? .4 : ["capitalShape", "capitalLocate", "dishMap", "dishLocate"].includes(type) ? .65 : 1;
+  return ["mapMemory", "mapFlash"].includes(type) ? .4 : ["mapShape", "shapeLocate", "capitalShape", "capitalLocate", "capitalRegion", "dishMap", "dishLocate"].includes(type) ? .65 : 1;
 }
 
 function showFeedback(question, correct, timedOut, points, answer) {
