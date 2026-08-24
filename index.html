@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f7f4ed">
+  <meta name="description" content="遊ぶほど自分に合った問題が出る、軽量な都道府県学習ミニゲーム。">
+  <title>都道府県ミニゲーム</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231f7658'/%3E%3Ctext x='32' y='46' text-anchor='middle' font-size='43' fill='white'%3E〒%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="./static/css/style.css">
+</head>
+<body>
+  <div class="app-shell">
+    <header class="app-header">
+      <button id="home-button" class="brand" type="button" aria-label="ホームへ戻る">
+        <span class="brand-mark" aria-hidden="true">〒</span>
+        <span>都道府県ミニゲーム</span>
+      </button>
+      <div class="header-actions">
+        <button id="progress-button" class="icon-button" type="button" aria-label="学習記録を見る" title="学習記録">記録</button>
+        <button id="settings-button" class="icon-button" type="button" aria-label="設定を開く" title="設定">設定</button>
+      </div>
+    </header>
+
+    <main id="app" tabindex="-1">
+      <section id="loading-screen" class="screen center-screen" aria-live="polite">
+        <div class="loader" aria-hidden="true"></div>
+        <p>地図を準備しています…</p>
+      </section>
+
+      <section id="error-screen" class="screen center-screen" hidden>
+        <p class="eyebrow">読み込みエラー</p>
+        <h1>地図を準備できませんでした</h1>
+        <p id="error-message" class="muted">通信状態を確認して、もう一度お試しください。</p>
+        <button id="retry-button" class="primary-button" type="button">もう一度読み込む</button>
+      </section>
+
+      <section id="home-screen" class="screen home-screen" hidden>
+        <div class="hero-card">
+          <div>
+            <p class="eyebrow">遊ぶほど、あなた向けに</p>
+            <h1>日本のかたちを<br>ミニゲームで覚えよう。</h1>
+            <p class="hero-copy">苦手な県と忘れかけた問題を自動で選びます。まずは10問、気軽に挑戦。</p>
+          </div>
+          <div id="hero-map" class="hero-map" aria-hidden="true"></div>
+        </div>
+
+        <div class="summary-grid" aria-label="学習状況">
+          <article class="summary-card">
+            <span class="summary-label">覚えた県</span>
+            <strong id="learned-count">0</strong><span>/47</span>
+          </article>
+          <article class="summary-card">
+            <span class="summary-label">これまで</span>
+            <strong id="total-attempts">0</strong><span>問</span>
+          </article>
+          <article class="summary-card">
+            <span class="summary-label">最高スコア</span>
+            <strong id="high-score">0</strong><span>点</span>
+          </article>
+        </div>
+
+        <div class="start-panel">
+          <button id="start-ten-button" class="primary-button start-button" type="button">
+            <span>10問チャレンジ</span><small>おすすめ</small>
+          </button>
+          <button id="start-endless-button" class="secondary-button" type="button">エンドレスで遊ぶ</button>
+          <p id="next-review-hint" class="subtle-hint">最初は基本の形から出題します。</p>
+        </div>
+
+        <section class="mode-preview" aria-labelledby="mode-preview-title">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">QUIZ MIX</p>
+              <h2 id="mode-preview-title">いろいろな見え方で出題</h2>
+            </div>
+            <span>自動選択</span>
+          </div>
+          <div class="mode-chips" aria-label="出題形式">
+            <span>シルエット</span><span>地図</span><span>スポットライト</span><span>じわじわ表示</span><span>場所タップ</span><span>県庁所在地</span><span>地方区分</span><span>郷土料理</span>
+          </div>
+        </section>
+      </section>
+
+      <section id="game-screen" class="screen game-screen" hidden aria-labelledby="question-title">
+        <div class="game-hud">
+          <div class="hud-item"><span>問題</span><strong id="question-number">1/10</strong></div>
+          <div class="hud-item combo-item"><span>コンボ</span><strong id="combo-count">0</strong></div>
+          <div class="hud-item score-item"><span>スコア</span><strong id="score-count">0</strong></div>
+        </div>
+
+        <div class="timer-row">
+          <div id="timer" class="timer" role="progressbar" aria-label="残り時間" aria-valuemin="0" aria-valuemax="15" aria-valuenow="15">
+            <div id="timer-bar" class="timer-bar"></div>
+          </div>
+          <span id="timer-text">残り15秒</span>
+        </div>
+
+        <div class="question-heading">
+          <span id="quiz-type" class="quiz-type">シルエット</span>
+          <h1 id="question-title" tabindex="-1">この都道府県はどこ？</h1>
+          <p id="question-help" class="muted">形を見て答えてください。</p>
+        </div>
+
+        <div id="visual-stage" class="visual-stage" aria-label="問題の地図"></div>
+
+        <fieldset id="answer-fieldset" class="answer-fieldset">
+          <legend class="visually-hidden">答えを選択</legend>
+          <div id="answer-grid" class="answer-grid"></div>
+        </fieldset>
+        <button id="submit-answer-button" class="primary-button submit-button" type="button" disabled>これで決定</button>
+        <p id="keyboard-hint" class="keyboard-hint"><kbd>1</kbd>–<kbd>4</kbd> 選択　<kbd>Enter</kbd> 決定</p>
+        <button id="game-quit-button" class="text-button game-quit-button" type="button">プレイを中断</button>
+      </section>
+
+      <section id="result-screen" class="screen result-screen" hidden>
+        <p class="eyebrow">RESULT</p>
+        <h1 id="result-title">10問おつかれさま！</h1>
+        <div class="result-score">
+          <strong id="result-score">0</strong><span>点</span>
+          <p id="result-record" class="record-badge" hidden>ハイスコア更新！</p>
+        </div>
+        <div class="result-grid">
+          <article><span>正解</span><strong id="result-correct">0/10</strong></article>
+          <article><span>正答率</span><strong id="result-rate">0%</strong></article>
+          <article><span>最大コンボ</span><strong id="result-combo">0</strong></article>
+          <article><span>時間切れ</span><strong id="result-timeouts">0</strong></article>
+        </div>
+        <div class="review-card">
+          <span class="review-icon" aria-hidden="true">↻</span>
+          <div><h2>次のおすすめ</h2><p id="result-review">新しい県に挑戦しましょう。</p></div>
+        </div>
+        <div class="result-actions">
+          <button id="replay-button" class="primary-button" type="button">もう10問</button>
+          <button id="result-home-button" class="secondary-button" type="button">ホームへ</button>
+        </div>
+      </section>
+    </main>
+
+    <footer class="app-footer">
+      <span>Made with Natural Earth（加工済み・学習用）</span>
+      <a href="./sources.html">出典・利用条件</a>
+    </footer>
+  </div>
+
+  <dialog id="feedback-dialog" class="app-dialog feedback-dialog" aria-labelledby="feedback-title" aria-describedby="feedback-detail">
+    <div id="feedback-mark" class="feedback-mark" aria-hidden="true">○</div>
+    <p id="feedback-kicker" class="eyebrow">CORRECT</p>
+    <h2 id="feedback-title">正解！</h2>
+    <p id="feedback-detail">正解は東京都です。</p>
+    <p id="feedback-points" class="feedback-points">+250点</p>
+    <div class="dialog-actions">
+      <button id="next-question-button" class="primary-button" type="button">次の問題</button>
+      <button id="quit-game-button" class="text-button" type="button">ここで終了</button>
+    </div>
+  </dialog>
+
+  <dialog id="settings-dialog" class="app-dialog settings-dialog" aria-labelledby="settings-title">
+    <form method="dialog">
+      <div class="dialog-header"><h2 id="settings-title">設定</h2><button class="close-button" value="close" aria-label="閉じる">×</button></div>
+      <label class="setting-row">
+        <span><strong>効果音</strong><small>正解・不正解を音で知らせます</small></span>
+        <input id="sound-setting" type="checkbox" role="switch">
+      </label>
+      <label class="setting-row setting-column">
+        <span><strong>回答方法</strong><small>選択肢を押した後の動作</small></span>
+        <select id="answer-mode-setting">
+          <option value="confirm">「これで決定」で回答</option>
+          <option value="instant">選択肢を押して即回答</option>
+        </select>
+      </label>
+      <div class="danger-zone">
+        <div><strong>学習データを消去</strong><small>記録・設定・ハイスコアを初期化します</small></div>
+        <button id="reset-data-button" class="danger-button" type="button">すべて消去</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="progress-dialog" class="app-dialog progress-dialog" aria-labelledby="progress-title">
+    <form method="dialog">
+      <div class="dialog-header"><div><p class="eyebrow">LEARNING</p><h2 id="progress-title">学習記録</h2></div><button class="close-button" value="close" aria-label="閉じる">×</button></div>
+      <div id="skill-progress" class="skill-progress"></div>
+      <section class="weak-section"><h3>いま復習したい県</h3><div id="weak-prefectures" class="weak-list"></div></section>
+    </form>
+  </dialog>
+
+  <dialog id="confirm-reset-dialog" class="app-dialog confirm-dialog" aria-labelledby="reset-title" aria-describedby="reset-description">
+    <h2 id="reset-title">本当に消去しますか？</h2>
+    <p id="reset-description">学習記録とハイスコアは元に戻せません。</p>
+    <div class="dialog-actions">
+      <button id="confirm-reset-button" class="danger-button" type="button">消去する</button>
+      <button id="cancel-reset-button" class="secondary-button" type="button">キャンセル</button>
+    </div>
+  </dialog>
+
+  <script type="module" src="./static/js/script.js"></script>
+</body>
+</html>
