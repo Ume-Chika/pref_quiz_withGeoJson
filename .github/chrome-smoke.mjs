@@ -36,6 +36,7 @@ function send(response, status, body) {
   response.end(body);
 }
 
+async function main() {
 await new Promise((resolveListen) => server.listen(4173, "127.0.0.1", resolveListen));
 const profile = mkdtempSync(join(tmpdir(), "pref-quiz-chrome-"));
 const chrome = spawn(process.env.CHROME_BIN || "google-chrome", [
@@ -113,6 +114,7 @@ try {
   await new Promise((resolveClose) => server.close(resolveClose));
   rmSync(profile, { recursive: true, force: true });
 }
+}
 
 function assert(value, message) {
   if (!value) throw new Error(message);
@@ -186,3 +188,5 @@ class Cdp {
     this.socket.close();
   }
 }
+
+await main();
