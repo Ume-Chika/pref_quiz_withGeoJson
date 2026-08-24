@@ -432,13 +432,13 @@ function buildQuestion(prefecture, skill, forcedType = "") {
   const question = { prefecture, skill, type, isNew: !item.attempts, choices: [], correct: "" };
   if (["shapeMemory", "silhouette", "reveal", "spotlight", "flash", "silhouetteReverse", "mapShape", "map", "mapChoice", "mapFlash", ...LOCATION_TYPES].includes(type)) {
     question.correct = prefecture.name;
-    question.choices = nameChoices(prefecture, type === "mapChoice" ? Math.max(.3, mastery) : mastery, skill === "A" ? "shape" : "geo");
+    question.choices = nameChoices(prefecture, type === "mapChoice" ? Math.max(.3, mastery) : mastery, skill === "A" ? "shape" : "geo", skill);
   } else if (["capital", "capitalMap", "capitalShape"].includes(type)) {
     question.correct = prefecture.capital;
     question.choices = valueChoices(prefecture, "capital", mastery);
   } else if (type === "capitalReverse") {
     question.correct = prefecture.name;
-    question.choices = nameChoices(prefecture, mastery);
+    question.choices = nameChoices(prefecture, mastery, "geo", "C");
   } else if (["region", "regionMap", "capitalRegion", "shapeRegion"].includes(type)) {
     question.correct = prefecture.region;
     question.choices = shuffle([prefecture.region, ...shuffle([...new Set(facts.map((fact) => fact.region))].filter((region) => region !== prefecture.region)).slice(0, 3)]);
@@ -447,10 +447,10 @@ function buildQuestion(prefecture, skill, forcedType = "") {
     question.choices = shuffle([prefecture.name, ...shuffle(prefectures.filter((item) => item.region !== prefecture.region)).slice(0, 3).map((item) => item.name)]);
   } else if (type === "dish") {
     question.correct = prefecture.name;
-    question.choices = nameChoices(prefecture, mastery);
+    question.choices = nameChoices(prefecture, mastery, "geo", "E");
   } else if (type === "dishShapeChoice") {
     question.correct = prefecture.name;
-    question.choices = nameChoices(prefecture, mastery, "shape");
+    question.choices = nameChoices(prefecture, mastery, "shape", "E");
   } else if (["dishReverse", "dishMap"].includes(type)) {
     question.correct = prefecture.dish;
     question.choices = valueChoices(prefecture, "dish", mastery);
@@ -467,7 +467,12 @@ function buildQuestion(prefecture, skill, forcedType = "") {
   return question;
 }
 
-function nameChoices(target, mastery, strategy = "geo") {
+function recentConfusion(target, skill) {
+  const record = saved.recent.find((item) => item.code === target.code && item.skill === skill && !item.correct && item.selectedCode && item.selectedCode !== target.code);
+  return record ? prefectures.find((item) => item.code === record.selectedCode) : null;
+}
+
+function nameChoices(target, mastery, strategy = "geo", skill = "") {
   const candidates = prefectures.filter((item) => item.code !== target.code).map((item) => ({
     item,
     regionPenalty: item.region === target.region ? 0 : 12,
@@ -476,13 +481,18 @@ function nameChoices(target, mastery, strategy = "geo") {
   }));
   if (mastery > .25) candidates.sort((a, b) => strategy === "shape" ? a.shapeDistance - b.shapeDistance : (a.regionPenalty + a.distance) - (b.regionPenalty + b.distance));
   else candidates.sort(() => Math.random() - .5);
-  return shuffle([target.name, ...candidates.slice(0, 3).map(({ item }) => item.name)]);
+  const confusion = recentConfusion(target, skill);
+  const ordered = confusion ? [{ item: confusion }, ...candidates.filter(({ item }) => item.code !== confusion.code)] : candidates;
+  return shuffle([target.name, ...ordered.slice(0, 3).map(({ item }) => item.name)]);
 }
 
 function valueChoices(target, field, mastery = 0) {
   const sameRegion = shuffle(prefectures.filter((item) => item.code !== target.code && item.region === target.region));
   const others = shuffle(prefectures.filter((item) => item.code !== target.code && item.region !== target.region));
-  return shuffle([target[field], ...(mastery > .35 ? [...sameRegion, ...others] : shuffle([...sameRegion, ...others])).slice(0, 3).map((item) => item[field])]);
+  const candidates = mastery > .35 ? [...sameRegion, ...others] : shuffle([...sameRegion, ...others]);
+  const confusion = recentConfusion(target, field === "capital" ? "C" : "E");
+  const ordered = confusion ? [confusion, ...candidates.filter((item) => item.code !== confusion.code)] : candidates;
+  return shuffle([target[field], ...ordered.slice(0, 3).map((item) => item[field])]);
 }
 
 function regionPrefectures(prefecture) {
@@ -814,7 +824,7 @@ function completeAnswer(answer, timedOut) {
   session.maxCombo = Math.max(session.maxCombo, session.combo);
   const remainingSeconds = Math.max(0, Math.ceil((session.deadline - answeredAt) / 1000));
   const points = correct ? 100 + remainingSeconds * 10 + previousCombo * 25 : 0;
-  const selectedCode = prefectures.find((prefecture) => prefecture.name === answer)?.code || "";
+  const selectedCode = prefectures.find((prefecture) => [prefecture.name, prefecture.capital, prefecture.dish].includes(answer))?.code || "";
   session.score += points;
   session.answers.push({ code: question.prefecture.code, skill: question.skill, type: question.type, correct, timedOut, responseMs, answer, selectedCode });
   updateLearning(question, correct, timedOut, responseMs, answer, selectedCode);
@@ -900,7 +910,7 @@ function feedbackShapeCard(title, prefecture, value, note, className) {
 
 function feedbackDetail(question) {
   const pref = question.prefecture;
-  if (question.skill === "A") return `正解は「${pref.name}」。輪郭をもう一度確認しましょう。`;
+  if (question.skill === "A") return `正解は「${pref.name}」。輪郭と周辺県に対する位置を確認しましょう。`;
   if (question.type === "compass") return `${question.reference.name}から見て${pref.name}は、おおよそ${question.correct}です。`;
   if (question.skill === "B") return `${pref.name}は${pref.region}にあります。`;
   if (question.skill === "C") return `${pref.name}の県庁所在地は${pref.capital}です。`;
