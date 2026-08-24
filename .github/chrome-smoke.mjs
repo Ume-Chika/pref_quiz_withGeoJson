@@ -97,7 +97,7 @@ try {
   await waitFor(cdp, `document.querySelector('#quiz-type').textContent === '地図記憶'`);
   assert(await evaluate(cdp, `document.querySelector('#timer-text').textContent === '記憶中' && document.querySelector('#submit-answer-button').hidden`), "地図記憶の待機表示または即時回答設定が不正です");
   await new Promise((resolveWait) => setTimeout(resolveWait, 2200));
-  await evaluate(cdp, `document.querySelector('.map-prefecture[data-code]').click()`);
+  await evaluate(cdp, `document.querySelector('.map-prefecture[data-code]').dispatchEvent(new MouseEvent('click',{bubbles:true}))`);
   await waitFor(cdp, `document.querySelector('#feedback-dialog').open`);
   await evaluate(cdp, `document.querySelector('#quit-game-button').click()`);
   await waitFor(cdp, `document.querySelector('#result-screen:not([hidden])')`);
