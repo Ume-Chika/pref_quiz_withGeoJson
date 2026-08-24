@@ -31,6 +31,7 @@ button, select { font: inherit; }
 button, label, select { -webkit-tap-highlight-color: transparent; }
 button { color: inherit; }
 [hidden] { display: none !important; }
+#app:focus { outline: none; }
 button:focus-visible, select:focus-visible, input:focus-visible { outline: 3px solid rgba(17, 122, 101, .3); outline-offset: 3px; }
 .app-shell { width: min(100%, 920px); min-height: 100vh; margin: 0 auto; padding: 0 16px; }
 .app-header { position: relative; z-index: 10; display: flex; align-items: center; justify-content: space-between; min-height: 72px; border-bottom: 1px solid rgba(29, 41, 36, .1); }
