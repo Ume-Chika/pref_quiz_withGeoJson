@@ -284,7 +284,7 @@ try {
   await waitFor(cdp, `document.querySelector('#home-screen:not([hidden])')`, 10_000);
   await evaluate(cdp, `document.querySelector('#start-endless-button').click(); true`);
   await waitFor(cdp, `document.querySelector('#game-screen:not([hidden])')`);
-  assert(await evaluate(cdp, `document.querySelector('#game-screen').dataset.skill==='B' && document.querySelector('#game-screen').dataset.quizType==='mapMemory' && document.querySelector('#timer-text').textContent==='記憶中'`), "未学習の位置問題で見本を先に提示できません");
+  assert(await evaluate(cdp, `(() => { const game=document.querySelector('#game-screen'); return game.dataset.skill==='B' && game.dataset.quizType==='map' && document.querySelectorAll('#visual-stage .target').length===1 && !document.querySelector('#question-title').textContent.includes('北海道'); })()`), "未学習の位置問題が正解県名を露出しています");
   await evaluate(cdp, `document.querySelector('#quit-game-button').click(); localStorage.removeItem('prefecture-minigame-v2'); location.reload(); true`);
   await waitFor(cdp, `document.querySelector('#home-screen:not([hidden])')`, 10_000);
 

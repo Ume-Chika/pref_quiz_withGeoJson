@@ -412,7 +412,7 @@ function buildQuestion(prefecture, skill, forcedType = "") {
     if (canUseIntegratedMode(mastery, getProgress(prefecture.code, "B").mastery)) modes.push("mapShape");
     type = randomOf(modes);
   } else if (skill === "B") {
-    const modes = !item.attempts ? ["mapMemory"] : mastery < .2 ? ["map"] : mastery < .55 ? ["map", "mapChoice", "locate", "mapMemory", "mapFlash"] : ["map", "mapChoice", "locate", "locateJapan", "mapMemory", "mapFlash", "compass"];
+    const modes = !item.attempts ? ["map"] : mastery < .2 ? ["map"] : mastery < .55 ? ["map", "mapChoice", "locate", "mapFlash"] : ["map", "mapChoice", "locate", "locateJapan", "mapFlash", "compass"];
     if (canUseIntegratedMode(mastery, getProgress(prefecture.code, "A").mastery)) modes.push("shapeLocate");
     type = randomOf(modes);
   } else if (skill === "C") {
@@ -833,7 +833,7 @@ function completeAnswer(answer, timedOut) {
   session.score += points;
   session.answers.push({ code: question.prefecture.code, skill: question.skill, type: question.type, correct, timedOut, responseMs, answer, selectedCode });
   updateLearning(question, correct, timedOut, responseMs, answer, selectedCode);
-  if (question.isNew && ["shapeMemory", "mapMemory"].includes(question.type)) {
+  if (question.isNew && (question.type === "shapeMemory" || question.skill === "B")) {
     session.retries.push({ code: question.prefecture.code, skill: question.skill, type: question.skill === "A" ? "silhouette" : "map", dueAt: session.answers.length + 4 });
   } else if (!correct && questionEvidence(question.type) === 1) {
     session.retries.push({ code: question.prefecture.code, skill: question.skill, dueAt: session.answers.length + 4 });
