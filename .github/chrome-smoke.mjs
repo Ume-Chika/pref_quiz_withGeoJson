@@ -323,7 +323,7 @@ try {
     }
     await waitFor(cdp, `document.querySelector('#home-screen:not([hidden])')`);
   }
-  await evaluate(cdp, `delete globalThis.__prefQuizTest; true`);
+  await evaluate(cdp, `(() => { delete globalThis.__prefQuizTest; const state=JSON.parse(localStorage.getItem('prefecture-minigame-v2')); state.pendingReviews=[]; localStorage.setItem('prefecture-minigame-v2',JSON.stringify(state)); return true; })()`);
 
   await evaluate(cdp, `globalThis.__prefQuizTest={type:'shapeMemory',skill:'A',code:'03'}; document.querySelector('#start-endless-button').click(); true`);
   await waitFor(cdp, `document.querySelector('#timer-text').textContent !== '記憶中'`, 5_000);
@@ -399,9 +399,20 @@ try {
   await waitFor(cdp, `document.querySelector('#timer-text').textContent!=='記憶中'`, 5_000);
   await evaluate(cdp, `(() => { const input=[...document.querySelectorAll('input[name="answer"]')].find(item=>item.value==='岩手県'); input.checked=true; input.dispatchEvent(new Event('change')); document.querySelector('#submit-answer-button').click(); return true; })()`);
   await waitFor(cdp, `document.querySelector('#feedback-dialog').open`);
-  await evaluate(cdp, `document.querySelector('#quit-game-button').click(); document.querySelector('#result-home-button').click(); delete globalThis.__prefQuizTest; document.querySelector('#start-endless-button').click(); true`);
-  await waitFor(cdp, `document.querySelector('#game-screen:not([hidden])')`);
-  assert(await evaluate(cdp, `document.querySelector('#game-screen').dataset.code==='03' && document.querySelector('#game-screen').dataset.skill==='A' && document.querySelector('#game-screen').dataset.quizType!=='shapeMemory'`), "途中終了で未消化の検索練習が失われています");
+  await evaluate(cdp, `location.reload(); true`);
+  await waitFor(cdp, `document.querySelector('#home-screen:not([hidden])')`, 10_000);
+  assert(await evaluate(cdp, `(() => { const review=JSON.parse(localStorage.getItem('prefecture-minigame-v2')).pendingReviews[0]; return review.code==='03'&&review.skill==='A'&&review.type==='silhouette'&&review.remaining===3; })()`), "再読み込み後に検索練習の予約を復元できません");
+  for (const code of ["04", "05", "06"]) {
+    await evaluate(cdp, `globalThis.__prefQuizTest={type:'silhouette',skill:'A',code:'${code}'}; ${code === "04" ? "document.querySelector('#start-endless-button').click()" : "document.querySelector('#next-question-button').click()"}; true`);
+    await waitFor(cdp, `document.querySelector('#game-screen').dataset.code==='${code}' && !document.querySelector('#feedback-dialog').open`);
+    await evaluate(cdp, `(() => { const input=[...document.querySelectorAll('input[name="answer"]')].find(item=>item.value===${JSON.stringify(namesByCode[code])}); input.checked=true; input.dispatchEvent(new Event('change')); document.querySelector('#submit-answer-button').click(); return true; })()`);
+    await waitFor(cdp, `document.querySelector('#feedback-dialog').open`);
+  }
+  await evaluate(cdp, `delete globalThis.__prefQuizTest; document.querySelector('#next-question-button').click(); true`);
+  await waitFor(cdp, `document.querySelector('#game-screen').dataset.code==='03' && document.querySelector('#game-screen').dataset.quizType==='silhouette' && !document.querySelector('#feedback-dialog').open`);
+  await evaluate(cdp, `(() => { const input=[...document.querySelectorAll('input[name="answer"]')].find(item=>item.value==='岩手県'); input.checked=true; input.dispatchEvent(new Event('change')); document.querySelector('#submit-answer-button').click(); return true; })()`);
+  await waitFor(cdp, `document.querySelector('#feedback-dialog').open`);
+  assert(await evaluate(cdp, `JSON.parse(localStorage.getItem('prefecture-minigame-v2')).pendingReviews.length===0`), "完了した検索練習の予約が残っています");
   await evaluate(cdp, `document.querySelector('#quit-game-button').click(); localStorage.removeItem('prefecture-minigame-v2'); location.reload(); true`);
   await waitFor(cdp, `document.querySelector('#home-screen:not([hidden])')`, 10_000);
 
