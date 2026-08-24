@@ -510,8 +510,8 @@ function renderQuestion() {
   renderVisual(question, token);
   showScreen(ui.game);
   requestAnimationFrame(() => ui.title.focus({ preventScroll: true }));
-  session.startedAt = performance.now();
-  session.deadline = performance.now() + QUESTION_SECONDS * 1000;
+  session.startedAt = Date.now();
+  session.deadline = Date.now() + QUESTION_SECONDS * 1000;
   updateTimer(token);
 }
 
@@ -635,7 +635,7 @@ function renderVisual(question, token) {
         ui.stage.querySelector(".memory-status")?.remove();
         ui.stage.querySelector(".shape-location-preview")?.remove();
         session.locationLocked = false;
-        session.startedAt = performance.now();
+        session.startedAt = Date.now();
         session.deadline = session.startedAt + QUESTION_SECONDS * 1000;
       }
     }, type === "shapeLocate" ? 1500 : 2000);
@@ -682,7 +682,7 @@ function lockPreview(token, duration, beforeUnlock = () => {}) {
     beforeUnlock();
     session.locationLocked = false;
     ui.answerGrid.querySelectorAll("input").forEach((input) => { input.disabled = false; });
-    session.startedAt = performance.now();
+    session.startedAt = Date.now();
     session.deadline = session.startedAt + QUESTION_SECONDS * 1000;
   }, duration);
 }
@@ -737,7 +737,7 @@ function updateTimer(token) {
     timerFrame = requestAnimationFrame(() => updateTimer(token));
     return;
   }
-  const remaining = Math.max(0, session.deadline - performance.now());
+  const remaining = Math.max(0, session.deadline - Date.now());
   const ratio = remaining / (QUESTION_SECONDS * 1000);
   const seconds = Math.ceil(remaining / 1000);
   ui.timer.style.transform = `scaleX(${ratio})`;
@@ -775,7 +775,7 @@ function answerLocation(code) {
 
 function completeAnswer(answer, timedOut) {
   if (!session || session.answered) return;
-  const answeredAt = performance.now();
+  const answeredAt = Date.now();
   if (!timedOut && deadlinePassed(answeredAt, session.deadline)) { timedOut = true; answer = "時間切れ"; }
   session.answered = true;
   cancelAnimationFrame(timerFrame);
