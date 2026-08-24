@@ -4,6 +4,10 @@ export function blankProgress() {
   return { attempts: 0, correct: 0, streak: 0, lastSeen: 0, averageMs: 0, timeouts: 0, nextDue: 0, mastery: 0, recent: [] };
 }
 
+export function deadlinePassed(answeredAt, deadline) {
+  return answeredAt >= deadline;
+}
+
 export function normalizeProgress(value, maxResponseMs = 15000) {
   const item = blankProgress();
   if (!value || typeof value !== "object") return item;
@@ -11,13 +15,13 @@ export function normalizeProgress(value, maxResponseMs = 15000) {
   item.attempts = Math.floor(number(value.attempts));
   if (!item.attempts) return item;
   item.correct = Math.min(item.attempts, Math.floor(number(value.correct)));
-  item.streak = Math.min(item.attempts, Math.floor(number(value.streak)));
+  item.streak = Math.min(item.correct, Math.floor(number(value.streak)));
   item.lastSeen = number(value.lastSeen);
   item.averageMs = number(value.averageMs, maxResponseMs);
   item.timeouts = Math.min(item.attempts, Math.floor(number(value.timeouts)));
   item.nextDue = number(value.nextDue);
-  item.mastery = number(value.mastery, 1);
-  item.recent = Array.isArray(value.recent) ? value.recent.filter((entry) => [-1, 0, 1].includes(entry)).slice(-8) : [];
+  item.mastery = item.correct ? number(value.mastery, 1) : 0;
+  item.recent = Array.isArray(value.recent) ? value.recent.filter((entry) => [-1, 0, 1].includes(entry)).slice(-Math.min(8, item.attempts)) : [];
   return item;
 }
 

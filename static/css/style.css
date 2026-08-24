@@ -99,7 +99,8 @@ button.secondary-button:hover { border-color: #a8b1ab; background: white; }
 .map-prefecture.clickable { cursor: pointer; }
 .map-prefecture.clickable:hover, .map-prefecture.clickable:focus { fill: var(--accent-soft); stroke: var(--accent); outline: none; }
 .map-prefecture.selected { fill: var(--sun); stroke: #a26300; stroke-width: 3; }
-.map-hit { fill: transparent; stroke: transparent; stroke-width: 30; pointer-events: stroke; vector-effect: non-scaling-stroke; cursor: pointer; }
+.map-hit { fill: transparent; stroke: transparent; stroke-width: 10; pointer-events: stroke; vector-effect: non-scaling-stroke; cursor: pointer; }
+.memory-status { position: absolute; top: 12px; left: 50%; padding: 5px 10px; color: white; border-radius: 999px; background: rgba(18,32,27,.82); font-size: .72rem; font-weight: 800; transform: translateX(-50%); }
 .silhouette { fill: var(--accent); stroke: var(--accent-dark); stroke-width: 3; vector-effect: non-scaling-stroke; }
 .stage-corner-label { position: absolute; right: 12px; bottom: 10px; padding: 3px 8px; color: var(--muted); border-radius: 8px; background: rgba(255,255,255,.82); font-size: .66rem; }
 .spotlight-path { fill: var(--sun); stroke: #ffe5a3; stroke-width: 4; vector-effect: non-scaling-stroke; }
@@ -119,6 +120,7 @@ button.secondary-button:hover { border-color: #a8b1ab; background: white; }
 .answer-option input:checked + label::before { color: white; border-color: var(--accent); background: var(--accent); }
 .submit-button { width: 100%; margin-top: 12px; }
 .keyboard-hint { margin: 9px 0 0; color: var(--muted); font-size: .7rem; text-align: center; }
+.game-quit-button { display: block; margin: 8px auto 0; }
 kbd { padding: 1px 5px; border: 1px solid #c4cac5; border-bottom-width: 2px; border-radius: 5px; background: white; font: inherit; }
 .result-screen { max-width: 620px; margin: 0 auto; text-align: center; }
 .result-screen > h1 { margin: 2px 0; font-size: clamp(2rem, 8vw, 3.3rem); letter-spacing: -.04em; }

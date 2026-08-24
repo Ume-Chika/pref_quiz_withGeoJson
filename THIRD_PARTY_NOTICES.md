@@ -15,6 +15,7 @@
 GitHub Actionsでは次の公式Actionを利用します。これらは公開サイトへ配信されません。
 
 - `actions/checkout`
+- `actions/setup-node`
 - `actions/configure-pages`
 - `actions/upload-pages-artifact`
 - `actions/deploy-pages`

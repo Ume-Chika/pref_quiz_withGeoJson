@@ -1,4 +1,5 @@
 import { spawn } from "node:child_process";
+import { once } from "node:events";
 import { createServer } from "node:http";
 import { mkdtempSync, readFileSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -45,14 +46,14 @@ const chrome = spawn(process.env.CHROME_BIN || "google-chrome", [
   "--remote-debugging-port=9222",
   `--user-data-dir=${profile}`,
   "--window-size=390,844",
-  `http://127.0.0.1:4173${base}`,
+  "about:blank",
 ], { stdio: "ignore" });
 
 let cdp;
 try {
   const target = await retry(async () => {
     const targets = await fetch("http://127.0.0.1:9222/json/list").then((response) => response.json());
-    return targets.find((item) => item.type === "page" && item.url.includes(base));
+    return targets.find((item) => item.type === "page");
   }, 10_000);
   cdp = await Cdp.connect(target.webSocketDebuggerUrl);
   await cdp.command("Runtime.enable");
@@ -62,6 +63,7 @@ try {
   cdp.on("Runtime.exceptionThrown", ({ exceptionDetails }) => errors.push(exceptionDetails.text));
   cdp.on("Log.entryAdded", ({ entry }) => entry.level === "error" && errors.push(entry.text));
   await cdp.command("Log.enable");
+  await cdp.command("Page.navigate", { url: `http://127.0.0.1:4173${base}` });
 
   await waitFor(cdp, `document.querySelector('#home-screen:not([hidden])')`, 10_000);
   assert(await evaluate(cdp, `document.querySelectorAll('#hero-map path').length === 47`), "ホーム地図が47都道府県ではありません");
@@ -87,12 +89,28 @@ try {
   assert(state.settings.sound === false && state.settings.answerMode === "confirm", "壊れた設定値を復旧できません");
   assert(Object.values(state.progress).reduce((sum, item) => sum + item.attempts, 0) === 10, "10問分の学習履歴を保存できません");
   assert(Object.values(state.progress).every((item) => Number.isFinite(item.mastery)), "習熟度に不正値があります");
+
+  await evaluate(cdp, `(() => { const state=JSON.parse(localStorage.getItem('prefecture-minigame-v2')); for(let i=1;i<=47;i++){ const code=String(i).padStart(2,'0'); state.progress[code+':B']={attempts:1,correct:1,streak:1,lastSeen:1,averageMs:1000,timeouts:0,nextDue:1,mastery:1,recent:[1]}; } state.settings.answerMode='instant'; localStorage.setItem('prefecture-minigame-v2',JSON.stringify(state)); location.reload(); return true; })()`);
+  await waitFor(cdp, `document.querySelector('#home-screen:not([hidden])')`, 10_000);
+  await evaluate(cdp, `Math.random=()=>0.99; document.querySelector('#start-endless-button').click(); true`);
+  await waitFor(cdp, `document.querySelector('#quiz-type').textContent === '地図記憶'`);
+  assert(await evaluate(cdp, `document.querySelector('#timer-text').textContent === '記憶中' && document.querySelector('#submit-answer-button').hidden`), "地図記憶の待機表示または即時回答設定が不正です");
+  await new Promise((resolveWait) => setTimeout(resolveWait, 2200));
+  await evaluate(cdp, `document.querySelector('.map-prefecture[data-code]').click()`);
+  await waitFor(cdp, `document.querySelector('#feedback-dialog').open`);
+  await evaluate(cdp, `document.querySelector('#quit-game-button').click()`);
+  await waitFor(cdp, `document.querySelector('#result-screen:not([hidden])')`);
+  await evaluate(cdp, `document.querySelector('#result-home-button').click(); document.querySelector('#settings-button').click(); document.querySelector('#reset-data-button').click(); document.querySelector('#confirm-reset-button').click(); true`);
+  await waitFor(cdp, `!document.querySelector('#settings-dialog').open`);
+  const resetState = await evaluate(cdp, `JSON.parse(localStorage.getItem('prefecture-minigame-v2'))`);
+  assert(Object.keys(resetState.progress).length === 0 && resetState.settings.sound === false && resetState.settings.answerMode === "confirm", "全消去で初期状態へ戻りません");
   assert(errors.length === 0, `Chromeでエラーが発生しました: ${errors.join(" / ")}`);
-  console.log("Chromeで読み込み、10問、結果表示、保存の確認に成功しました。");
+  console.log("Chromeで10問、即時場所回答、結果、保存、全消去の確認に成功しました。");
 } finally {
   cdp?.close();
   chrome.kill("SIGTERM");
-  server.close();
+  if (chrome.exitCode === null) await Promise.race([once(chrome, "exit"), new Promise((resolveWait) => setTimeout(resolveWait, 2000))]);
+  await new Promise((resolveClose) => server.close(resolveClose));
   rmSync(profile, { recursive: true, force: true });
 }
 
