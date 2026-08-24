@@ -188,8 +188,10 @@ kbd { padding: 1px 5px; border: 1px solid #c4cac5; border-bottom-width: 2px; bor
 .feedback-shape-card.correct-answer { border-color: #9bcbbb; background: var(--accent-soft); }
 .feedback-shape-card > span { color: var(--muted); font-size: .68rem; font-weight: 800; }
 .feedback-shape-card svg { width: 100%; height: 84px; min-height: 0; }
-.feedback-shape-card .silhouette { stroke-width: 5; }
-.feedback-shape-card.selected-wrong .silhouette { fill: var(--danger); stroke: #6d2924; }
+.feedback-map { width: 100%; overflow: hidden; }
+.feedback-map .map-prefecture { fill: #f5f4ef; stroke: #9fa9a2; }
+.feedback-map .map-prefecture.target { fill: var(--accent); stroke: var(--accent-dark); stroke-width: 3; }
+.feedback-shape-card.selected-wrong .map-prefecture.target { fill: var(--danger); stroke: #6d2924; }
 .feedback-shape-card strong { overflow-wrap: anywhere; font-size: .95rem; }
 .feedback-shape-card small { color: var(--muted); font-size: .68rem; }
 .feedback-no-shape { display: grid; width: 58px; height: 58px; margin: 13px 0; place-items: center; color: var(--muted); border: 2px dashed var(--line); border-radius: 50%; font-size: 1.5rem; font-weight: 900; }
