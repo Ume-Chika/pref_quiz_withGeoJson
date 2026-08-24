@@ -2,7 +2,7 @@ import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { blankProgress, canIntroduceNewItem, canUseIntegratedMode, compassVector, deadlinePassed, normalizeProgress, recordAnswer, schedulingPriority, skillsForMastery } from "../static/js/learning.mjs";
+import { blankProgress, canIntroduceNewItem, canUseIntegratedMode, compassVector, deadlinePassed, hasBasicMastery, normalizeProgress, recordAnswer, schedulingPriority, skillsForMastery } from "../static/js/learning.mjs";
 
 const required = [
   "index.html",
@@ -13,6 +13,11 @@ const required = [
   "static/data/low_prefectures.geojson",
   "static/data/prefecture_facts.json",
   ".github/chrome-smoke.mjs",
+  ".github/workflows/pages.yml",
+  "README.md",
+  "LICENSE",
+  "DATA_SOURCES.md",
+  "THIRD_PARTY_NOTICES.md",
 ];
 
 for (const path of required) {
@@ -50,6 +55,9 @@ if (!canIntroduceNewItem([{ newItem: true }, { newItem: true }, { newItem: true 
 }
 if (skillsForMastery(2).join("") !== "AB" || skillsForMastery(3).join("") !== "ABC" || skillsForMastery(7).join("") !== "ABC" || skillsForMastery(8).join("") !== "ABCD" || skillsForMastery(14).join("") !== "ABCD" || skillsForMastery(15).join("") !== "ABCDE") {
   throw new Error("分野の段階解放境界が不正です");
+}
+if (hasBasicMastery(.9, 0) || hasBasicMastery(.44, 1) || !hasBasicMastery(.45, .45)) {
+  throw new Error("形と位置の双方を習熟した県だけを段階解放へ数えられていません");
 }
 if (canUseIntegratedMode(.54, 1) || canUseIntegratedMode(1, .44) || !canUseIntegratedMode(.55, .45)) {
   throw new Error("複数分野をまたぐ形式の解放境界が不正です");
@@ -107,6 +115,7 @@ const geoHash = createHash("sha256").update(geoBytes).digest("hex");
 if (geoHash !== "8b9171fb19a9d51d113361a8b93aa46470b5b11055195040485a8d8e68b1b5ed") {
   throw new Error("GeoJSONが出典文書に記録した版と一致しません");
 }
+if (!readFileSync("DATA_SOURCES.md", "utf8").includes(geoHash)) throw new Error("GeoJSONの版がデータ出典文書に記録されていません");
 const geo = JSON.parse(geoBytes);
 if (geo.type !== "FeatureCollection" || geo.features?.length !== 47) {
   throw new Error("GeoJSONは47件のFeatureCollectionである必要があります");
