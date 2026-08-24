@@ -16,7 +16,7 @@ const screens = ["loading-screen", "error-screen", "home-screen", "game-screen",
 const ui = {
   app: $("app"), loading: $("loading-screen"), error: $("error-screen"), errorMessage: $("error-message"),
   home: $("home-screen"), game: $("game-screen"), result: $("result-screen"), heroMap: $("hero-map"),
-  learned: $("learned-count"), attempts: $("total-attempts"), highScore: $("high-score"), reviewHint: $("next-review-hint"),
+  learned: $("learned-count"), learning: $("learning-count"), attempts: $("total-attempts"), highScore: $("high-score"), reviewHint: $("next-review-hint"),
   questionNumber: $("question-number"), combo: $("combo-count"), score: $("score-count"), timer: $("timer-bar"), timerRoot: $("timer"), timerText: $("timer-text"),
   type: $("quiz-type"), title: $("question-title"), help: $("question-help"), stage: $("visual-stage"),
   answerFieldset: $("answer-fieldset"), answerGrid: $("answer-grid"), submit: $("submit-answer-button"), keyboardHint: $("keyboard-hint"),
@@ -402,6 +402,8 @@ function totalAttempts() {
 function renderHome() {
   const attempts = totalAttempts();
   ui.learned.textContent = basicMasteredCount();
+  const learning = new Set(Object.entries(saved.progress).filter(([, item]) => item.attempts).map(([key]) => key.slice(0, 2))).size;
+  ui.learning.textContent = learning ? `${learning}県に挑戦済み` : "まだ未挑戦";
   ui.attempts.textContent = attempts;
   ui.highScore.textContent = saved.highScore || 0;
   const now = Date.now();
@@ -1049,7 +1051,23 @@ function finishGame() {
   $("result-combo").textContent = session.maxCombo;
   $("result-timeouts").textContent = timeouts;
   const weakest = weakestItems(1)[0];
-  $("result-review").textContent = weakest ? `${weakest.prefecture.name}の「${SKILLS[weakest.skill].name}」が現在もっとも低い習熟度です。` : "次は新しい都道府県に挑戦します。";
+  const scheduled = Object.entries(saved.progress).filter(([, item]) => item.attempts).sort(([, a], [, b]) => a.nextDue - b.nextDue)[0];
+  const next = [...saved.pendingReviews].sort((a, b) => a.remaining - b.remaining)[0] || (scheduled && { code: scheduled[0].slice(0, 2), skill: scheduled[0].slice(3), remaining: null });
+  const nextPrefecture = next && prefectures.find((prefecture) => prefecture.code === next.code);
+  const nextTiming = next?.remaining === null ? "" : next?.remaining ? `${next.remaining}問後に` : "最初に";
+  const nextText = nextPrefecture ? `次は${nextPrefecture.name}の「${SKILLS[next.skill].name}」を${nextTiming}復習します。` : "次は新しい都道府県に挑戦します。";
+  const sameAsWeakest = weakest && next && weakest.prefecture.code === next.code && weakest.skill === next.skill;
+  $("result-review").textContent = `${nextText}${weakest && !sameAsWeakest ? ` 現在の苦手は${weakest.prefecture.name}の「${SKILLS[weakest.skill].name}」です。` : ""}`;
+  const mistakes = [...new Map(session.answers.filter((item) => !item.correct).map((item) => [item.code, item])).values()];
+  $("result-mistakes").hidden = !mistakes.length;
+  $("result-mistake-list").replaceChildren(...mistakes.map((answer) => {
+    const prefecture = prefectures.find((item) => item.code === answer.code);
+    const card = document.createElement("article");
+    card.className = "result-mistake-card";
+    card.innerHTML = `${silhouetteSvg(prefecture)}<div><strong>${prefecture.name}</strong><small>${SKILLS[answer.skill].name}・${answer.timedOut ? "時間切れ" : "不正解"}</small></div>`;
+    return card;
+  }));
+  $("replay-button").textContent = mistakes.length ? "苦手を中心にもう10問" : "もう10問";
   showScreen(ui.result);
   renderHome();
 }

@@ -47,8 +47,9 @@
 
         <div class="summary-grid" aria-label="学習状況">
           <article class="summary-card">
-            <span class="summary-label">覚えた県</span>
+            <span class="summary-label">基本を習得</span>
             <strong id="learned-count">0</strong><span>/47</span>
+            <small id="learning-count">まだ未挑戦</small>
           </article>
           <article class="summary-card">
             <span class="summary-label">これまで</span>
@@ -131,6 +132,10 @@
           <span class="review-icon" aria-hidden="true">↻</span>
           <div><h2>次のおすすめ</h2><p id="result-review">新しい県に挑戦しましょう。</p></div>
         </div>
+        <section id="result-mistakes" class="result-mistakes" hidden>
+          <h2>今回覚え直す県</h2>
+          <div id="result-mistake-list" class="result-mistake-list"></div>
+        </section>
         <div class="result-actions">
           <button id="replay-button" class="primary-button" type="button">もう10問</button>
           <button id="result-home-button" class="secondary-button" type="button">ホームへ</button>
