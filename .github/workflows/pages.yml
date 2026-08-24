@@ -28,7 +28,8 @@ jobs:
       - name: Audit mobile performance
         run: npx --yes @lhci/cli@0.15.1 autorun
       - name: Print Lighthouse score
-        run: node -e "const fs=require('fs'),dir='.lighthouseci/reports';const report=fs.readdirSync(dir).filter(name=>name.endsWith('.json')).map(name=>JSON.parse(fs.readFileSync(dir+'/'+name))).find(item=>item.categories?.performance);console.log('Lighthouse mobile Performance: '+Math.round(report.categories.performance.score*100))"
+        run: >-
+          node -e "const fs=require('fs'),dir='.lighthouseci/reports';const report=fs.readdirSync(dir).filter(name=>name.endsWith('.json')).map(name=>JSON.parse(fs.readFileSync(dir+'/'+name))).find(item=>item.categories?.performance);console.log('Lighthouse mobile Performance: '+Math.round(report.categories.performance.score*100))"
       - name: Save Lighthouse report
         if: always()
         uses: actions/upload-artifact@v7
