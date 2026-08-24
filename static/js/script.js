@@ -109,6 +109,7 @@ async function loadData() {
         center: centerOfGeometry(mainGeometry), shape: shapeStats(mainGeometry)
       };
     }).sort((a, b) => Number(a.code) - Number(b.code));
+    unlockedBasicCount();
     persist();
     renderHeroMap();
     renderHome();
