@@ -99,6 +99,14 @@ try {
   await evaluate(cdp, `delete globalThis.__prefQuizTest; true`);
   await cdp.command("Emulation.clearDeviceMetricsOverride");
 
+  await cdp.command("Emulation.setEmulatedMedia", { features: [{ name: "prefers-reduced-motion", value: "reduce" }] });
+  await evaluate(cdp, `globalThis.__prefQuizTest={type:'spotlight',skill:'A',code:'01'}; document.querySelector('#start-endless-button').click(); true`);
+  await waitFor(cdp, `document.querySelector('#game-screen:not([hidden])') && document.querySelector('#game-screen').dataset.quizType==='spotlight'`);
+  assert(await evaluate(cdp, `document.querySelector('#question-help').textContent.includes('端末のアクセシビリティ設定を検知') && !document.querySelector('#visual-stage animate')`), "動作軽減の出所説明または静止表示が不正です");
+  await evaluate(cdp, `document.querySelector('#quit-game-button').click(); delete globalThis.__prefQuizTest; true`);
+  await waitFor(cdp, `document.querySelector('#home-screen:not([hidden])')`);
+  await cdp.command("Emulation.setEmulatedMedia", { features: [] });
+
   await cdp.command("Network.setBlockedURLs", { urls: ["*prefecture_facts.json"] });
   await evaluate(cdp, `location.reload(); true`);
   await waitFor(cdp, `document.querySelector('#error-screen:not([hidden])')`, 10_000);

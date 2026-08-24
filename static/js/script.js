@@ -569,7 +569,7 @@ function setQuestionCopy(question) {
   }[question.type];
   if (["locate", "mapMemory"].includes(question.type)) copy[2] = `${question.prefecture.region}周辺の地図から選んでください。`;
   if (matchMedia("(prefers-reduced-motion: reduce)").matches && ["spotlight", "reveal", "flash", "mapFlash"].includes(question.type)) {
-    copy[2] = question.type === "mapFlash" ? "動きを減らす設定に合わせ、位置を静止表示しています。" : "動きを減らす設定に合わせ、静止した輪郭を表示しています。";
+    copy[2] = question.type === "mapFlash" ? "端末のアクセシビリティ設定を検知し、位置を静止表示しています。" : "端末のアクセシビリティ設定を検知し、輪郭を静止表示しています。";
   }
   [ui.type.textContent, ui.title.textContent, ui.help.textContent] = copy;
 }
