@@ -74,6 +74,8 @@ try {
   await cdp.command("Page.navigate", { url: `http://127.0.0.1:4173${base}` });
 
   await waitFor(cdp, `document.querySelector('#home-screen:not([hidden])')`, 10_000);
+  await waitFor(cdp, `document.activeElement === document.querySelector('#app')`);
+  assert(await evaluate(cdp, `getComputedStyle(document.querySelector('#app')).outlineStyle === 'none'`), "初期表示でアプリ本体に不要なフォーカス枠が出ています");
   assert(await evaluate(cdp, `document.querySelectorAll('#hero-map path').length === 47`), "ホーム地図が47都道府県ではありません");
   assert(await evaluate(cdp, `document.documentElement.scrollWidth <= document.documentElement.clientWidth`), "スマートフォン幅で横スクロールが発生しています");
   assert(await evaluate(cdp, `[...document.querySelectorAll('button')].filter(button => button.getClientRects().length).every(button => button.getBoundingClientRect().height >= 44)`), "操作ボタンが44px未満です");
