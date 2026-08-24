@@ -252,7 +252,9 @@ button.danger-button { color: var(--danger); border: 1px solid #e5b1ab; backgrou
   .screen.game-screen { padding-top: 16px; padding-bottom: 24px; }
   .game-hud { margin-bottom: 7px; }
   .timer-row { margin-bottom: 10px; }
-  .visual-stage { min-height: clamp(180px, 26dvh, 260px); margin: 10px 0; }
+  .visual-stage { height: clamp(160px, 22dvh, 220px); min-height: 0; margin: 8px 0; }
+  .visual-stage svg { min-height: 0; }
+  .visual-stage.nationwide-stage { height: clamp(220px, 30dvh, 260px); }
   .shape-option svg, .map-option svg { height: 68px; }
 }
 @media (max-width: 620px) {
