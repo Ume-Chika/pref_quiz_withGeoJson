@@ -35,7 +35,7 @@ export function recordAnswer(previous, { correct, timedOut, responseMs, now = Da
   item.averageMs = item.averageMs ? Math.round(item.averageMs * .7 + normalizedMs * .3) : normalizedMs;
   item.timeouts += timedOut ? 1 : 0;
   item.mastery = correct
-    ? Math.min(1, item.mastery + (1 - item.mastery) * (normalizedMs < 7000 ? .25 : .19))
+    ? Math.min(1, item.mastery + (1 - item.mastery) * .22)
     : item.mastery * (timedOut ? .5 : .62);
   item.nextDue = now + (correct ? INTERVALS[Math.min(item.streak - 1, INTERVALS.length - 1)] : 2 * 60e3);
   item.recent = [...item.recent, correct ? 1 : timedOut ? -1 : 0].slice(-8);
@@ -47,5 +47,6 @@ export function schedulingPriority(previous, { now = Date.now(), recentlyShown =
   const unseen = item.attempts ? 0 : 300;
   const overdue = item.nextDue && item.nextDue <= now ? Math.min(500, (now - item.nextDue) / 36e4 * 18 + 120) : 0;
   const weakness = (1 - item.mastery) * 240;
-  return unseen + overdue + weakness + (recentlyShown ? -800 : 0) + random * 90;
+  const hesitation = item.averageMs ? Math.max(0, item.averageMs - 7000) / 8000 * 45 : 0;
+  return unseen + overdue + weakness + hesitation + (recentlyShown ? -800 : 0) + random * 90;
 }

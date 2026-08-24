@@ -71,6 +71,7 @@ try {
   await waitFor(cdp, `document.querySelector('#home-screen:not([hidden])')`, 10_000);
   assert(await evaluate(cdp, `document.querySelectorAll('#hero-map path').length === 47`), "ホーム地図が47都道府県ではありません");
   assert(await evaluate(cdp, `!document.querySelector('#sound-setting').checked`), "効果音の初期値がOFFではありません");
+  assert(await evaluate(cdp, `document.querySelector('#volume-setting').disabled && document.querySelector('#volume-setting').value === '0.5'`), "音量の初期値が不正です");
   assert(await evaluate(cdp, `fetch('./sources.html').then(r => r.ok)`), "出典ページを取得できません");
 
   await evaluate(cdp, `localStorage.setItem('prefecture-minigame-v2', JSON.stringify({schema:2,settings:{sound:false,answerMode:'broken'},progress:{'01:A':{attempts:'bad',correct:99,mastery:4,recent:null}},highScore:'bad',recent:null})); location.reload(); true`);
@@ -89,7 +90,7 @@ try {
   await waitFor(cdp, `document.querySelector('#result-screen:not([hidden])')`);
   const state = await evaluate(cdp, `JSON.parse(localStorage.getItem('prefecture-minigame-v2'))`);
   assert(state.schema === 2, "保存スキーマが不正です");
-  assert(state.settings.sound === false && state.settings.answerMode === "confirm", "壊れた設定値を復旧できません");
+  assert(state.settings.sound === false && state.settings.volume === .5 && state.settings.answerMode === "confirm", "壊れた設定値を復旧できません");
   assert(Object.values(state.progress).reduce((sum, item) => sum + item.attempts, 0) === 10, "10問分の学習履歴を保存できません");
   assert(Object.values(state.progress).every((item) => Number.isFinite(item.mastery)), "習熟度に不正値があります");
 
@@ -98,6 +99,7 @@ try {
   await evaluate(cdp, `Math.random=()=>0.99; document.querySelector('#start-endless-button').click(); true`);
   await waitFor(cdp, `document.querySelector('#quiz-type').textContent === '地図記憶'`);
   assert(await evaluate(cdp, `document.querySelector('#timer-text').textContent === '記憶中' && document.querySelector('#submit-answer-button').hidden`), "地図記憶の待機表示または即時回答設定が不正です");
+  assert(await evaluate(cdp, `document.querySelectorAll('.map-prefecture[data-code]').length > 1`), "場所問題の地図が一択になっています");
   await new Promise((resolveWait) => setTimeout(resolveWait, 2200));
   await evaluate(cdp, `document.querySelector('.map-prefecture[data-code]').dispatchEvent(new MouseEvent('click',{bubbles:true}))`);
   await waitFor(cdp, `document.querySelector('#feedback-dialog').open`);
@@ -106,7 +108,7 @@ try {
   await evaluate(cdp, `document.querySelector('#result-home-button').click(); document.querySelector('#settings-button').click(); document.querySelector('#reset-data-button').click(); document.querySelector('#confirm-reset-button').click(); true`);
   await waitFor(cdp, `!document.querySelector('#settings-dialog').open`);
   const resetState = await evaluate(cdp, `JSON.parse(localStorage.getItem('prefecture-minigame-v2'))`);
-  assert(Object.keys(resetState.progress).length === 0 && resetState.settings.sound === false && resetState.settings.answerMode === "confirm", "全消去で初期状態へ戻りません");
+  assert(Object.keys(resetState.progress).length === 0 && resetState.settings.sound === false && resetState.settings.volume === .5 && resetState.settings.answerMode === "confirm", "全消去で初期状態へ戻りません");
   assert(errors.length === 0, `Chromeでエラーが発生しました: ${errors.join(" / ")}`);
   console.log("Chromeで10問、即時場所回答、結果、保存、全消去の確認に成功しました。");
 } finally {

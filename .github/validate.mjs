@@ -49,6 +49,10 @@ const firstCorrect = recordAnswer(blankProgress(), { correct: true, timedOut: fa
 if (firstCorrect.attempts !== 1 || firstCorrect.correct !== 1 || firstCorrect.streak !== 1 || firstCorrect.mastery <= 0 || firstCorrect.nextDue <= now) {
   throw new Error("正解時の学習記録更新が不正です");
 }
+const slowCorrect = recordAnswer(blankProgress(), { correct: true, timedOut: false, responseMs: 14000, now });
+if (slowCorrect.mastery !== firstCorrect.mastery || schedulingPriority(slowCorrect, { now, random: 0 }) <= schedulingPriority(firstCorrect, { now, random: 0 })) {
+  throw new Error("回答速度を習熟度と分離しつつ、出題優先度へ反映できていません");
+}
 const afterTimeout = recordAnswer(firstCorrect, { correct: false, timedOut: true, responseMs: 15000, now: now + 1000 });
 if (afterTimeout.correct !== 1 || afterTimeout.streak !== 0 || afterTimeout.timeouts !== 1 || afterTimeout.mastery >= firstCorrect.mastery) {
   throw new Error("時間切れ時の学習記録更新が不正です");
