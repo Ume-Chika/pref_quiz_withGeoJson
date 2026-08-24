@@ -36,7 +36,7 @@ let session = null;
 let studyMapZoom = 1;
 
 function freshSaved() {
-  return { schema: 2, settings: { sound: false, volume: .5, answerMode: "confirm", visualEffects: true }, progress: {}, highScore: 0, unlockedBasic: 0, recent: [] };
+  return { schema: 2, settings: { sound: false, volume: .5, answerMode: "confirm", visualEffects: true }, progress: {}, highScore: 0, unlockedBasic: 0, recent: [], pendingReviews: [] };
 }
 
 function loadSaved() {
@@ -70,6 +70,9 @@ function loadSaved() {
       progress,
       highScore: finiteNumber(parsed.highScore, 0, 0, 1e9),
       unlockedBasic: Math.max(inferredUnlock, Math.floor(finiteNumber(parsed.unlockedBasic, 0, 0, 47))),
+      pendingReviews: Array.isArray(parsed.pendingReviews) ? parsed.pendingReviews.filter((item) => item && /^(0[1-9]|[1-3]\d|4[0-7])$/.test(item.code) && SKILLS[item.skill]).slice(0, 20).map((item) => ({
+        code: item.code, skill: item.skill, type: typeof item.type === "string" ? item.type.slice(0, 40) : "", remaining: Math.floor(finiteNumber(item.remaining, 0, 0, 3))
+      })) : [],
       recent: Array.isArray(parsed.recent) ? parsed.recent.filter((item) => item && /^(0[1-9]|[1-3]\d|4[0-7])$/.test(item.code) && SKILLS[item.skill] && typeof item.type === "string").slice(0, 30).map((item) => ({
         code: item.code, skill: item.skill, type: item.type.slice(0, 40), correct: item.correct === true, timedOut: item.timedOut === true,
         newItem: item.newItem === true, at: finiteNumber(item.at, 0, 0, Date.now() + 86_400_000),
@@ -418,7 +421,9 @@ function chooseQuestion() {
   const dueRetryIndex = session.retries.findIndex((retry) => retry.dueAt <= session.answers.length + 1);
   if (dueRetryIndex >= 0) {
     const retry = session.retries.splice(dueRetryIndex, 1)[0];
-    return buildQuestion(prefectures.find((prefecture) => prefecture.code === retry.code), retry.skill, retry.type || "");
+    const question = buildQuestion(prefectures.find((prefecture) => prefecture.code === retry.code), retry.skill, retry.type || "");
+    question.pendingReview = retry;
+    return question;
   }
   const now = Date.now();
   const recentCodes = session.recentCodes.slice(-3);
@@ -430,7 +435,8 @@ function chooseQuestion() {
   const candidates = skills.flatMap((skill) => prefectures.map((prefecture) => {
     const item = getProgress(prefecture.code, skill);
     const basicReady = ["A", "B"].includes(skill) || hasBasicMastery(getProgress(prefecture.code, "A").mastery, getProgress(prefecture.code, "B").mastery);
-    const bucket = item.attempts && item.nextDue <= now ? 3 : item.attempts ? 1 : allowUnseen && basicReady ? 2 : 0;
+    const waiting = saved.pendingReviews.some((review) => review.code === prefecture.code && review.skill === skill && review.remaining > 0);
+    const bucket = waiting ? 0 : item.attempts && item.nextDue <= now ? 3 : item.attempts ? 1 : allowUnseen && basicReady ? 2 : 0;
     return { prefecture, skill, bucket, priority: schedulingPriority(item, { now, recentlyShown: recentCodes.includes(prefecture.code) }) };
   })).filter(({ bucket }) => bucket > 0);
   candidates.sort((a, b) => b.bucket - a.bucket || b.priority - a.priority);
@@ -885,12 +891,17 @@ function completeAnswer(answer, timedOut) {
   const selectedCode = prefectures.find((prefecture) => [prefecture.name, prefecture.capital, prefecture.dish].includes(answer))?.code || "";
   session.score += points;
   session.answers.push({ code: question.prefecture.code, skill: question.skill, type: question.type, correct, timedOut, responseMs, answer, selectedCode });
+  if (question.pendingReview) saved.pendingReviews = saved.pendingReviews.filter((review) => review.code !== question.prefecture.code || review.skill !== question.skill);
+  saved.pendingReviews.forEach((review) => { review.remaining = Math.max(0, review.remaining - 1); });
   updateLearning(question, correct, timedOut, responseMs, answer, selectedCode);
+  let retry = null;
   if (question.isNew && (question.type === "shapeMemory" || question.skill === "B")) {
-    session.retries.push({ code: question.prefecture.code, skill: question.skill, type: question.skill === "A" ? "silhouette" : "map", dueAt: session.answers.length + 4 });
+    retry = { code: question.prefecture.code, skill: question.skill, type: question.skill === "A" ? "silhouette" : "map" };
   } else if (!correct) {
-    session.retries.push({ code: question.prefecture.code, skill: question.skill, dueAt: session.answers.length + 4 });
+    retry = { code: question.prefecture.code, skill: question.skill, type: "" };
   }
+  if (retry) queueReview(retry);
+  persist();
   ui.combo.textContent = session.combo;
   ui.score.textContent = session.score;
   playTone(correct ? "correct" : "incorrect");
@@ -905,7 +916,13 @@ function updateLearning(question, correct, timedOut, responseMs, answer, selecte
   saved.progress[key] = item;
   saved.recent.unshift({ code: question.prefecture.code, skill: question.skill, type: question.type, correct, timedOut, newItem: !previous.attempts, at: Date.now(), answer, selectedCode });
   saved.recent = saved.recent.slice(0, 30);
-  persist();
+}
+
+function queueReview(review) {
+  saved.pendingReviews = saved.pendingReviews.filter((item) => item.code !== review.code || item.skill !== review.skill);
+  saved.pendingReviews.push({ ...review, remaining: 3 });
+  session.retries = session.retries.filter((item) => item.code !== review.code || item.skill !== review.skill);
+  session.retries.push({ ...review, dueAt: session.answers.length + 4 });
 }
 
 function questionEvidence(type, correct = true) {
@@ -989,7 +1006,7 @@ function nextAfterFeedback() {
 
 function startGame(limit) {
   session = {
-    limit, answers: [], retries: [],
+    limit, answers: [], retries: saved.pendingReviews.map((review) => ({ ...review, dueAt: review.remaining + 1 })),
     recentCodes: saved.recent.slice(0, 3).reverse().map((item) => item.code),
     recentTypes: saved.recent.slice(0, 2).reverse().map((item) => item.type),
     score: 0, combo: 0, maxCombo: 0, answered: false, current: null, deadline: 0, startedAt: 0,
@@ -1003,14 +1020,6 @@ function finishGame() {
   questionToken += 1;
   if (ui.feedback.open) ui.feedback.close();
   if (!session?.answers.length) { session = null; renderHome(); showScreen(ui.home); return; }
-  if (session.retries.length) {
-    const now = Date.now();
-    session.retries.forEach(({ code, skill }) => {
-      const item = getProgress(code, skill);
-      if (item.attempts) saved.progress[progressKey(code, skill)] = { ...item, nextDue: Math.min(item.nextDue, now) };
-    });
-    persist();
-  }
   const correct = session.answers.filter((answer) => answer.correct).length;
   const timeouts = session.answers.filter((answer) => answer.timedOut).length;
   const isRecord = session.limit === 10 && session.answers.length === 10 && session.score > saved.highScore;
