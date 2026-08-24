@@ -104,7 +104,7 @@ if (schedulingPriority(overdue, { now, random: 0 }) <= schedulingPriority(blankP
 const geoPath = "static/data/low_prefectures.geojson";
 const geoBytes = readFileSync(geoPath);
 const geoHash = createHash("sha256").update(geoBytes).digest("hex");
-if (geoHash !== "b1c6c66f04a0a117174ee77174684d9e233ca91cdf87963d89a5e7910ed263fb") {
+if (geoHash !== "8b9171fb19a9d51d113361a8b93aa46470b5b11055195040485a8d8e68b1b5ed") {
   throw new Error("GeoJSONが出典文書に記録した版と一致しません");
 }
 const geo = JSON.parse(geoBytes);

@@ -83,6 +83,16 @@ try {
   assert(await evaluate(cdp, `document.querySelector('#volume-setting').disabled && document.querySelector('#volume-setting').value === '0.5'`), "音量の初期値が不正です");
   assert(await evaluate(cdp, `fetch('./sources.html').then(r => r.ok)`), "出典ページを取得できません");
 
+  await cdp.command("Emulation.setDeviceMetricsOverride", { width: 1366, height: 768, deviceScaleFactor: 1, mobile: false });
+  await evaluate(cdp, `globalThis.__prefQuizTest={type:'silhouetteReverse',skill:'A',code:'01'}; document.querySelector('#start-endless-button').click(); true`);
+  await waitFor(cdp, `document.querySelector('#game-screen:not([hidden])') && document.querySelectorAll('.shape-option').length === 4`);
+  assert(await evaluate(cdp, `[...document.querySelectorAll('.shape-option'), document.querySelector('#submit-answer-button')].every(item => item.getBoundingClientRect().bottom <= innerHeight)`), "PCの短い画面で選択肢または決定ボタンが表示範囲に収まりません");
+  await evaluate(cdp, `globalThis.__nativeConfirm=window.confirm; window.confirm=()=>true; document.querySelector('#game-quit-button').click(); true`);
+  await waitFor(cdp, `document.querySelector('#result-screen:not([hidden])')`);
+  await evaluate(cdp, `window.confirm=globalThis.__nativeConfirm; delete globalThis.__nativeConfirm; delete globalThis.__prefQuizTest; document.querySelector('#result-home-button').click(); true`);
+  await waitFor(cdp, `document.querySelector('#home-screen:not([hidden])')`);
+  await cdp.command("Emulation.clearDeviceMetricsOverride");
+
   await cdp.command("Network.setBlockedURLs", { urls: ["*prefecture_facts.json"] });
   await evaluate(cdp, `location.reload(); true`);
   await waitFor(cdp, `document.querySelector('#error-screen:not([hidden])')`, 10_000);
