@@ -42,8 +42,14 @@ function loadSaved() {
     const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY));
     if (!parsed || typeof parsed !== "object" || parsed.schema !== 2) return freshSaved();
     const progress = {};
+    const now = Date.now();
     for (const [key, value] of Object.entries(parsed.progress || {})) {
-      if (/^(0[1-9]|[1-3]\d|4[0-7]):[A-E]$/.test(key)) progress[key] = normalizeProgress(value);
+      if (/^(0[1-9]|[1-3]\d|4[0-7]):[A-E]$/.test(key)) {
+        const item = normalizeProgress(value);
+        item.lastSeen = Math.min(item.lastSeen, now);
+        item.nextDue = Math.min(item.nextDue, now + 30 * 86_400_000);
+        progress[key] = item;
+      }
     }
     const inferredUnlock = Object.entries(progress).some(([key, item]) => key.endsWith(":E") && item.attempts) ? 15
       : Object.entries(progress).some(([key, item]) => key.endsWith(":D") && item.attempts) ? 8
@@ -473,8 +479,8 @@ function buildQuestion(prefecture, skill, forcedType = "") {
 }
 
 function recentConfusion(target, skill) {
-  const record = saved.recent.find((item) => item.code === target.code && item.skill === skill && !item.correct && item.selectedCode && item.selectedCode !== target.code);
-  return record ? prefectures.find((item) => item.code === record.selectedCode) : null;
+  const latest = saved.recent.find((item) => item.code === target.code && item.skill === skill);
+  return latest && !latest.correct && latest.selectedCode && latest.selectedCode !== target.code ? prefectures.find((item) => item.code === latest.selectedCode) : null;
 }
 
 function nameChoices(target, mastery, strategy = "geo", skill = "") {
@@ -835,7 +841,7 @@ function completeAnswer(answer, timedOut) {
   updateLearning(question, correct, timedOut, responseMs, answer, selectedCode);
   if (question.isNew && (question.type === "shapeMemory" || question.skill === "B")) {
     session.retries.push({ code: question.prefecture.code, skill: question.skill, type: question.skill === "A" ? "silhouette" : "map", dueAt: session.answers.length + 4 });
-  } else if (!correct && questionEvidence(question.type) === 1) {
+  } else if (!correct && questionEvidence(question.type, false) === 1) {
     session.retries.push({ code: question.prefecture.code, skill: question.skill, dueAt: session.answers.length + 4 });
   }
   ui.combo.textContent = session.combo;
@@ -846,7 +852,7 @@ function completeAnswer(answer, timedOut) {
 
 function updateLearning(question, correct, timedOut, responseMs, answer, selectedCode) {
   const key = progressKey(question.prefecture.code, question.skill);
-  const evidence = questionEvidence(question.type);
+  const evidence = questionEvidence(question.type, correct);
   const previous = getProgress(question.prefecture.code, question.skill);
   const item = recordAnswer(previous, { correct, timedOut, responseMs, evidence });
   saved.progress[key] = item;
@@ -855,8 +861,8 @@ function updateLearning(question, correct, timedOut, responseMs, answer, selecte
   persist();
 }
 
-function questionEvidence(type) {
-  return ["shapeMemory", "mapMemory", "mapFlash"].includes(type) ? .4 : ["mapShape", "shapeLocate", "capitalMap", "capitalShape", "capitalLocate", "regionMap", "shapeRegion", "capitalRegion", "dishMap", "dishShapeChoice", "dishLocate"].includes(type) ? .65 : 1;
+function questionEvidence(type, correct = true) {
+  return ["shapeMemory", "mapMemory", "mapFlash"].includes(type) ? correct ? .4 : 1 : ["mapShape", "shapeLocate", "capitalMap", "capitalShape", "capitalLocate", "regionMap", "shapeRegion", "capitalRegion", "dishMap", "dishShapeChoice", "dishLocate"].includes(type) ? .65 : 1;
 }
 
 function showFeedback(question, correct, timedOut, points, answer) {
@@ -867,7 +873,7 @@ function showFeedback(question, correct, timedOut, points, answer) {
   ui.feedbackDetail.textContent = feedbackDetail(question);
   renderFeedbackComparison(question, answer, correct, timedOut);
   const canRetryThisRound = !session.limit || session.answers.length + 3 < session.limit;
-  ui.feedbackPoints.textContent = points ? `+${points}点${session.combo >= 2 ? `・${session.combo}コンボ` : ""}` : canRetryThisRound && questionEvidence(question.type) === 1 ? "3問はさんで、もう一度出題します" : "次回、優先して復習します";
+  ui.feedbackPoints.textContent = points ? `+${points}点${session.combo >= 2 ? `・${session.combo}コンボ` : ""}` : canRetryThisRound && questionEvidence(question.type, false) === 1 ? "3問はさんで、もう一度出題します" : "次回、優先して復習します";
   $("next-question-button").textContent = session.limit && session.answers.length >= session.limit ? "結果を見る" : "次の問題";
   ui.feedback.showModal();
 }
