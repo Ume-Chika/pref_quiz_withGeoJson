@@ -62,7 +62,7 @@ export function recordAnswer(previous, { correct, timedOut, responseMs, evidence
   item.mastery = correct
     ? Math.min(1, item.mastery + (1 - item.mastery) * .22 * weight)
     : item.mastery * (1 - (timedOut ? .5 : .38) * weight);
-  item.nextDue = now + (correct ? weight < .5 ? INTERVALS[0] : INTERVALS[Math.max(0, Math.min(item.streak - 1, INTERVALS.length - 1))] : weight < 1 ? INTERVALS[Math.max(0, Math.min(item.streak - 1, INTERVALS.length - 1))] : 2 * 60e3);
+  item.nextDue = now + (correct ? weight < .5 ? INTERVALS[0] : INTERVALS[Math.max(0, Math.min(item.streak - 1, INTERVALS.length - 1))] : 2 * 60e3);
   item.recent = [...item.recent, correct ? 1 : timedOut ? -1 : 0].slice(-8);
   return item;
 }
