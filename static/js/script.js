@@ -407,7 +407,7 @@ function setQuestionCopy(question) {
     locateJapan: ["全国地図タップ", `${question.prefecture.name}はどこ？`, "日本全体の地図で、県の中心付近をタップしてください。"],
     mapMemory: ["地図記憶", `${question.prefecture.name}はどこ？`, "最初の2秒だけ正解の場所が光ります。"],
     mapFlash: ["地図フラッシュ", "さっき光った都道府県はどこ？", "位置を短時間で記憶してください。"],
-    compass: ["方角", `${question.reference.name}から見て${question.prefecture.name}はどちら？`, "中心位置を基準にした、おおよその方角です。"],
+    compass: ["方角", `${question.reference?.name || "基準の県"}から見て${question.prefecture.name}はどちら？`, "中心位置を基準にした、おおよその方角です。"],
     capital: ["県庁所在地", `${question.prefecture.name}の県庁所在地は？`, "正しい市区を選んでください。"],
     capitalReverse: ["逆・県庁所在地", `${question.prefecture.capital}が県庁所在地なのは？`, "都道府県名を選んでください。"],
     capitalMap: ["地図＋県庁所在地", "地図で光る県の県庁所在地は？", "位置と県庁所在地を結びつけましょう。"],
