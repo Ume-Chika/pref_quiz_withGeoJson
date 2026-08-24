@@ -115,10 +115,12 @@ try {
   assert(await evaluate(cdp, `document.querySelectorAll('#visual-stage animate').length===2`), "初期状態でスポットライトが動きません");
   await evaluate(cdp, `document.querySelector('#quit-game-button').click(); document.querySelector('#settings-button').click(); document.querySelector('#visual-effects-setting').click(); document.querySelector('#settings-dialog .close-button').click(); true`);
   await waitFor(cdp, `document.querySelector('#home-screen:not([hidden])')`);
-  await evaluate(cdp, `document.querySelector('#start-endless-button').click(); true`);
-  await waitFor(cdp, `document.querySelector('#game-screen:not([hidden])') && document.querySelector('#game-screen').dataset.quizType==='spotlight'`);
-  assert(await evaluate(cdp, `document.querySelector('#question-help').textContent.includes('設定で視覚効果がOFF') && !document.querySelector('#visual-stage animate') && document.documentElement.classList.contains('reduce-motion')`), "視覚効果OFFの説明または静止表示が不正です");
-  await evaluate(cdp, `document.querySelector('#quit-game-button').click(); delete globalThis.__prefQuizTest; document.querySelector('#settings-button').click(); document.querySelector('#visual-effects-setting').click(); document.querySelector('#settings-dialog .close-button').click(); true`);
+  await evaluate(cdp, `(() => { delete globalThis.__prefQuizTest; const item={attempts:1,correct:0,streak:0,lastSeen:1,averageMs:5000,timeouts:0,nextDue:1,mastery:.2,recent:[0]}; localStorage.setItem('prefecture-minigame-v2',JSON.stringify({schema:2,settings:{sound:false,volume:.5,answerMode:'confirm',visualEffects:false},progress:{'01:A':item},highScore:0,recent:[]})); location.reload(); return true; })()`);
+  await waitFor(cdp, `document.querySelector('#home-screen:not([hidden])')`, 10_000);
+  await evaluate(cdp, `globalThis.__nativeRandom=Math.random; Math.random=()=>.999999; document.querySelector('#start-endless-button').click(); true`);
+  await waitFor(cdp, `document.querySelector('#game-screen:not([hidden])')`);
+  assert(await evaluate(cdp, `document.querySelector('#game-screen').dataset.quizType==='silhouette' && !document.querySelector('#visual-stage animate') && document.documentElement.classList.contains('reduce-motion')`), "視覚効果OFFでも動きのある問題が通常選択されます");
+  await evaluate(cdp, `Math.random=globalThis.__nativeRandom; delete globalThis.__nativeRandom; document.querySelector('#quit-game-button').click(); document.querySelector('#settings-button').click(); document.querySelector('#visual-effects-setting').click(); document.querySelector('#settings-dialog .close-button').click(); true`);
   await waitFor(cdp, `document.querySelector('#home-screen:not([hidden])')`);
 
   await cdp.command("Network.setBlockedURLs", { urls: ["*prefecture_facts.json"] });
@@ -252,7 +254,11 @@ try {
     if (locationTypes.includes(type)) {
       const expectedPaths = nationwideLocationTypes.includes(type) ? 47 : 7;
       assert(await evaluate(cdp, `document.querySelectorAll('.map-prefecture[data-code]').length === ${expectedPaths}`), `${type}: 地図の選択肢数が不正です`);
-      if (nationwideLocationTypes.includes(type) && type !== "shapeLocate") assert(await evaluate(cdp, `(() => { const svg=document.querySelector('#visual-stage svg'); const tokyo=svg.querySelector('[data-code="13"]'); const unselected=svg.querySelector('[data-code="12"]'); const point=new DOMPoint(Number(tokyo.dataset.centerX),Number(tokyo.dataset.centerY)).matrixTransform(svg.getScreenCTM()); svg.dispatchEvent(new MouseEvent('click',{bubbles:true,clientX:point.x,clientY:point.y})); const selectedStyle=getComputedStyle(tokyo); const plainStyle=getComputedStyle(unselected); return tokyo.classList.contains('selected') && selectedStyle.fill!==plainStyle.fill && parseFloat(selectedStyle.strokeWidth)>parseFloat(plainStyle.strokeWidth) && !document.querySelector('#submit-answer-button').disabled; })()`), `${type}: 全国地図の余白タップ後に選択表示を維持できません`);
+      if (nationwideLocationTypes.includes(type) && type !== "shapeLocate") {
+        await evaluate(cdp, `(() => { const svg=document.querySelector('#visual-stage svg'); const tokyo=svg.querySelector('[data-code="13"]'); const point=new DOMPoint(Number(tokyo.dataset.centerX),Number(tokyo.dataset.centerY)).matrixTransform(svg.getScreenCTM()); svg.dispatchEvent(new MouseEvent('click',{bubbles:true,clientX:point.x,clientY:point.y})); return true; })()`);
+        await new Promise((resolveWait) => setTimeout(resolveWait, 220));
+        assert(await evaluate(cdp, `(() => { const tokyo=document.querySelector('#visual-stage [data-code="13"]'); tokyo.style.transition='none'; const selected=tokyo.classList.contains('selected'); const selectedFill=getComputedStyle(tokyo).fill; const selectedStroke=parseFloat(getComputedStyle(tokyo).strokeWidth); tokyo.classList.remove('selected'); const plainFill=getComputedStyle(tokyo).fill; const plainStroke=parseFloat(getComputedStyle(tokyo).strokeWidth); tokyo.classList.add('selected'); return selected && selectedFill!==plainFill && selectedStroke>plainStroke && !document.querySelector('#submit-answer-button').disabled; })()`), `${type}: 全国地図の余白タップ後に選択表示を維持できません`);
+      }
     }
     if (["shapeMemory", "flash", "mapFlash", "mapMemory", "shapeLocate"].includes(type)) {
       assert(await evaluate(cdp, `(() => { document.dispatchEvent(new KeyboardEvent('keydown',{key:'1',bubbles:true})); return !document.querySelector('input[name="answer"]:checked') && !document.querySelector('#feedback-dialog').open; })()`), `${type}: 記憶中にキー回答できてしまいます`);
