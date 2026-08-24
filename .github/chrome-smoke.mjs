@@ -40,22 +40,24 @@ async function main() {
 await new Promise((resolveListen) => server.listen(4173, "127.0.0.1", resolveListen));
 const profile = mkdtempSync(join(tmpdir(), "pref-quiz-chrome-"));
 const chrome = spawn(process.env.CHROME_BIN || "google-chrome", [
-  "--headless=new",
+  "--headless",
   "--no-sandbox",
   "--disable-gpu",
   "--disable-dev-shm-usage",
-  "--remote-debugging-port=9222",
+  "--remote-debugging-port=0",
   `--user-data-dir=${profile}`,
   "--window-size=390,844",
   "about:blank",
-], { stdio: "ignore" });
+], { stdio: ["ignore", "ignore", "pipe"] });
 
 let cdp;
 try {
+  const browserSocket = await devToolsSocket(chrome, 30_000);
+  const debugPort = new URL(browserSocket).port;
   const target = await retry(async () => {
-    const targets = await fetch("http://127.0.0.1:9222/json/list").then((response) => response.json());
+    const targets = await fetch(`http://127.0.0.1:${debugPort}/json/list`).then((response) => response.json());
     return targets.find((item) => item.type === "page");
-  }, 10_000);
+  }, 30_000);
   cdp = await Cdp.connect(target.webSocketDebuggerUrl);
   await cdp.command("Runtime.enable");
   await cdp.command("Page.enable");
@@ -114,6 +116,25 @@ try {
   await new Promise((resolveClose) => server.close(resolveClose));
   rmSync(profile, { recursive: true, force: true });
 }
+}
+
+function devToolsSocket(chrome, timeout) {
+  return new Promise((resolveSocket, reject) => {
+    let log = "";
+    const timer = setTimeout(() => reject(new Error(`Chromeの起動がタイムアウトしました\n${log}`)), timeout);
+    const finish = (callback, value) => {
+      clearTimeout(timer);
+      callback(value);
+    };
+    chrome.once("error", (error) => finish(reject, error));
+    chrome.once("exit", (code, signal) => finish(reject, new Error(`Chromeが起動前に終了しました (${code ?? signal})\n${log}`)));
+    chrome.stderr.setEncoding("utf8");
+    chrome.stderr.on("data", (chunk) => {
+      log += chunk;
+      const match = log.match(/DevTools listening on (ws:\/\/\S+)/);
+      if (match) finish(resolveSocket, match[1]);
+    });
+  });
 }
 
 function assert(value, message) {
