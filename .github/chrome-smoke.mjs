@@ -110,6 +110,8 @@ try {
   }
 
   await waitFor(cdp, `document.querySelector('#result-screen:not([hidden])')`);
+  const resultSummary = await evaluate(cdp, `({score:Number(document.querySelector('#result-score').textContent),correct:document.querySelector('#result-correct').textContent,rate:document.querySelector('#result-rate').textContent,combo:document.querySelector('#result-combo').textContent,timeouts:document.querySelector('#result-timeouts').textContent,review:document.querySelector('#result-review').textContent,record:!document.querySelector('#result-record').hidden})`);
+  assert(resultSummary.score > 0 && resultSummary.correct === "10/10" && resultSummary.rate === "100%" && resultSummary.combo === "10" && resultSummary.timeouts === "0" && resultSummary.review.length > 5 && resultSummary.record, "10問結果画面の集計またはハイスコア表示が不正です");
   await evaluate(cdp, `Math.random=globalThis.__nativeRandom; delete globalThis.__nativeRandom; true`);
   const state = await evaluate(cdp, `JSON.parse(localStorage.getItem('prefecture-minigame-v2'))`);
   assert(state.schema === 2, "保存スキーマが不正です");
@@ -119,11 +121,12 @@ try {
   assert(Object.values(state.progress).filter((item) => item.attempts > 0).length === 4, "10問で新規項目がちょうど4件に制限されていません");
   assert(state.recent.slice(0, 10).filter((item) => item.newItem).length === 4, "新規項目の履歴を保存できません");
   assert(Object.values(state.progress).every((item) => Number.isFinite(item.mastery)), "習熟度に不正値があります");
+  assert(state.highScore === resultSummary.score, "10問のハイスコアを保存できません");
 
   await evaluate(cdp, `(() => { const state=JSON.parse(localStorage.getItem('prefecture-minigame-v2')); state.settings.answerMode='instant'; localStorage.setItem('prefecture-minigame-v2',JSON.stringify(state)); location.reload(); return true; })()`);
   await waitFor(cdp, `document.querySelector('#home-screen:not([hidden])')`, 10_000);
   const reloadedState = await evaluate(cdp, `JSON.parse(localStorage.getItem('prefecture-minigame-v2'))`);
-  assert(Object.values(reloadedState.progress).reduce((sum, item) => sum + item.attempts, 0) === 10 && reloadedState.recent.length === 10, "再読込後に学習履歴を保持できません");
+  assert(Object.values(reloadedState.progress).reduce((sum, item) => sum + item.attempts, 0) === 10 && reloadedState.recent.length === 10 && reloadedState.highScore === resultSummary.score && Number(await evaluate(cdp, `document.querySelector('#high-score').textContent`)) === resultSummary.score, "再読込後に学習履歴またはハイスコアを保持できません");
   await evaluate(cdp, `globalThis.__prefQuizTest={type:'mapMemory',skill:'B',code:'01'}; document.querySelector('#start-endless-button').click(); true`);
   await waitFor(cdp, `document.querySelector('#quiz-type').textContent === '地図記憶'`);
   assert(await evaluate(cdp, `document.querySelector('#timer-text').textContent === '記憶中' && document.querySelector('#submit-answer-button').hidden`), "地図記憶の待機表示または即時回答設定が不正です");
