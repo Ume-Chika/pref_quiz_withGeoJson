@@ -60,7 +60,7 @@ static/data/        公開用の問題・地理データ
 
 ## 開発と公開
 
-`main` は公開可能な状態に保ち、変更は `codex/` で始まるブランチからPull Requestにします。GitHub ActionsはJavaScript構文、ローカル参照、GeoJSON、静的サイト構成を検査し、`main` の成功時にGitHub Pagesへ公開します。
+`main` は公開可能な状態に保ち、変更は `codex/` で始まるブランチからPull Requestにします。GitHub ActionsはJavaScript構文、ローカル参照、GeoJSON、Chrome操作、LighthouseモバイルPerformance 90以上を検査し、`main` の成功時にGitHub Pagesへ公開します。LighthouseレポートはActionsの成果物から確認できます。
 
 ローカルでも同じ主要検査を実行できます。
 

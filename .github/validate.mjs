@@ -14,6 +14,7 @@ const required = [
   "static/data/prefecture_facts.json",
   ".github/chrome-smoke.mjs",
   ".github/workflows/pages.yml",
+  "lighthouserc.json",
   "README.md",
   "LICENSE",
   "DATA_SOURCES.md",
