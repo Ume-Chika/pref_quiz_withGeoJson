@@ -56,7 +56,8 @@ button:focus-visible, select:focus-visible, input:focus-visible { outline: 3px s
 .summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 14px 0; }
 .summary-card { padding: 17px; border: 1px solid var(--line); border-radius: 16px; background: rgba(255, 253, 248, .72); }
 .summary-card strong { font-size: clamp(1.55rem, 5vw, 2.15rem); line-height: 1; font-variant-numeric: tabular-nums; }
-.summary-card > span:last-child { margin-left: 3px; color: var(--muted); font-size: .83rem; }
+.summary-card > strong + span { margin-left: 3px; color: var(--muted); font-size: .83rem; }
+.summary-card small { display: block; margin-top: 5px; color: var(--muted); font-size: .65rem; }
 .summary-label { display: block; margin-bottom: 8px; color: var(--muted); font-size: .75rem; font-weight: 700; }
 .start-panel { display: grid; gap: 10px; margin: 26px auto 42px; max-width: 520px; }
 button.primary-button, button.secondary-button, button.danger-button { min-height: 50px; padding: 12px 22px; border-radius: 14px; font-weight: 850; cursor: pointer; transition: transform .15s ease, box-shadow .15s ease, background .15s ease; }
@@ -156,6 +157,13 @@ kbd { padding: 1px 5px; border: 1px solid #c4cac5; border-bottom-width: 2px; bor
 .review-card h2 { font-size: .9rem; }
 .review-card p { color: var(--accent-dark); font-size: .78rem; }
 .review-icon { display: grid; flex: 0 0 40px; height: 40px; place-items: center; color: white; border-radius: 50%; background: var(--accent); font-size: 1.3rem; }
+.result-mistakes { margin: -8px 0 20px; text-align: left; }
+.result-mistakes h2 { margin: 0 0 8px; font-size: .88rem; }
+.result-mistake-list { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+.result-mistake-card { display: grid; grid-template-columns: 58px 1fr; gap: 8px; align-items: center; min-width: 0; padding: 8px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+.result-mistake-card svg { width: 58px; height: 46px; }
+.result-mistake-card strong, .result-mistake-card small { display: block; }
+.result-mistake-card small { overflow: hidden; color: var(--muted); font-size: .67rem; text-overflow: ellipsis; white-space: nowrap; }
 .result-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .app-footer { display: flex; flex-wrap: wrap; gap: 4px 12px; justify-content: center; padding: 18px 0 28px; color: var(--muted); border-top: 1px solid rgba(29,41,36,.08); font-size: .67rem; text-align: center; }
 .app-footer a { color: var(--accent-dark); }
@@ -294,6 +302,7 @@ button.danger-button { color: var(--danger); border: 1px solid #e5b1ab; backgrou
   .result-grid article:nth-child(2) { border-right: 0; }
   .result-grid article:nth-child(-n+2) { border-bottom: 1px solid var(--line); }
   .result-actions { grid-template-columns: 1fr; }
+  .result-mistake-list { grid-template-columns: 1fr; }
   .feedback-dialog { padding: 18px; }
   .feedback-dialog h2 { font-size: 1.6rem; }
   .feedback-shape-card { padding: 7px; }

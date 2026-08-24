@@ -183,8 +183,8 @@ try {
   }
 
   await waitFor(cdp, `document.querySelector('#result-screen:not([hidden])')`);
-  const resultSummary = await evaluate(cdp, `({score:Number(document.querySelector('#result-score').textContent),correct:document.querySelector('#result-correct').textContent,rate:document.querySelector('#result-rate').textContent,combo:document.querySelector('#result-combo').textContent,timeouts:document.querySelector('#result-timeouts').textContent,review:document.querySelector('#result-review').textContent,record:!document.querySelector('#result-record').hidden})`);
-  assert(resultSummary.score > 0 && resultSummary.correct === "10/10" && resultSummary.rate === "100%" && resultSummary.combo === "10" && resultSummary.timeouts === "0" && resultSummary.review.length > 5 && resultSummary.record, "10問結果画面の集計またはハイスコア表示が不正です");
+  const resultSummary = await evaluate(cdp, `({score:Number(document.querySelector('#result-score').textContent),correct:document.querySelector('#result-correct').textContent,rate:document.querySelector('#result-rate').textContent,combo:document.querySelector('#result-combo').textContent,timeouts:document.querySelector('#result-timeouts').textContent,review:document.querySelector('#result-review').textContent,record:!document.querySelector('#result-record').hidden,mistakesHidden:document.querySelector('#result-mistakes').hidden,learning:document.querySelector('#learning-count').textContent})`);
+  assert(resultSummary.score > 0 && resultSummary.correct === "10/10" && resultSummary.rate === "100%" && resultSummary.combo === "10" && resultSummary.timeouts === "0" && resultSummary.review.includes("復習") && resultSummary.record && resultSummary.mistakesHidden && /\d+県に挑戦済み/.test(resultSummary.learning), "10問結果画面の集計、次回復習、途中進捗またはハイスコア表示が不正です");
   await evaluate(cdp, `Math.random=globalThis.__nativeRandom; delete globalThis.__nativeRandom; true`);
   const state = await evaluate(cdp, `JSON.parse(localStorage.getItem('prefecture-minigame-v2'))`);
   assert(state.schema === 2, "保存スキーマが不正です");
@@ -349,7 +349,10 @@ try {
   await evaluate(cdp, `document.querySelector('.map-prefecture[data-code="02"]').dispatchEvent(new MouseEvent('click',{bubbles:true})); document.querySelector('#submit-answer-button').click(); true`);
   await waitFor(cdp, `document.querySelector('#feedback-dialog').open`);
   assert(await evaluate(cdp, `(() => { const cards=[...document.querySelectorAll('#feedback-comparison .feedback-shape-card')]; const recent=JSON.parse(localStorage.getItem('prefecture-minigame-v2')).recent[0]; return document.querySelector('#feedback-kicker').textContent==='MISS' && cards.length===2 && cards[0].dataset.code==='02' && cards[1].dataset.code==='01' && cards.every(card=>card.querySelectorAll('.map-prefecture').length===47&&card.querySelector('.map-prefecture.target[data-map-code="'+card.dataset.code+'"]')) && recent.answer==='青森県' && recent.selectedCode==='02'; })()`), "誤答時に選択県と正解県の形・周辺位置を比較できません");
-  await evaluate(cdp, `document.querySelector('#quit-game-button').click(); document.querySelector('#result-home-button').click(); globalThis.__prefQuizTest={type:'map',skill:'B',code:'01'}; document.querySelector('#start-endless-button').click(); true`);
+  await evaluate(cdp, `document.querySelector('#quit-game-button').click(); true`);
+  await waitFor(cdp, `document.querySelector('#result-screen:not([hidden])')`);
+  assert(await evaluate(cdp, `(() => { const card=document.querySelector('#result-mistake-list .result-mistake-card'); return !document.querySelector('#result-mistakes').hidden && document.querySelectorAll('#result-mistake-list .result-mistake-card').length===1 && card.textContent.includes('北海道') && card.textContent.includes('位置') && document.querySelector('#replay-button').textContent.includes('苦手'); })()`), "結果画面で今回の誤答県を形とともに振り返れません");
+  await evaluate(cdp, `document.querySelector('#result-home-button').click(); globalThis.__prefQuizTest={type:'map',skill:'B',code:'01'}; document.querySelector('#start-endless-button').click(); true`);
   await waitFor(cdp, `document.querySelector('#game-screen').dataset.quizType==='map'`);
   assert(await evaluate(cdp, `[...document.querySelectorAll('input[name="answer"]')].some(input=>input.value==='青森県')`), "実際に混同した県を次回の位置問題へ再提示できません");
   await evaluate(cdp, `document.querySelector('#quit-game-button').click(); delete globalThis.__prefQuizTest; true`);
