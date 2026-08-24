@@ -16,6 +16,10 @@ export function skillsForMastery(mastered) {
   return ["A", "B", ...(mastered >= 3 ? ["C"] : []), ...(mastered >= 8 ? ["D"] : []), ...(mastered >= 15 ? ["E"] : [])];
 }
 
+export function canUseIntegratedMode(targetMastery, prerequisiteMastery) {
+  return targetMastery >= .55 && prerequisiteMastery >= .45;
+}
+
 export function compassVector(target, reference) {
   const meanLatitude = (target[1] + reference[1]) / 2 * Math.PI / 180;
   const dx = (target[0] - reference[0]) * Math.cos(meanLatitude);
@@ -47,14 +51,14 @@ export function recordAnswer(previous, { correct, timedOut, responseMs, evidence
   const weight = Math.max(.1, Math.min(1, evidence));
   item.attempts += 1;
   item.correct += correct ? 1 : 0;
-  item.streak = correct ? (weight === 1 ? item.streak + 1 : item.streak) : 0;
+  item.streak = correct ? (weight === 1 ? item.streak + 1 : item.streak) : weight < 1 ? Math.max(0, item.streak - 1) : 0;
   item.lastSeen = now;
   item.averageMs = item.averageMs ? Math.round(item.averageMs * .7 + normalizedMs * .3) : normalizedMs;
   item.timeouts += timedOut ? 1 : 0;
   item.mastery = correct
     ? Math.min(1, item.mastery + (1 - item.mastery) * .22 * weight)
-    : item.mastery * (timedOut ? .5 : .62);
-  item.nextDue = now + (correct ? weight < 1 ? INTERVALS[0] : INTERVALS[Math.max(0, Math.min(item.streak - 1, INTERVALS.length - 1))] : 2 * 60e3);
+    : item.mastery * (1 - (timedOut ? .5 : .38) * weight);
+  item.nextDue = now + (correct ? weight < .5 ? INTERVALS[0] : INTERVALS[Math.max(0, Math.min(item.streak - 1, INTERVALS.length - 1))] : weight < 1 ? INTERVALS[Math.max(0, Math.min(item.streak - 1, INTERVALS.length - 1))] : 2 * 60e3);
   item.recent = [...item.recent, correct ? 1 : timedOut ? -1 : 0].slice(-8);
   return item;
 }
