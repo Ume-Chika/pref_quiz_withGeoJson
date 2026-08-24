@@ -90,7 +90,12 @@ try {
   await evaluate(cdp, `globalThis.__nativeRandom=Math.random; Math.random=()=>0; document.querySelector('#start-ten-button').click()`);
 
   for (let question = 1; question <= 10; question++) {
-    await waitFor(cdp, `document.querySelector('#game-screen:not([hidden])') && document.querySelectorAll('input[name="answer"]').length === 4`);
+    try {
+      await waitFor(cdp, `document.querySelector('#game-screen:not([hidden])') && document.querySelectorAll('input[name="answer"]').length === 4`);
+    } catch (error) {
+      const state = await evaluate(cdp, `({gameHidden:document.querySelector('#game-screen').hidden,homeHidden:document.querySelector('#home-screen').hidden,errorHidden:document.querySelector('#error-screen').hidden,type:document.querySelector('#game-screen').dataset.quizType,inputs:document.querySelectorAll('input[name="answer"]').length,title:document.querySelector('#question-title').textContent,error:document.querySelector('#error-message').textContent})`);
+      throw new Error(`問題${question}の表示待ちに失敗: ${JSON.stringify(state)} / ${errors.join(" / ")} / ${error.message}`);
+    }
     assert(await evaluate(cdp, `document.querySelector('#question-number').textContent === '${question}/10'`), `問題番号${question}が不正です`);
     await waitFor(cdp, `document.querySelector('#timer-text').textContent !== '記憶中'`, 4_000);
     const code = await evaluate(cdp, `document.querySelector('#game-screen').dataset.code`);
