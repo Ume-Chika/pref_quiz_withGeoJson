@@ -313,7 +313,9 @@ try {
     if (type === "silhouette") {
       await evaluate(cdp, `document.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true})); true`);
       await waitFor(cdp, `!document.querySelector('#feedback-dialog').open && document.querySelector('#question-number').textContent==='2/∞'`);
-      await evaluate(cdp, `document.querySelector('#home-button').click(); true`);
+      await evaluate(cdp, `document.querySelector('#quit-game-button').click(); true`);
+      await waitFor(cdp, `document.querySelector('#result-screen:not([hidden])')`);
+      await evaluate(cdp, `document.querySelector('#result-home-button').click(); true`);
     } else {
       await evaluate(cdp, `document.querySelector('#quit-game-button').click(); true`);
       await waitFor(cdp, `document.querySelector('#result-screen:not([hidden])')`);
