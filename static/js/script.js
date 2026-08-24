@@ -36,7 +36,7 @@ let audioContext = null;
 let session = null;
 
 function freshSaved() {
-  return { schema: 2, settings: { sound: false, answerMode: "confirm" }, progress: {}, highScore: 0, recent: [] };
+  return { schema: 2, settings: { sound: false, volume: .5, answerMode: "confirm" }, progress: {}, highScore: 0, recent: [] };
 }
 
 function loadSaved() {
@@ -51,6 +51,7 @@ function loadSaved() {
       ...freshSaved(), ...parsed,
       settings: {
         sound: parsed.settings?.sound === true,
+        volume: finiteNumber(parsed.settings?.volume, .5, .1, 1),
         answerMode: ["confirm", "instant"].includes(parsed.settings?.answerMode) ? parsed.settings.answerMode : "confirm"
       },
       progress,
@@ -404,7 +405,7 @@ function renderVisual(question, token) {
     const localBounds = expandedBounds(boundsOf([prefecture.mainGeometry]), 1.65);
     ui.stage.innerHTML = svgMap(prefectures, localBounds, { targetCode: prefecture.code, label: "対象の都道府県を強調した周辺地図" }) + '<span class="stage-corner-label">周辺の位置関係</span>';
   } else if (["locate", "mapMemory"].includes(type)) {
-    const regional = prefectures.filter((item) => prefecture.region === "北海道" ? ["北海道", "東北"].includes(item.region) : item.region === prefecture.region);
+    const regional = prefectures.filter((item) => prefecture.region === "北海道地方" ? ["北海道地方", "東北地方"].includes(item.region) : item.region === prefecture.region);
     const visiblePrefectures = regional;
     const viewBounds = expandedBounds(boundsOf(visiblePrefectures.map((item) => item.mainGeometry)), regional.length > 1 ? .62 : .55);
     const targetCode = type === "mapMemory" ? prefecture.code : "";
@@ -643,7 +644,7 @@ function playTone(kind) {
       oscillator.type = kind === "incorrect" ? "triangle" : "sine";
       oscillator.frequency.value = frequency;
       gain.gain.setValueAtTime(.0001, audioContext.currentTime + index * .08);
-      gain.gain.exponentialRampToValueAtTime(.09, audioContext.currentTime + index * .08 + .015);
+      gain.gain.exponentialRampToValueAtTime(.09 * saved.settings.volume, audioContext.currentTime + index * .08 + .015);
       gain.gain.exponentialRampToValueAtTime(.0001, audioContext.currentTime + index * .08 + .14);
       oscillator.connect(gain).connect(audioContext.destination);
       oscillator.start(audioContext.currentTime + index * .08);
@@ -676,10 +677,23 @@ $("home-button").addEventListener("click", () => { cancelAnimationFrame(timerFra
 $("settings-button").addEventListener("click", () => {
   if (!ui.game.hidden) return;
   $("sound-setting").checked = saved.settings.sound;
+  $("volume-setting").value = String(saved.settings.volume);
+  $("volume-value").textContent = `${Math.round(saved.settings.volume * 100)}%`;
+  $("volume-setting").disabled = !saved.settings.sound;
   $("answer-mode-setting").value = saved.settings.answerMode;
   ui.settings.showModal();
 });
-$("sound-setting").addEventListener("change", (event) => { saved.settings.sound = event.target.checked; persist(); if (event.target.checked) playTone("correct"); });
+$("sound-setting").addEventListener("change", (event) => {
+  saved.settings.sound = event.target.checked;
+  $("volume-setting").disabled = !event.target.checked;
+  persist();
+  if (event.target.checked) playTone("correct");
+});
+$("volume-setting").addEventListener("input", (event) => {
+  saved.settings.volume = finiteNumber(Number(event.target.value), .5, .1, 1);
+  $("volume-value").textContent = `${Math.round(saved.settings.volume * 100)}%`;
+  persist();
+});
 $("answer-mode-setting").addEventListener("change", (event) => { saved.settings.answerMode = event.target.value; persist(); });
 $("progress-button").addEventListener("click", () => { if (!ui.game.hidden) return; renderProgress(); ui.progress.showModal(); });
 $("reset-data-button").addEventListener("click", () => ui.resetConfirm.showModal());
