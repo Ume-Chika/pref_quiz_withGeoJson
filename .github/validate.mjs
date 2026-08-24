@@ -2,7 +2,7 @@ import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { blankProgress, normalizeProgress, recordAnswer, schedulingPriority } from "../static/js/learning.mjs";
+import { blankProgress, deadlinePassed, normalizeProgress, recordAnswer, schedulingPriority } from "../static/js/learning.mjs";
 
 const required = [
   "index.html",
@@ -42,6 +42,9 @@ for (const [, id] of script.matchAll(/\$\(["']([^"']+)["']\)/g)) {
 }
 
 const now = 1_800_000_000_000;
+if (deadlinePassed(999, 1000) || !deadlinePassed(1000, 1000) || !deadlinePassed(1001, 1000)) {
+  throw new Error("制限時間境界の判定が不正です");
+}
 const firstCorrect = recordAnswer(blankProgress(), { correct: true, timedOut: false, responseMs: 5000, now });
 if (firstCorrect.attempts !== 1 || firstCorrect.correct !== 1 || firstCorrect.streak !== 1 || firstCorrect.mastery <= 0 || firstCorrect.nextDue <= now) {
   throw new Error("正解時の学習記録更新が不正です");

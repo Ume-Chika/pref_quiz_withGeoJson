@@ -1,6 +1,6 @@
 "use strict";
 
-import { blankProgress, normalizeProgress, recordAnswer, schedulingPriority } from "./learning.mjs";
+import { blankProgress, deadlinePassed, normalizeProgress, recordAnswer, schedulingPriority } from "./learning.mjs";
 
 const STORAGE_KEY = "prefecture-minigame-v2";
 const QUESTION_SECONDS = 15;
@@ -9,7 +9,7 @@ const SKILLS = {
   B: { name: "位置", unlockAt: 0 },
   C: { name: "県庁所在地", unlockAt: 10 },
   D: { name: "地方区分", unlockAt: 25 },
-  E: { name: "名産・文化", unlockAt: 40 }
+  E: { name: "郷土料理", unlockAt: 40 }
 };
 
 const $ = (id) => document.getElementById(id);
@@ -189,9 +189,9 @@ function geometryPath(geometry, project) {
 
 function svgMap(features, viewBounds, { width = 700, height = 470, targetCode = "", clickable = false, label = "日本地図" } = {}) {
   const project = projector(viewBounds, width, height);
-  const paths = features.map((prefecture) => {
+  const paths = features.map((prefecture, index) => {
     const isTarget = prefecture.code === targetCode;
-    const attrs = clickable ? `tabindex="0" role="button" data-code="${prefecture.code}" aria-label="${prefecture.name}"` : "";
+    const attrs = clickable ? `tabindex="${index ? -1 : 0}" role="button" data-code="${prefecture.code}" aria-label="${prefecture.name}"` : "";
     return `<path class="map-prefecture${isTarget ? " target" : ""}${clickable ? " clickable" : ""}" d="${geometryPath(prefecture.feature.geometry, project)}" ${attrs}/>`;
   }).join("");
   const hits = clickable ? features.map((prefecture) => `<path class="map-hit" d="${geometryPath(prefecture.feature.geometry, project)}" data-code="${prefecture.code}" aria-hidden="true"/>`).join("") : "";
@@ -383,6 +383,9 @@ function setQuestionCopy(question) {
     dishReverse: ["郷土料理", `${question.prefecture.name}で選ばれた郷土料理は？`, "農林水産省の郷土料理百選から選んでください。"]
   }[question.type];
   if (["locate", "mapMemory"].includes(question.type)) copy[2] = `${question.prefecture.region}周辺の地図から選んでください。`;
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches && ["spotlight", "reveal", "flash"].includes(question.type)) {
+    copy[2] = "動きを減らす設定に合わせ、静止した輪郭を表示しています。";
+  }
   [ui.type.textContent, ui.title.textContent, ui.help.textContent] = copy;
 }
 
@@ -398,14 +401,15 @@ function renderVisual(question, token) {
       ui.stage.append(curtain);
     }
   } else if (type === "map") {
-    const localBounds = expandedBounds(boundsOf([prefecture.feature]), 1.65);
+    const localBounds = expandedBounds(boundsOf([prefecture.mainGeometry]), 1.65);
     ui.stage.innerHTML = svgMap(prefectures, localBounds, { targetCode: prefecture.code, label: "対象の都道府県を強調した周辺地図" }) + '<span class="stage-corner-label">周辺の位置関係</span>';
   } else if (["locate", "mapMemory"].includes(type)) {
-    const regional = prefectures.filter((item) => item.region === prefecture.region);
-    const visiblePrefectures = regional.length > 1 ? regional : prefectures;
-    const viewBounds = expandedBounds(boundsOf(visiblePrefectures), regional.length > 1 ? .62 : .55);
+    const regional = prefectures.filter((item) => prefecture.region === "北海道" ? ["北海道", "東北"].includes(item.region) : item.region === prefecture.region);
+    const visiblePrefectures = regional;
+    const viewBounds = expandedBounds(boundsOf(visiblePrefectures.map((item) => item.mainGeometry)), regional.length > 1 ? .62 : .55);
     const targetCode = type === "mapMemory" ? prefecture.code : "";
     ui.stage.innerHTML = svgMap(visiblePrefectures, viewBounds, { targetCode, clickable: true, label: `${prefecture.name}の位置を選ぶ${prefecture.region}周辺の地図` });
+    if (type === "mapMemory") ui.stage.insertAdjacentHTML("beforeend", '<span class="memory-status" aria-live="polite">2秒だけ記憶</span>');
     ui.answerFieldset.hidden = true;
     ui.submit.hidden = saved.settings.answerMode === "instant";
     ui.submit.disabled = true;
@@ -413,14 +417,27 @@ function renderVisual(question, token) {
     session.locationLocked = type === "mapMemory";
     ui.stage.querySelectorAll("[data-code]").forEach((path) => {
       path.addEventListener("click", () => selectLocation(path.dataset.code));
+    });
+    const keyboardPaths = [...ui.stage.querySelectorAll(".map-prefecture[data-code]")];
+    keyboardPaths.forEach((path, index) => {
       path.addEventListener("keydown", (event) => {
         if (event.key === "Enter" || event.key === " ") { event.preventDefault(); event.stopPropagation(); selectLocation(path.dataset.code); }
+        else if (["ArrowRight", "ArrowDown", "ArrowLeft", "ArrowUp"].includes(event.key)) {
+          event.preventDefault();
+          const step = ["ArrowRight", "ArrowDown"].includes(event.key) ? 1 : -1;
+          const next = (index + step + keyboardPaths.length) % keyboardPaths.length;
+          keyboardPaths.forEach((item, itemIndex) => { item.tabIndex = itemIndex === next ? 0 : -1; });
+          keyboardPaths[next].focus();
+        }
       });
     });
     if (type === "mapMemory") setTimeout(() => {
       if (token === questionToken) {
         ui.stage.querySelector(".target")?.classList.remove("target");
+        ui.stage.querySelector(".memory-status")?.remove();
         session.locationLocked = false;
+        session.startedAt = performance.now();
+        session.deadline = session.startedAt + QUESTION_SECONDS * 1000;
       }
     }, 2000);
   } else {
@@ -454,6 +471,13 @@ function renderAnswers(question) {
 
 function updateTimer(token) {
   if (token !== questionToken || !session || session.answered) return;
+  if (session.locationLocked) {
+    ui.timer.style.transform = "scaleX(1)";
+    ui.timerRoot.setAttribute("aria-valuenow", String(QUESTION_SECONDS));
+    ui.timerText.textContent = "記憶中";
+    timerFrame = requestAnimationFrame(() => updateTimer(token));
+    return;
+  }
   const remaining = Math.max(0, session.deadline - performance.now());
   const ratio = remaining / (QUESTION_SECONDS * 1000);
   const seconds = Math.ceil(remaining / 1000);
@@ -493,7 +517,7 @@ function answerLocation(code) {
 function completeAnswer(answer, timedOut) {
   if (!session || session.answered) return;
   const answeredAt = performance.now();
-  if (!timedOut && answeredAt >= session.deadline) { timedOut = true; answer = "時間切れ"; }
+  if (!timedOut && deadlinePassed(answeredAt, session.deadline)) { timedOut = true; answer = "時間切れ"; }
   session.answered = true;
   cancelAnimationFrame(timerFrame);
   const question = session.current;
@@ -553,8 +577,8 @@ function nextAfterFeedback() {
 function startGame(limit) {
   session = {
     limit, answers: [], retries: [],
-    recentCodes: saved.recent.slice(0, 3).map((item) => item.code),
-    recentTypes: saved.recent.slice(0, 2).map((item) => item.type),
+    recentCodes: saved.recent.slice(0, 3).reverse().map((item) => item.code),
+    recentTypes: saved.recent.slice(0, 2).reverse().map((item) => item.type),
     score: 0, combo: 0, maxCombo: 0, answered: false, current: null, deadline: 0, startedAt: 0,
     selectedLocation: "", locationLocked: false
   };
@@ -646,6 +670,7 @@ $("next-question-button").addEventListener("click", nextAfterFeedback);
 $("quit-game-button").addEventListener("click", finishGame);
 $("replay-button").addEventListener("click", () => startGame(10));
 $("result-home-button").addEventListener("click", () => { session = null; showScreen(ui.home); });
+$("game-quit-button").addEventListener("click", () => { if (window.confirm("プレイを中断してホームへ戻りますか？")) finishGame(); });
 $("home-button").addEventListener("click", () => { cancelAnimationFrame(timerFrame); questionToken += 1; if (ui.feedback.open) ui.feedback.close(); session = null; renderHome(); showScreen(ui.home); });
 
 $("settings-button").addEventListener("click", () => {

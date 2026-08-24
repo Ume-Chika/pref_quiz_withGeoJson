@@ -36,6 +36,16 @@ Natural Earthの境界表現は縮尺に応じた概略で、加工時に小さ�
 - 東京都庁の所在自治体: 東京都「[都庁への交通案内](https://www.metro.tokyo.lg.jp/about/kotsuannai)」
 - 郷土料理: 農林水産省「[農山漁村の郷土料理百選一覧](https://www.maff.go.jp/j/study/syoku_vision/manual/pdf/meguji.pdf)」
 
+利用条件:
+
+- e-Stat: [政府統計の総合窓口（e-Stat）利用規約](https://www.e-stat.go.jp/terms-of-use)（政府標準利用規約2.0準拠、CC BY 4.0互換）
+- 国土地理院: [国土地理院コンテンツ利用規約](https://www.gsi.go.jp/kikakuchousei/kikakuchousei40182.html)（PDL1.0、CC BY 4.0互換）
+- 内閣府: [内閣府ホームページ利用規約](https://www.cao.go.jp/notice/rule.html)（PDL1.0、CC BY 4.0互換）
+- 東京都: [都庁総合ホームページ サイトポリシー](https://www.metro.tokyo.lg.jp/policy)
+- 農林水産省: [リンクについて・著作権](https://www.maff.go.jp/j/use/link.html)（PDL1.0、CC BY 4.0互換）
+
+本アプリでは出典を表示し、各資料から必要な事実だけを抽出して統一形式へ編集・加工したことを明示します。ロゴ、写真、イラスト、各資料の紙面デザインは転載しません。
+
 地方区分には法令上の唯一の正解がないため、本アプリでは上記内閣府資料の8区分を採用します。中部は新潟県から愛知県、近畿は三重県を含み、九州は沖縄県を含む定義です。東京都庁所在地は所在自治体の「新宿区」とします。
 
 名産・文化分野（E）は、主観的な「代表料理」を独自選定せず、農林水産省の郷土料理百選一覧で各都道府県の先頭に掲載された料理を統一基準として収録します。掲載地域以外では食べられない、または発祥地が一意であるという意味ではありません。出典を確認できない問題は公開版へ含めません。
