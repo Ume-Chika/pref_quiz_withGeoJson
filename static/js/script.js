@@ -749,6 +749,17 @@ function updateTimer(token) {
   else timerFrame = requestAnimationFrame(() => updateTimer(token));
 }
 
+function resumeTimer() {
+  if (!session || session.answered) return;
+  cancelAnimationFrame(timerFrame);
+  updateTimer(questionToken);
+}
+
+document.addEventListener("resume", resumeTimer);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) resumeTimer(); });
+window.addEventListener("pageshow", resumeTimer);
+window.addEventListener("focus", resumeTimer);
+
 function submitSelectedAnswer() {
   if (!session || session.answered || session.locationLocked) return;
   if (LOCATION_TYPES.includes(session.current.type)) {
