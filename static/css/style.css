@@ -108,6 +108,7 @@ button.secondary-button:hover { border-color: #a8b1ab; background: white; }
 .memory-teach { position: absolute; right: 12px; bottom: 12px; display: grid; gap: 1px; padding: 8px 13px; border: 1px solid var(--line); border-radius: 12px; background: rgba(255,255,255,.94); box-shadow: var(--shadow); }
 .memory-teach span { color: var(--muted); font-size: .65rem; font-weight: 800; }
 .memory-teach strong { font-size: 1.15rem; }
+.memory-ready-button { position: absolute; right: 16px; bottom: 14px; min-width: 96px; min-height: 44px; padding: 8px 16px; color: white; border: 0; border-radius: 12px; background: var(--accent); font-weight: 900; cursor: pointer; }
 .silhouette { fill: var(--accent); stroke: var(--accent-dark); stroke-width: 3; vector-effect: non-scaling-stroke; }
 .stage-corner-label { position: absolute; right: 12px; bottom: 10px; padding: 3px 8px; color: var(--muted); border-radius: 8px; background: rgba(255,255,255,.82); font-size: .66rem; }
 .spotlight-path { fill: var(--sun); stroke: #ffe5a3; stroke-width: 4; vector-effect: non-scaling-stroke; }
@@ -328,3 +329,4 @@ button.danger-button { color: var(--danger); border: 1px solid #e5b1ab; backgrou
   .keyboard-hint { margin-top: 3px; font-size: .64rem; }
 }
 .reduce-motion *, .reduce-motion *::before, .reduce-motion *::after { scroll-behavior: auto !important; animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; }
+@media (hover: none) and (pointer: coarse) { .keyboard-hint { display: none; } }
