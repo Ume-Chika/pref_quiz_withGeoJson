@@ -351,21 +351,35 @@ button.danger-button { color: var(--danger); border: 1px solid #e5b1ab; backgrou
   .feedback-dialog h2 { font-size: 1.6rem; }
   .feedback-shape-card { padding: 7px; }
   .feedback-shape-card svg { height: 68px; }
-  .study-map-dialog { width: 100%; max-width: none; max-height: 100dvh; height: 100dvh; border: 0; border-radius: 0; display: block; overflow-y: auto; }
-  .study-map-dialog form { display: block; height: auto; min-height: 100dvh; padding: 16px 12px; overflow-y: auto; }
-  .study-map-dialog .dialog-header { position: sticky; z-index: 2; top: -16px; padding: 8px 0; background: var(--bg); }
-  .study-map-body { display: flex; flex-direction: column; gap: 12px; height: auto; min-height: 0; overflow: visible; }
-  .study-map-main { display: flex; flex-direction: column; height: auto; }
-  .study-map-controls { display: flex; flex-direction: column; gap: 8px; }
-  .study-map-filters { display: flex; flex-wrap: wrap; gap: 8px 14px; margin-bottom: 2px; }
-  .study-map-toolbar { display: grid; grid-template-columns: 44px minmax(90px, 1fr) 44px 50px; }
-  .study-map-toolbar output { grid-column: 4; grid-row: 1; }
-  .study-map-toolbar #study-map-zoom-in { grid-column: 3; grid-row: 1; }
-  .study-map-toolbar #study-map-zoom-reset { grid-column: 1 / -1; }
-  .study-map-canvas { min-height: 300px; height: 300px; flex: initial; }
-  .study-map-canvas svg { min-height: 300px; height: 300px; }
-  .study-map-side { display: flex; flex-direction: column; height: auto; }
-  .study-map-detail { margin-top: 0; height: auto; min-height: 0; overflow: visible; }
+  .study-map-dialog { width: 100%; max-width: none; max-height: 100dvh; height: 100dvh; border: 0; border-radius: 0; display: flex; flex-direction: column; overflow: hidden; }
+  .study-map-dialog form { display: flex; flex-direction: column; flex: 1; height: 100%; min-height: 0; padding: 12px 14px 16px; box-sizing: border-box; overflow-y: auto; }
+  .study-map-dialog .dialog-header { margin-bottom: 6px; flex-shrink: 0; }
+  .study-map-dialog .dialog-header h2 { font-size: 1.3rem; }
+  .study-map-dialog .dialog-header p { font-size: .75rem; }
+  .study-map-dialog .dialog-header .close-button { width: 44px; height: 44px; min-width: 44px; min-height: 44px; }
+  .study-map-body { display: flex; flex-direction: column; gap: 8px; height: auto; min-height: 0; flex: initial; overflow: visible; }
+  .study-map-main { display: flex; flex-direction: column; height: auto; min-height: 0; max-height: none; flex-shrink: 0; overflow: visible; }
+  .study-map-controls { display: flex; flex-direction: column; gap: 4px; margin-bottom: 4px; }
+  .study-map-filters { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: .72rem; }
+  .study-map-filters label { min-height: 44px; gap: 4px; }
+  .study-map-filters input { width: 18px; height: 18px; }
+  .study-map-filters i { width: 20px; height: 20px; border-radius: 6px; font-size: .75rem; }
+  .study-map-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 4px; }
+  .study-map-toolbar button { min-width: 44px; min-height: 44px; padding: 0 4px; border-radius: 10px; font-size: .9rem; }
+  .study-map-toolbar input[type="range"] { flex: 1; min-width: 60px; height: 44px; margin: 0 2px; }
+  .study-map-toolbar output { min-width: 36px; font-size: .72rem; }
+  .study-map-toolbar #study-map-zoom-reset { min-width: 68px; min-height: 44px; padding: 0 8px; font-size: .72rem; }
+  .study-map-canvas { height: clamp(190px, 28vh, 230px); min-height: 190px; flex: initial; border-radius: 14px; }
+  .study-map-canvas svg { width: 100%; height: 100%; min-height: 100%; }
+  .study-map-main .keyboard-hint { display: none; }
+  .study-map-side { display: flex; flex-direction: column; height: auto; min-height: 0; max-height: none; flex: initial; overflow: visible; }
+  .study-map-help { margin: 0 0 4px; font-size: .7rem; line-height: 1.35; }
+  .study-map-detail { padding: 10px 12px; gap: 4px; border-radius: 14px; height: auto; min-height: 0; max-height: none; flex: initial; overflow: visible; }
+  .study-map-detail h3 { font-size: 1.2rem; }
+  .study-map-detail p { font-size: .74rem; line-height: 1.35; }
+  .study-map-status { font-size: .78rem; }
+  .study-map-history { gap: 4px; margin-top: 4px; }
+  .study-map-history li { padding: 4px 8px; font-size: .68rem; border-radius: 7px; }
   .app-footer { padding-bottom: 18px; }
 }
 @media (max-width: 620px) and (max-height: 750px) {
