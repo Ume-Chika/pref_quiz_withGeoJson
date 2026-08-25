@@ -89,9 +89,10 @@ try {
   await evaluate(cdp, `document.querySelector('#progress-dialog .close-button').click(); true`);
 
   await cdp.command("Emulation.setDeviceMetricsOverride", { width: 1366, height: 768, deviceScaleFactor: 1, mobile: false });
-  for (const scenario of [{ type: "silhouetteReverse", skill: "A", code: "01" }, { type: "mapChoice", skill: "B", code: "01" }, { type: "capitalRegion", skill: "D", code: "01" }, { type: "locateJapan", skill: "B", code: "01" }]) {
+  for (const scenario of [{ type: "silhouetteReverse", skill: "A", code: "01" }, { type: "slitFlow", skill: "A", code: "01" }, { type: "mapChoice", skill: "B", code: "01" }, { type: "regionShape", skill: "D", code: "40" }, { type: "capitalRegion", skill: "D", code: "01" }, { type: "locateJapan", skill: "B", code: "01" }]) {
     await evaluate(cdp, `globalThis.__prefQuizTest=${JSON.stringify(scenario)}; document.querySelector('#start-endless-button').click(); true`);
     await waitFor(cdp, `document.querySelector('#game-screen:not([hidden])') && (document.querySelectorAll('input[name="answer"]').length === 4 || document.querySelectorAll('.map-prefecture.clickable').length === 47)`);
+    if (scenario.type === "slitFlow") await waitFor(cdp, `!document.querySelector('#answer-fieldset').hidden`, 6_500);
     const desktopLayout = await evaluate(cdp, `(() => { const items=[document.querySelector('#visual-stage'),...document.querySelectorAll('.answer-option label'),document.querySelector('#submit-answer-button'),document.querySelector('#keyboard-hint')].filter(item=>item.getClientRects().length); return {height:innerHeight,items:items.map(item=>{const rect=item.getBoundingClientRect();return {id:item.id||item.tagName,top:Math.round(rect.top),height:Math.round(rect.height),bottom:Math.round(rect.bottom)}}),stageMinHeight:getComputedStyle(document.querySelector('#visual-stage')).minHeight,hint:getComputedStyle(document.querySelector('#keyboard-hint')).display}; })()`);
     assert(desktopLayout.items.every((item) => item.bottom <= desktopLayout.height) && desktopLayout.hint !== "none", `PCの短い画面で${scenario.type}が収まりません: ${JSON.stringify(desktopLayout)}`);
     await evaluate(cdp, `document.querySelector('#quit-game-button').click(); true`);
@@ -99,9 +100,10 @@ try {
   }
   await evaluate(cdp, `delete globalThis.__prefQuizTest; true`);
   await cdp.command("Emulation.setDeviceMetricsOverride", { width: 320, height: 568, deviceScaleFactor: 1, mobile: true });
-  for (const scenario of [{ type: "silhouetteReverse", skill: "A", code: "01" }, { type: "locateJapan", skill: "B", code: "01" }]) {
+  for (const scenario of [{ type: "silhouetteReverse", skill: "A", code: "01" }, { type: "slitFlow", skill: "A", code: "01" }, { type: "regionShape", skill: "D", code: "40" }, { type: "locateJapan", skill: "B", code: "01" }]) {
     await evaluate(cdp, `globalThis.__prefQuizTest=${JSON.stringify(scenario)}; document.querySelector('#start-endless-button').click(); true`);
     await waitFor(cdp, `document.querySelector('#game-screen:not([hidden])') && document.querySelector('#game-screen').dataset.quizType==='${scenario.type}'`);
+    if (scenario.type === "slitFlow") await waitFor(cdp, `!document.querySelector('#answer-fieldset').hidden`, 6_500);
     const mobileLayout = await evaluate(cdp, `(() => { const items=[...document.querySelectorAll('.answer-option label'),document.querySelector('#visual-stage'),document.querySelector('#submit-answer-button'),document.querySelector('#keyboard-hint')].filter(item=>item.getClientRects().length).map(item=>({name:item.id||item.className,top:Math.round(item.getBoundingClientRect().top),bottom:Math.round(item.getBoundingClientRect().bottom)})); return {height:innerHeight,items}; })()`);
     assert(mobileLayout.items.every((item) => item.bottom <= mobileLayout.height), `320×568画面で${scenario.type}の回答操作が収まりません: ${JSON.stringify(mobileLayout)}`);
     await evaluate(cdp, `document.querySelector('#quit-game-button').click(); true`);

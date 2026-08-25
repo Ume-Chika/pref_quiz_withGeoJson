@@ -697,7 +697,12 @@ function renderVisual(question, token) {
       lockPreview(token, 6000, () => {}, "観察中");
     }
   } else if (type === "slitFlow") {
-    if (reducedMotion) ui.stage.innerHTML = silhouetteSvg(prefecture);
+    if (reducedMotion) {
+      ui.type.textContent = "シルエット";
+      ui.title.textContent = "この都道府県はどこ？";
+      ui.help.textContent = "視覚効果を使わず、静止した輪郭を表示しています。";
+      ui.stage.innerHTML = silhouetteSvg(prefecture);
+    }
     else {
       const reverse = Math.random() < .5 ? " reverse" : "";
       ui.stage.innerHTML = `<div class="slit-flow"><div class="slit-moving${reverse}">${silhouetteSvg(prefecture)}</div><div class="slit-cover" aria-hidden="true"></div></div><div class="memory-curtain">どの県だった？</div>`;
@@ -985,7 +990,7 @@ function queueReview(review) {
 }
 
 function questionEvidence(type, correct = true) {
-  return ["shapeMemory", "flash", "slitFlow", "mapMemory", "mapFlash"].includes(type) ? correct ? .4 : 1 : ["mapShape", "shapeLocate", "capitalMap", "capitalShape", "capitalLocate", "regionMap", "shapeRegion", "capitalRegion", "dishMap", "dishShapeChoice", "dishLocate"].includes(type) ? .65 : 1;
+  return ["shapeMemory", "flash", "slitFlow", "mapMemory", "mapFlash"].includes(type) ? correct ? .4 : 1 : ["mapShape", "shapeLocate", "capitalMap", "capitalShape", "capitalLocate", "regionMap", "regionShape", "shapeRegion", "capitalRegion", "dishMap", "dishShapeChoice", "dishLocate"].includes(type) ? .65 : 1;
 }
 
 function showFeedback(question, correct, timedOut, points, answer) {
