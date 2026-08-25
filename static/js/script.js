@@ -11,6 +11,7 @@ const LOCATION_TYPES = ["locate", "locateJapan", "mapMemory", "shapeLocate", "ca
 const NATIONWIDE_LOCATION_TYPES = ["locateJapan", "shapeLocate", "capitalLocate", "dishLocate"];
 const ANIMATED_TYPES = ["spotlight", "reveal", "flash", "slitFlow", "mapMemory", "mapFlash", "shapeLocate"];
 const EXAM_TYPES = { A: "silhouette", B: "mapChoice", C: "capital", D: "region", E: "dishReverse" };
+const EXAM_REGION_COUNTS = { "北海道地方": 1, "東北地方": 4, "関東地方": 4, "中部地方": 6, "近畿地方": 4, "中国地方": 3, "四国地方": 3, "九州地方": 5 };
 
 const $ = (id) => document.getElementById(id);
 const screens = ["loading-screen", "error-screen", "home-screen", "game-screen", "result-screen"].map($);
@@ -500,7 +501,8 @@ function chooseQuestion() {
 
 function buildExamQuestions() {
   const skills = Array.from({ length: 6 }, () => shuffle(Object.keys(SKILLS))).flat();
-  return shuffle(prefectures).slice(0, 30).map((prefecture, index) => {
+  const sample = shuffle(Object.entries(EXAM_REGION_COUNTS).flatMap(([region, count]) => shuffle(prefectures.filter((prefecture) => prefecture.region === region)).slice(0, count)));
+  return sample.map((prefecture, index) => {
     const skill = skills[index];
     return buildQuestion(prefecture, skill, EXAM_TYPES[skill], 1);
   });
