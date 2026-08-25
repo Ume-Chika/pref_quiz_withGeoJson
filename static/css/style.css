@@ -190,6 +190,7 @@ kbd { padding: 1px 5px; border: 1px solid #c4cac5; border-bottom-width: 2px; bor
 .source-card a { color: var(--accent-dark); }
 .source-note { color: var(--muted); font-size: .78rem; }
 .source-back { display: block; width: fit-content; margin-top: 24px; color: var(--ink) !important; text-decoration: none; }
+dialog:not([open]) { display: none !important; }
 .app-dialog { width: min(calc(100% - 28px), 520px); max-height: min(88vh, 720px); padding: 0; overflow: auto; color: var(--ink); border: 1px solid var(--line); border-radius: 24px; background: var(--surface); box-shadow: 0 28px 90px rgba(13,31,24,.24); }
 .app-dialog::backdrop { background: rgba(16, 29, 24, .55); backdrop-filter: blur(3px); }
 .app-dialog[open] { animation: dialog-in .22s ease both; }
@@ -351,7 +352,8 @@ button.danger-button { color: var(--danger); border: 1px solid #e5b1ab; backgrou
   .feedback-dialog h2 { font-size: 1.6rem; }
   .feedback-shape-card { padding: 7px; }
   .feedback-shape-card svg { height: 68px; }
-  .study-map-dialog { width: 100%; max-width: none; max-height: 100dvh; height: 100dvh; border: 0; border-radius: 0; display: flex; flex-direction: column; overflow: hidden; }
+  .study-map-dialog { width: 100%; max-width: none; max-height: 100dvh; height: 100dvh; border: 0; border-radius: 0; overflow: hidden; }
+  .study-map-dialog[open] { display: flex; flex-direction: column; }
   .study-map-dialog form { display: flex; flex-direction: column; flex: 1; height: 100%; min-height: 0; padding: 12px 14px 16px; box-sizing: border-box; overflow-y: auto; }
   .study-map-dialog .dialog-header { margin-bottom: 6px; flex-shrink: 0; }
   .study-map-dialog .dialog-header h2 { font-size: 1.3rem; }
