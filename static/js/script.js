@@ -1,6 +1,6 @@
 "use strict";
 
-import { blankProgress, canIntroduceNewItem, canUseIntegratedMode, compassVector, deadlinePassed, examScore, hasBasicMastery, normalizeProgress, prefectureUnderstanding, recordAnswer, schedulingPriority, skillsForMastery, understandingIndex } from "./learning.mjs";
+import { blankProgress, canIntroduceNewItem, canUseIntegratedMode, compassVector, deadlinePassed, examScore, hasBasicMastery, normalizeProgress, prefectureUnderstanding, recordAnswer, schedulingPriority, skillsForMastery, understandingIndex, understandingMilestone } from "./learning.mjs";
 
 const STORAGE_KEY = "prefecture-minigame-v2";
 const QUESTION_SECONDS = 15;
@@ -184,8 +184,46 @@ function boundsOf(items) {
 }
 
 function centerOfGeometry(geometry) {
+  const polygon = geometry.type === "Polygon" ? geometry.coordinates : largestPolygonGeometry(geometry).coordinates;
+  const ring = polygon[0];
+  let crossSum = 0;
+  let xSum = 0;
+  let ySum = 0;
+  for (let index = 0; index < ring.length - 1; index += 1) {
+    const cross = ring[index][0] * ring[index + 1][1] - ring[index + 1][0] * ring[index][1];
+    crossSum += cross;
+    xSum += (ring[index][0] + ring[index + 1][0]) * cross;
+    ySum += (ring[index][1] + ring[index + 1][1]) * cross;
+  }
   const bounds = boundsOf([geometry]);
-  return [(bounds.minX + bounds.maxX) / 2, (bounds.minY + bounds.maxY) / 2];
+  const centroid = Math.abs(crossSum) > 1e-9 ? [xSum / (3 * crossSum), ySum / (3 * crossSum)] : [(bounds.minX + bounds.maxX) / 2, (bounds.minY + bounds.maxY) / 2];
+  if (pointInRing(centroid, ring)) return centroid;
+  let widest = { width: -1, point: centroid };
+  for (const ratio of [.5, .4, .6, .3, .7, .2, .8]) {
+    const y = bounds.minY + (bounds.maxY - bounds.minY) * ratio;
+    const intersections = [];
+    for (let index = 0, previous = ring.length - 1; index < ring.length; previous = index, index += 1) {
+      const a = ring[index];
+      const b = ring[previous];
+      if ((a[1] > y) !== (b[1] > y)) intersections.push(a[0] + (y - a[1]) * (b[0] - a[0]) / (b[1] - a[1]));
+    }
+    intersections.sort((a, b) => a - b);
+    for (let index = 0; index + 1 < intersections.length; index += 2) {
+      const width = intersections[index + 1] - intersections[index];
+      if (width > widest.width) widest = { width, point: [(intersections[index] + intersections[index + 1]) / 2, y] };
+    }
+  }
+  return widest.point;
+}
+
+function pointInRing(point, ring) {
+  let inside = false;
+  for (let index = 0, previous = ring.length - 1; index < ring.length; previous = index, index += 1) {
+    const a = ring[index];
+    const b = ring[previous];
+    if ((a[1] > point[1]) !== (b[1] > point[1]) && point[0] < (b[0] - a[0]) * (point[1] - a[1]) / (b[1] - a[1]) + a[0]) inside = !inside;
+  }
+  return inside;
 }
 
 function ringArea(ring) {
@@ -370,8 +408,10 @@ function prefectureMasteryStatus(prefecture) {
   const items = Object.keys(SKILLS).map((skill) => getProgress(prefecture.code, skill));
   const attempted = items.some((item) => item.attempts);
   const hasMiss = items.some((item) => item.recent.some((answer) => answer !== 1));
+  const reviewDue = items.some((item) => item.attempts && item.nextDue <= Date.now()) || saved.pendingReviews.some((review) => review.code === prefecture.code);
   const index = Math.round(prefectureUnderstanding(saved.progress, prefecture.code) * 1000);
   if (!attempted) return { kind: "unlearned", label: "未学習", index };
+  if (reviewDue) return { kind: "weak", label: "苦手・復習おすすめ", index };
   if (index >= 550) return { kind: "strong", label: "得意", index };
   if (index < 250 && hasMiss) return { kind: "weak", label: "苦手", index };
   return { kind: "learning", label: "学習中", index };
@@ -635,12 +675,21 @@ function renderQuestion() {
   ui.keyboardHint.innerHTML = saved.settings.answerMode === "instant" ? "<kbd>1</kbd>–<kbd>4</kbd> で回答" : "<kbd>1</kbd>–<kbd>4</kbd> 選択　<kbd>Enter</kbd> 決定";
   ui.stage.className = "visual-stage";
   setQuestionCopy(question);
+  session.inputReadyAt = Date.now() + (session.mode === "exam" && session.answers.length ? 350 : 0);
   renderAnswers(question);
+  if (session.inputReadyAt > Date.now()) {
+    ui.answerGrid.querySelectorAll("input").forEach((input) => { input.disabled = true; });
+    setTimeout(() => {
+      if (token === questionToken) ui.answerGrid.querySelectorAll("input").forEach((input) => { input.disabled = false; });
+    }, 350);
+  }
+  session.startedAt = Date.now();
+  session.answerClockStartedAt = session.startedAt;
+  session.deadline = session.startedAt + QUESTION_SECONDS * 1000;
+  session.timerHoldUntil = 0;
   renderVisual(question, token);
   showScreen(ui.game);
   requestAnimationFrame(() => ui.title.focus({ preventScroll: true }));
-  session.startedAt = Date.now();
-  session.deadline = Date.now() + QUESTION_SECONDS * 1000;
   updateTimer(token);
 }
 
@@ -719,6 +768,7 @@ function renderVisual(question, token) {
         session.locationLocked = false;
         session.lockLabel = "";
         session.startedAt = Date.now();
+        session.answerClockStartedAt = session.startedAt;
         session.deadline = session.startedAt + QUESTION_SECONDS * 1000;
       });
     } else {
@@ -736,8 +786,10 @@ function renderVisual(question, token) {
       lockPreview(token, 1750);
     }
     if (type === "reveal" && !reducedMotion) {
-      ui.keyboardHint.textContent = "6秒間は輪郭の変化を観察します";
-      lockPreview(token, 6000, () => {}, "観察中");
+      ui.keyboardHint.textContent = "わかった時点ですぐ回答できます";
+      session.timerHoldUntil = Date.now() + 6000;
+      session.answerClockStartedAt = session.timerHoldUntil;
+      session.deadline += 6000;
     }
   } else if (type === "slitFlow") {
     if (reducedMotion) {
@@ -828,6 +880,7 @@ function renderVisual(question, token) {
         ui.stage.querySelector(".shape-location-preview")?.remove();
         session.locationLocked = false;
         session.startedAt = Date.now();
+        session.answerClockStartedAt = session.startedAt;
         session.deadline = session.startedAt + QUESTION_SECONDS * 1000;
       }
     }, type === "shapeLocate" ? 1500 : 2000);
@@ -879,6 +932,7 @@ function lockPreview(token, duration, beforeUnlock = () => {}, label = "記憶�
     session.lockLabel = "";
     ui.answerGrid.querySelectorAll("input").forEach((input) => { input.disabled = false; });
     session.startedAt = Date.now();
+    session.answerClockStartedAt = session.startedAt;
     session.deadline = session.startedAt + QUESTION_SECONDS * 1000;
   }, duration);
 }
@@ -926,6 +980,13 @@ function renderAnswers(question) {
 
 function updateTimer(token) {
   if (token !== questionToken || !session || session.answered) return;
+  if (session.timerHoldUntil > Date.now()) {
+    ui.timer.style.transform = "scaleX(1)";
+    ui.timerRoot.setAttribute("aria-valuenow", String(QUESTION_SECONDS));
+    ui.timerText.textContent = "見えたら回答";
+    timerFrame = requestAnimationFrame(() => updateTimer(token));
+    return;
+  }
   if (session.locationLocked) {
     ui.timer.style.transform = "scaleX(1)";
     ui.timerRoot.setAttribute("aria-valuenow", String(QUESTION_SECONDS));
@@ -957,7 +1018,7 @@ window.addEventListener("pageshow", resumeTimer);
 window.addEventListener("focus", resumeTimer);
 
 function submitSelectedAnswer() {
-  if (!session || session.answered || session.locationLocked) return;
+  if (!session || session.answered || session.locationLocked || Date.now() < session.inputReadyAt) return;
   if (LOCATION_TYPES.includes(session.current.type)) {
     if (session.selectedLocation) answerLocation(session.selectedLocation);
     return;
@@ -967,7 +1028,7 @@ function submitSelectedAnswer() {
 }
 
 function selectLocation(code) {
-  if (!session || session.answered || session.locationLocked) return;
+  if (!session || session.answered || session.locationLocked || Date.now() < session.inputReadyAt) return;
   if (saved.settings.answerMode === "instant") { answerLocation(code); return; }
   session.selectedLocation = code;
   ui.stage.querySelectorAll(".map-prefecture.selected").forEach((path) => path.classList.remove("selected"));
@@ -988,7 +1049,7 @@ function completeAnswer(answer, timedOut) {
   cancelAnimationFrame(timerFrame);
   const question = session.current;
   const correct = !timedOut && answer === question.correct;
-  const responseMs = Math.max(0, Math.min(QUESTION_SECONDS * 1000, Math.round(answeredAt - session.startedAt)));
+  const responseMs = Math.max(0, Math.min(QUESTION_SECONDS * 1000, Math.round(answeredAt - session.answerClockStartedAt)));
   session.combo = correct ? session.combo + 1 : 0;
   session.maxCombo = Math.max(session.maxCombo, session.combo);
   const selectedCode = prefectures.find((prefecture) => [prefecture.name, prefecture.capital, prefecture.dish].includes(answer))?.code || "";
@@ -998,7 +1059,6 @@ function completeAnswer(answer, timedOut) {
     else { session.answered = false; renderQuestion(); }
     return;
   }
-  const indexBefore = understandingIndex(saved.progress);
   if (question.pendingReview) saved.pendingReviews = saved.pendingReviews.filter((review) => review.code !== question.prefecture.code || review.skill !== question.skill);
   saved.pendingReviews.forEach((review) => { review.remaining = Math.max(0, review.remaining - 1); });
   updateLearning(question, correct, timedOut, responseMs, answer, selectedCode);
@@ -1010,11 +1070,10 @@ function completeAnswer(answer, timedOut) {
   }
   if (retry) queueReview(retry);
   persist();
-  const indexAfter = understandingIndex(saved.progress);
   ui.combo.textContent = session.combo;
   ui.score.textContent = session.answers.filter((item) => item.correct).length;
   playTone(correct ? "correct" : "incorrect");
-  showFeedback(question, correct, timedOut, answer, indexBefore, indexAfter);
+  showFeedback(question, correct, timedOut, answer);
 }
 
 function updateLearning(question, correct, timedOut, responseMs, answer, selectedCode) {
@@ -1038,16 +1097,15 @@ function questionEvidence(type, correct = true) {
   return ["shapeMemory", "flash", "mapMemory", "mapFlash"].includes(type) ? correct ? .4 : 1 : ["slitFlow", "mapShape", "shapeLocate", "capitalMap", "capitalShape", "capitalLocate", "regionMap", "regionShape", "shapeRegion", "capitalRegion", "dishMap", "dishShapeChoice", "dishLocate"].includes(type) ? .65 : 1;
 }
 
-function showFeedback(question, correct, timedOut, answer, indexBefore, indexAfter) {
+function showFeedback(question, correct, timedOut, answer) {
   ui.feedback.classList.toggle("incorrect", !correct);
   ui.feedbackMark.textContent = correct ? "○" : timedOut ? "⌛" : "×";
-  ui.feedbackKicker.textContent = correct ? "CORRECT" : timedOut ? "TIME UP" : "MISS";
+  ui.feedbackKicker.textContent = correct ? "正解" : timedOut ? "時間切れ" : "不正解";
   ui.feedbackTitle.textContent = correct ? randomOf(["正解！", "やった！", "その調子！"]) : timedOut ? "時間切れ" : "おしい！";
   ui.feedbackDetail.textContent = feedbackDetail(question);
   renderFeedbackComparison(question, answer, correct, timedOut);
   const canRetryThisRound = !session.limit || session.answers.length + 3 < session.limit;
-  const indexText = correct ? `理解度指数 ${indexBefore} → ${indexAfter}` : `現在の理解度指数 ${indexAfter}`;
-  ui.feedbackPoints.textContent = correct ? `${indexText}${session.combo >= 2 ? `・${session.combo}連続正解` : ""}` : `${indexText}・${canRetryThisRound ? "3問はさんで再出題" : "次回優先して復習"}`;
+  ui.feedbackPoints.textContent = correct ? session.combo >= 2 ? `${session.combo}連続正解` : "学習記録を更新しました" : canRetryThisRound ? "3問はさんで再出題" : "次回優先して復習";
   $("next-question-button").textContent = session.limit && session.answers.length >= session.limit ? "結果を見る" : "次の問題";
   ui.feedback.showModal();
   ui.feedback.scrollTop = 0;
@@ -1119,7 +1177,7 @@ function startGame(limit, mode = "learn") {
     mode, limit, answers: [], retries: mode === "exam" ? [] : saved.pendingReviews.map((review) => ({ ...review, dueAt: review.remaining + 1 })),
     recentCodes: saved.recent.slice(0, 3).reverse().map((item) => item.code),
     recentTypes: saved.recent.slice(0, 2).reverse().map((item) => item.type),
-    combo: 0, maxCombo: 0, answered: false, current: null, deadline: 0, startedAt: 0,
+    combo: 0, maxCombo: 0, answered: false, current: null, deadline: 0, startedAt: 0, answerClockStartedAt: 0, timerHoldUntil: 0, inputReadyAt: 0,
     understandingBefore: understandingIndex(saved.progress), examQuestions: [],
     selectedLocation: "", locationLocked: false, lockLabel: ""
   };
@@ -1142,10 +1200,10 @@ function finishGame() {
   $("result-score-label").textContent = isExam ? "偶然正解を補正した実力スコア" : "全47県・5分野の都道府県理解度";
   $("result-score").textContent = score;
   $("result-score-unit").textContent = "/1000";
-  const delta = score - session.understandingBefore;
   const examAverage = isExam ? Math.round(saved.examScores.reduce((sum, value) => sum + value, 0) / saved.examScores.length) : 0;
-  $("result-record").textContent = isExam ? `直近${saved.examScores.length}回平均 ${examAverage}` : delta ? `この学習で ${delta > 0 ? "+" : ""}${delta}` : "理解度を更新しました";
-  $("result-record").hidden = false;
+  const reachedLevel = isExam ? 0 : understandingMilestone(session.understandingBefore, score, session.answers.length);
+  $("result-record").textContent = isExam ? `直近${saved.examScores.length}回平均 ${examAverage}` : `理解度指数 ${reachedLevel}台に到達！`;
+  $("result-record").hidden = !isExam && !reachedLevel;
   $("result-correct").textContent = `${correct}/${session.answers.length}`;
   $("result-rate").textContent = `${Math.round(correct / session.answers.length * 100)}%`;
   $("result-combo-label").textContent = isExam ? "平均回答時間" : "最大連続正解";
@@ -1159,9 +1217,12 @@ function finishGame() {
   const nextText = nextPrefecture ? `次の復習候補：${nextPrefecture.name}の「${SKILLS[next.skill].name}」${nextTiming ? `（${nextTiming}）` : ""}。` : "次の復習候補：新しい都道府県。";
   const weakestText = weakest ? `現在の苦手：${weakest.prefecture.name}の「${SKILLS[weakest.skill].name}」。` : "現在の苦手：まだ判定できません。";
   if (isExam) {
-    const weakSkill = Object.keys(SKILLS).map((skill) => ({ skill, answers: session.answers.filter((answer) => answer.skill === skill) })).sort((a, b) => a.answers.filter((answer) => answer.correct).length - b.answers.filter((answer) => answer.correct).length)[0];
-    $("result-review").textContent = `弱かった分野：${SKILLS[weakSkill.skill].name}。通常学習で復習できます。試験結果は理解度指数へ影響しません。`;
-  } else $("result-review").textContent = `${weakestText} ${nextText}`;
+    const skillResults = Object.keys(SKILLS).map((skill) => ({ skill, correct: session.answers.filter((answer) => answer.skill === skill && answer.correct).length }));
+    const minimum = Math.min(...skillResults.map((item) => item.correct));
+    const weakNames = skillResults.filter((item) => item.correct === minimum).map((item) => SKILLS[item.skill].name);
+    const weaknessText = minimum === 6 ? "弱かった分野：ありません（全分野満点）。" : `弱かった分野：${weakNames.join("・")}。`;
+    $("result-review").textContent = `${weaknessText} 通常学習で復習できます。試験結果は理解度指数へ影響しません。`;
+  } else $("result-review").textContent = `${weakestText} ${nextText} 次の10問も苦手・復習時期・未学習を優先します。`;
   const mistakes = [...new Map(session.answers.filter((item) => !item.correct).map((item) => [item.code, item])).values()];
   $("result-mistakes").hidden = !mistakes.length;
   $("result-mistake-list").replaceChildren(...mistakes.map((answer) => {
@@ -1175,7 +1236,7 @@ function finishGame() {
     return card;
   }));
   $("replay-button").dataset.mode = "learn";
-  $("replay-button").textContent = isExam ? "おすすめ学習で復習" : mistakes.length ? "苦手を中心にもう10問" : "もう10問";
+  $("replay-button").textContent = isExam ? "おすすめ学習で復習" : "おすすめ学習をもう10問";
   showScreen(ui.result);
   renderHome();
 }
@@ -1294,8 +1355,9 @@ $("confirm-reset-button").addEventListener("click", () => {
 });
 
 document.addEventListener("keydown", (event) => {
+  if (event.repeat) return;
   if (ui.feedback.open && event.key === "Enter" && !event.repeat) { event.preventDefault(); nextAfterFeedback(); return; }
-  if (ui.feedback.open || ui.settings.open || ui.progress.open || ui.studyMap.open || ui.resetConfirm.open || ui.game.hidden || !session || session.answered || session.locationLocked) return;
+  if (ui.feedback.open || ui.settings.open || ui.progress.open || ui.studyMap.open || ui.resetConfirm.open || ui.game.hidden || !session || session.answered || session.locationLocked || Date.now() < session.inputReadyAt) return;
   const number = Number(event.key);
   const isLocation = LOCATION_TYPES.includes(session.current.type);
   if (!isLocation && number >= 1 && number <= 4) {

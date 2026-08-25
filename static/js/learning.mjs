@@ -33,6 +33,12 @@ export function understandingIndex(progress) {
   return Math.round(total / 47 * 1000);
 }
 
+export function understandingMilestone(before, after, questionCount) {
+  const previousLevel = Math.floor(Math.max(0, Number(before) || 0) / 100);
+  const nextLevel = Math.floor(Math.max(0, Number(after) || 0) / 100);
+  return questionCount === 10 && nextLevel > previousLevel ? nextLevel * 100 : 0;
+}
+
 export function examScore(correct, total = 30) {
   const rate = total > 0 ? Math.max(0, Math.min(total, Number(correct) || 0)) / total : 0;
   return Math.round(1000 * Math.max(0, (rate - .25) / .75));

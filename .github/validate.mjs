@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { gzipSync } from "node:zlib";
-import { blankProgress, canIntroduceNewItem, canUseIntegratedMode, compassVector, deadlinePassed, examScore, hasBasicMastery, normalizeProgress, recordAnswer, schedulingPriority, skillsForMastery, understandingIndex } from "../static/js/learning.mjs";
+import { blankProgress, canIntroduceNewItem, canUseIntegratedMode, compassVector, deadlinePassed, examScore, hasBasicMastery, normalizeProgress, recordAnswer, schedulingPriority, skillsForMastery, understandingIndex, understandingMilestone } from "../static/js/learning.mjs";
 
 const required = [
   "index.html",
@@ -13,6 +13,9 @@ const required = [
   "static/js/learning.mjs",
   "static/data/low_prefectures.geojson",
   "static/data/prefecture_facts.json",
+  "static/favicon.svg",
+  "static/icon-512.png",
+  "static/social-card.png",
   ".github/chrome-smoke.mjs",
   ".github/workflows/pages.yml",
   "lighthouserc.json",
@@ -39,6 +42,9 @@ for (const path of ["index.html", "sources.html", "static/css/style.css", "stati
 }
 
 const html = readFileSync("index.html", "utf8");
+if (!html.includes('property="og:image" content="https://ume-chika.github.io/pref_quiz_withGeoJson/static/social-card.png"') || !html.includes('name="twitter:card" content="summary_large_image"') || statSync("static/social-card.png").size < 10_000) {
+  throw new Error("リンク共有画像またはSNSメタデータが不足しています");
+}
 const script = readFileSync("static/js/script.js", "utf8");
 const htmlIds = new Set([...html.matchAll(/\bid=["']([^"']+)["']/g)].map((match) => match[1]));
 for (const [, id] of script.matchAll(/getElementById\(["']([^"']+)["']\)/g)) {
@@ -126,6 +132,9 @@ if (understandingIndex({ "01:A": { mastery: .4, attempts: 99, averageMs: 15000 }
 }
 if (understandingIndex({ "01:A": { mastery: .4, attempts: 1, correct: 1, averageMs: 1000, timeouts: 0 } }) !== understandingIndex({ "01:A": { mastery: .4, attempts: 99, correct: 3, averageMs: 15000, timeouts: 80 } })) {
   throw new Error("理解度指数が回答速度や出題回数に左右されています");
+}
+if (understandingMilestone(99, 100, 10) !== 100 || understandingMilestone(99, 205, 10) !== 200 || understandingMilestone(100, 199, 10) || understandingMilestone(99, 100, 9) || understandingMilestone(205, 199, 10)) {
+  throw new Error("理解度指数の大台通知条件が不正です");
 }
 if ([0, 22, 333, 733, 1000].some((score, index) => examScore([0, 8, 15, 24, 30][index]) !== score) || examScore(30, 0) !== 0) {
   throw new Error("実力テストの偶然正解補正が不正です");
