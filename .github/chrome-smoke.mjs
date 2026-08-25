@@ -127,12 +127,12 @@ try {
   assert(await evaluate(cdp, `['silhouette','silhouetteReverse'].includes(document.querySelector('#game-screen').dataset.quizType) && !document.querySelector('#visual-stage animate') && !document.querySelector('.slit-moving') && document.documentElement.classList.contains('reduce-motion')`), "視覚効果OFFでも動きのある問題が通常選択されます");
   await evaluate(cdp, `Math.random=globalThis.__nativeRandom; delete globalThis.__nativeRandom; document.querySelector('#quit-game-button').click(); localStorage.setItem('prefecture-minigame-v2',JSON.stringify({schema:2,settings:{sound:false,volume:.5,answerMode:'confirm',visualEffects:false},progress:{},highScore:0,recent:[]})); location.reload(); true`);
   await waitFor(cdp, `document.querySelector('#home-screen:not([hidden])')`, 10_000);
-  await evaluate(cdp, `document.querySelector('#start-endless-button').click(); true`);
+  await evaluate(cdp, `globalThis.__prefQuizTest={type:'shapeMemory',skill:'A',code:'01'}; document.querySelector('#start-endless-button').click(); true`);
   await waitFor(cdp, `document.querySelector('#game-screen').dataset.quizType==='shapeMemory' && document.querySelector('#timer-text').textContent==='確認中'`);
   assert(await evaluate(cdp, `document.querySelector('.memory-ready-button') && document.querySelector('.memory-teach strong').textContent && document.querySelector('#visual-stage .silhouette') && document.querySelector('#answer-fieldset').hidden && !document.querySelector('#visual-stage .memory-curtain')`), "視覚効果OFFの初見形状を静止見本で学べません");
   await evaluate(cdp, `document.querySelector('.memory-ready-button').click(); true`);
   await waitFor(cdp, `document.querySelector('#timer-text').textContent.startsWith('残り') && !document.querySelector('#answer-fieldset').hidden`);
-  await evaluate(cdp, `document.querySelector('#quit-game-button').click(); document.querySelector('#settings-button').click(); document.querySelector('#visual-effects-setting').click(); document.querySelector('#settings-dialog .close-button').click(); true`);
+  await evaluate(cdp, `delete globalThis.__prefQuizTest; document.querySelector('#quit-game-button').click(); document.querySelector('#settings-button').click(); document.querySelector('#visual-effects-setting').click(); document.querySelector('#settings-dialog .close-button').click(); true`);
   await waitFor(cdp, `document.querySelector('#home-screen:not([hidden])')`);
   await evaluate(cdp, `(() => { const item={attempts:2,correct:1,streak:0,lastSeen:1,averageMs:5000,timeouts:0,nextDue:1,mastery:.3,recent:[0,1]}; localStorage.setItem('prefecture-minigame-v2',JSON.stringify({schema:2,settings:{sound:false,volume:.5,answerMode:'confirm',visualEffects:true},progress:{'01:B':item},highScore:0,recent:[]})); location.reload(); return true; })()`);
   await waitFor(cdp, `document.querySelector('#home-screen:not([hidden])')`, 10_000);
