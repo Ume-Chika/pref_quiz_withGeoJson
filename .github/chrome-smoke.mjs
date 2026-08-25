@@ -296,7 +296,7 @@ try {
     ["silhouette", "A", "47", "沖縄県"], ["reveal", "A", "01", "北海道"], ["spotlight", "A", "01", "北海道"],
     ["flash", "A", "01", "北海道"], ["slitFlow", "A", "01", "北海道"], ["silhouetteReverse", "A", "01", "北海道"], ["mapShape", "A", "01", "北海道"],
     ["map", "B", "01", "北海道"], ["locate", "B", "01", "北海道"], ["locateJapan", "B", "01", "北海道"],
-    ["mapChoice", "B", "01", "北海道"], ["mapMemory", "B", "01", "北海道"], ["mapFlash", "B", "01", "北海道"], ["compass", "B", "01", "北東"], ["shapeLocate", "B", "01", "北海道"],
+    ["mapChoice", "B", "01", "北海道"], ["mapMemory", "B", "01", "北海道"], ["mapFlash", "B", "01", "北海道"], ["compass", "B", "01", "北"], ["shapeLocate", "B", "01", "北海道"],
     ["capital", "C", "01", "札幌市"], ["capitalReverse", "C", "01", "北海道"], ["capitalMap", "C", "01", "札幌市"], ["capitalShape", "C", "01", "札幌市"], ["capitalLocate", "C", "01", "北海道"],
     ["region", "D", "02", "東北地方"], ["regionMember", "D", "02", "青森県"], ["regionMap", "D", "02", "東北地方"], ["regionShape", "D", "02", "東北地方"], ["shapeRegion", "D", "02", "東北地方"], ["capitalRegion", "D", "01", "北海道地方"],
     ["dish", "E", "01", "北海道"], ["dishReverse", "E", "01", "ジンギスカン"], ["dishMap", "E", "01", "ジンギスカン"], ["dishShapeChoice", "E", "01", "北海道"], ["dishLocate", "E", "01", "北海道"],
