@@ -473,7 +473,7 @@ try {
     await waitFor(cdp, `document.querySelector('#feedback-dialog').open`);
     if (round === 1) await evaluate(cdp, `document.querySelector('#next-question-button').click(); true`);
   }
-  assert(await evaluate(cdp, `document.querySelector('#combo-count').textContent === '2' && document.querySelector('#score-count').textContent === '2' && document.querySelector('#feedback-points').textContent.includes('学習記録を更新') && !document.querySelector('#feedback-points').textContent.includes('理解度指数')`), "連続正解、正解数または学習記録表示が不正です");
+  assert(await evaluate(cdp, `document.querySelector('#combo-count').textContent === '2' && document.querySelector('#score-count').textContent === '2' && document.querySelector('#feedback-points').textContent === '2連続正解' && !document.querySelector('#feedback-points').textContent.includes('理解度指数')`), "連続正解、正解数または学習記録表示が不正です");
   await evaluate(cdp, `document.querySelector('#quit-game-button').click(); document.querySelector('#result-home-button').click(); delete globalThis.__prefQuizTest; true`);
 
   await evaluate(cdp, `(() => { const future=Date.now()+864e5; const item={attempts:3,correct:3,streak:3,lastSeen:future,averageMs:5000,timeouts:0,nextDue:future+5*60e3,mastery:.8,recent:[1,1,1]}; localStorage.setItem('prefecture-minigame-v2',JSON.stringify({schema:2,settings:{sound:false,volume:.5,answerMode:'confirm'},progress:{'01:B':item},highScore:0,recent:[]})); location.reload(); return true; })()`);
