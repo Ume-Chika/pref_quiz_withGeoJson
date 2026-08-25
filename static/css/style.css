@@ -276,6 +276,10 @@ button.danger-button { color: var(--danger); border: 1px solid #e5b1ab; backgrou
 .study-map-canvas .map-prefecture.mastery-weak.selected { fill: #d9786d; stroke: #5e241f; stroke-width: 2; }
 .study-map-canvas .map-prefecture:hover, .study-map-canvas .map-prefecture:focus-visible { stroke: #1e563e; stroke-width: 2; outline: none; }
 .study-map-canvas .map-prefecture:focus:not(:focus-visible) { outline: none; }
+.study-map-highlight-overlay { fill: none; stroke: transparent; stroke-width: 2; vector-effect: non-scaling-stroke; pointer-events: none; }
+.study-map-highlight-overlay.is-active { stroke: #1e563e; }
+.study-map-highlight-overlay.mastery-strong.is-active { stroke: #05483b; }
+.study-map-highlight-overlay.mastery-weak.is-active { stroke: #5e241f; stroke-dasharray: 4 3; }
 .study-map-main .keyboard-hint { margin-top: 6px; margin-bottom: 0; font-size: .72rem; flex-shrink: 0; }
 .study-map-side { display: flex; flex-direction: column; min-height: 0; min-width: 0; max-height: 100%; height: 100%; overflow: hidden; }
 .study-map-help { margin: 0 0 10px; color: var(--muted); font-size: .78rem; line-height: 1.45; flex-shrink: 0; }

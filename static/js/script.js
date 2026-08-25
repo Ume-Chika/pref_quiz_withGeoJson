@@ -294,6 +294,10 @@ function renderStudyMap() {
   canvas.innerHTML = svgMap(prefectures, boundsOf(prefectures), { width: 700, height: 540, clickable: true, label: "都道府県ごとの現在習熟度を示す日本白地図" });
   setStudyMapZoom(1);
   const svg = canvas.querySelector("svg");
+  const overlay = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  overlay.setAttribute("class", "study-map-highlight-overlay");
+  overlay.setAttribute("aria-hidden", "true");
+  svg.appendChild(overlay);
   const paths = [...svg.querySelectorAll(".map-prefecture[data-code]")];
   const statusMap = getStudyMapMasteryStatuses();
   paths.forEach((path) => {
@@ -341,11 +345,25 @@ function renderStudyMap() {
   window.addEventListener("pointerup", stopDragging);
   window.addEventListener("pointercancel", stopDragging);
 
+  const updateOverlay = () => {
+    const selectedPath = paths.find((path) => path.classList.contains("selected"));
+    if (selectedPath) {
+      overlay.setAttribute("d", selectedPath.getAttribute("d") || "");
+      const strong = selectedPath.classList.contains("mastery-strong") ? " mastery-strong" : "";
+      const weak = selectedPath.classList.contains("mastery-weak") ? " mastery-weak" : "";
+      overlay.setAttribute("class", `study-map-highlight-overlay is-active${strong}${weak}`);
+    } else {
+      overlay.setAttribute("d", "");
+      overlay.setAttribute("class", "study-map-highlight-overlay");
+    }
+  };
+
   const clearSelection = () => {
     paths.forEach((path) => {
       path.classList.remove("selected");
       path.removeAttribute("aria-current");
     });
+    updateOverlay();
   };
 
   const showCode = (code, highlight = true) => {
@@ -357,6 +375,7 @@ function renderStudyMap() {
       if (isCurrent) path.setAttribute("aria-current", "true");
       else path.removeAttribute("aria-current");
     });
+    updateOverlay();
     renderStudyMapDetail(prefecture, recent);
   };
   svg.addEventListener("pointerover", (event) => {
@@ -473,6 +492,13 @@ function renderStudyMapColors(paths = [...ui.studyMapCanvas.querySelectorAll(".m
     path.classList.toggle("mastery-strong", showStrong && path.dataset.mastery === "strong");
     path.classList.toggle("mastery-weak", showWeak && path.dataset.mastery === "weak");
   });
+  const overlay = ui.studyMapCanvas.querySelector(".study-map-highlight-overlay");
+  const selectedPath = paths.find((path) => path.classList.contains("selected"));
+  if (overlay && selectedPath) {
+    const strong = selectedPath.classList.contains("mastery-strong") ? " mastery-strong" : "";
+    const weak = selectedPath.classList.contains("mastery-weak") ? " mastery-weak" : "";
+    overlay.setAttribute("class", `study-map-highlight-overlay is-active${strong}${weak}`);
+  }
 }
 
 function renderStudyMapDetail(prefecture, recent) {
@@ -1413,7 +1439,7 @@ $("confirm-reset-button").addEventListener("click", () => {
 
 document.addEventListener("keydown", (event) => {
   if (event.repeat) return;
-  if (ui.feedback.open && event.key === "Enter" && !event.repeat) { event.preventDefault(); nextAfterFeedback(); return; }
+  if (ui.feedback.open && ["Enter", "1", "2", "3", "4"].includes(event.key)) { event.preventDefault(); nextAfterFeedback(); return; }
   if (ui.feedback.open || ui.settings.open || ui.progress.open || ui.studyMap.open || ui.resetConfirm.open || ui.game.hidden || !session || session.answered || session.locationLocked || Date.now() < session.inputReadyAt) return;
   const number = Number(event.key);
   const isLocation = LOCATION_TYPES.includes(session.current.type);
