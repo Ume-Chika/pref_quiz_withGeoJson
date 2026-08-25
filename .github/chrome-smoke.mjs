@@ -185,7 +185,7 @@ try {
       throw new Error(`問題${question}の表示待ちに失敗: ${JSON.stringify(state)} / ${errors.join(" / ")} / ${error.message}`);
     }
     assert(await evaluate(cdp, `document.querySelector('#question-number').textContent === '${question}/10'`), `問題番号${question}が不正です`);
-    await waitFor(cdp, `document.querySelector('#timer-text').textContent !== '記憶中'`, 5_000);
+    await waitFor(cdp, `document.querySelector('#timer-text').textContent.startsWith('残り')`, 7_000);
     const code = await evaluate(cdp, `document.querySelector('#game-screen').dataset.code`);
     await evaluate(cdp, `(() => { const type=document.querySelector('#game-screen').dataset.quizType; if(${JSON.stringify(locationTypes)}.includes(type)){ document.querySelector('.map-prefecture[data-code="${code}"]').dispatchEvent(new MouseEvent('click',{bubbles:true})); } else { const input=[...document.querySelectorAll('input[name="answer"]')].find(item=>item.value===${JSON.stringify(namesByCode[code])}); input.checked=true; input.dispatchEvent(new Event('change')); } document.querySelector('#submit-answer-button').click(); return true; })()`);
     try {
