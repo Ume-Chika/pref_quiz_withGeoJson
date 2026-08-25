@@ -341,31 +341,49 @@ function renderStudyMap() {
   window.addEventListener("pointerup", stopDragging);
   window.addEventListener("pointercancel", stopDragging);
 
-  const showCode = (code) => {
+  const clearSelection = () => {
+    paths.forEach((path) => {
+      path.classList.remove("selected");
+      path.removeAttribute("aria-current");
+    });
+  };
+
+  const showCode = (code, highlight = true) => {
     const prefecture = prefectures.find((item) => item.code === code);
     if (!prefecture) return;
     paths.forEach((path) => {
-      path.classList.toggle("selected", path.dataset.code === code);
-      if (path.dataset.code === code) path.setAttribute("aria-current", "true");
+      const isCurrent = highlight && path.dataset.code === code;
+      path.classList.toggle("selected", isCurrent);
+      if (isCurrent) path.setAttribute("aria-current", "true");
       else path.removeAttribute("aria-current");
     });
     renderStudyMapDetail(prefecture, recent);
   };
   svg.addEventListener("pointerover", (event) => {
     if (isDragging) return;
-    showCode(event.target.closest?.("[data-code]")?.dataset.code);
+    const hitCode = event.target.closest?.("[data-code]")?.dataset.code;
+    if (hitCode) showCode(hitCode, true);
   });
-  svg.addEventListener("focusin", (event) => showCode(event.target.closest?.(".map-prefecture[data-code]")?.dataset.code));
+  canvas.addEventListener("pointerleave", () => {
+    if (!isDragging) clearSelection();
+  });
+  svg.addEventListener("focusin", (event) => {
+    const hitCode = event.target.closest?.(".map-prefecture[data-code]")?.dataset.code;
+    if (hitCode) showCode(hitCode, true);
+  });
+  svg.addEventListener("focusout", (event) => {
+    if (!svg.contains(event.relatedTarget)) clearSelection();
+  });
   svg.addEventListener("click", (event) => {
     if (hasDragged) { hasDragged = false; return; }
     const hitCode = event.target.closest?.(".map-prefecture[data-code]")?.dataset.code;
-    if (hitCode) { showCode(hitCode); return; }
+    if (hitCode) { showCode(hitCode, true); return; }
     const point = new DOMPoint(event.clientX, event.clientY).matrixTransform(svg.getScreenCTM().inverse());
     const nearest = paths.map((path) => ({ code: path.dataset.code, distance: Math.hypot(point.x - Number(path.dataset.centerX), point.y - Number(path.dataset.centerY)) })).sort((a, b) => a.distance - b.distance)[0];
-    if (nearest) showCode(nearest.code);
+    if (nearest) showCode(nearest.code, true);
   });
   paths.forEach((path) => path.addEventListener("keydown", (event) => {
-    if (event.key === "Enter" || event.key === " ") { event.preventDefault(); showCode(path.dataset.code); }
+    if (event.key === "Enter" || event.key === " ") { event.preventDefault(); showCode(path.dataset.code, true); }
     else if (["ArrowRight", "ArrowDown", "ArrowLeft", "ArrowUp"].includes(event.key)) {
       event.preventDefault();
       const nextCode = spatialNeighbor(path.dataset.code, event.key, prefectures);
@@ -379,13 +397,13 @@ function renderStudyMap() {
   const initial = prefectures.find((item) => item.code === recent[0]?.code) || prefectures[0];
   const initialPath = paths.find((path) => path.dataset.code === initial.code);
   if (initialPath) paths.forEach((path) => { path.tabIndex = path === initialPath ? 0 : -1; });
-  showCode(initial.code);
+  showCode(initial.code, false);
 }
 
 function setStudyMapZoom(nextZoom) {
   const canvas = ui.studyMapCanvas;
   const svg = canvas.querySelector("svg");
-  studyMapZoom = Math.max(1, Math.min(2.5, nextZoom));
+  studyMapZoom = Math.max(1, Math.min(5, nextZoom));
   canvas.classList.toggle("is-zoomed", studyMapZoom > 1);
   if (svg) {
     const centerX = canvas.scrollWidth ? (canvas.scrollLeft + canvas.clientWidth / 2) / canvas.scrollWidth : .5;
@@ -406,7 +424,7 @@ function setStudyMapZoom(nextZoom) {
   $("study-map-zoom-value").textContent = `${Math.round(studyMapZoom * 100)}%`;
   $("study-map-zoom").value = String(studyMapZoom);
   $("study-map-zoom-out").disabled = studyMapZoom <= 1;
-  $("study-map-zoom-in").disabled = studyMapZoom >= 2.5;
+  $("study-map-zoom-in").disabled = studyMapZoom >= 5;
   $("study-map-zoom-reset").disabled = studyMapZoom === 1;
 }
 
@@ -476,7 +494,7 @@ function renderStudyMapDetail(prefecture, recent) {
   list.replaceChildren();
   if (!history.length) {
     const item = document.createElement("li");
-    item.textContent = "この県の記録はまだありません";
+    item.textContent = "直近の記録はありません";
     list.append(item);
   } else history.forEach((record) => {
     const item = document.createElement("li");
