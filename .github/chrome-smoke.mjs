@@ -88,7 +88,7 @@ try {
   assert(await evaluate(cdp, `Boolean(document.querySelector('.app-footer .app-version')?.textContent)`), "フッターにバージョン表記がありません");
   await evaluate(cdp, `document.querySelector('#progress-button').click(); true`);
   await waitFor(cdp, `document.querySelector('#progress-dialog').open`);
-  assert(await evaluate(cdp, `(() => { const text=[...document.querySelectorAll('#skill-progress .skill-name')].map(item=>item.textContent); return text.some(value=>value.includes('基本3県で解放')) && text.some(value=>value.includes('基本8県で解放')) && text.some(value=>value.includes('基本15県で解放')); })()`), "学習記録にC・D・Eの解放条件を表示できません");
+  assert(await evaluate(cdp, `(() => { const text=[...document.querySelectorAll('#skill-progress .skill-name')].map(item=>item.textContent); return text.some(value=>value.includes('あと3県習得で解放')) && text.some(value=>value.includes('あと8県習得で解放')) && text.some(value=>value.includes('あと15県習得で解放')); })()`), "学習記録にC・D・Eの解放条件を表示できません");
   await evaluate(cdp, `document.querySelector('#progress-dialog .close-button').click(); true`);
 
   await cdp.command("Emulation.setDeviceMetricsOverride", { width: 1366, height: 768, deviceScaleFactor: 1, mobile: false });
@@ -172,7 +172,7 @@ try {
   await waitFor(cdp, `document.querySelector('#home-screen:not([hidden])')`, 10_000);
   await evaluate(cdp, `document.querySelector('#progress-button').click(); true`);
   await waitFor(cdp, `document.querySelector('#progress-dialog').open`);
-  assert(await evaluate(cdp, `JSON.parse(localStorage.getItem('prefecture-minigame-v2')).unlockedBasic===15 && [...document.querySelectorAll('#skill-progress .skill-row')].slice(2).every(row=>row.querySelector('.skill-name span:last-child').textContent==='0問')`), "解放後に基本習熟が下がるとC・D・Eが再ロックされます");
+  assert(await evaluate(cdp, `JSON.parse(localStorage.getItem('prefecture-minigame-v2')).unlockedBasic===15 && [...document.querySelectorAll('#skill-progress .skill-row')].slice(2).every(row=>row.querySelector('.skill-name span:last-child').textContent==='挑戦数 0 回 正答率 0%')`), "解放後に基本習熟が下がるとC・D・Eが再ロックされます");
   await evaluate(cdp, `document.querySelector('#progress-dialog .close-button').click(); true`);
   await evaluate(cdp, `localStorage.setItem('prefecture-minigame-v2', JSON.stringify({schema:2,settings:{sound:false,answerMode:'broken'},progress:{'01:A':{attempts:'bad',correct:99,mastery:4,recent:null}},highScore:'bad',recent:null,pendingReviews:[{code:'03',skill:'A',type:'broken',remaining:0},{code:'03',skill:'A',type:'silhouette',remaining:2}]})); location.reload(); true`);
   await waitFor(cdp, `document.querySelector('#home-screen:not([hidden])')`, 10_000);
@@ -505,6 +505,7 @@ try {
   await evaluate(cdp, `globalThis.__prefQuizTest={type:'mapFlash',skill:'B',code:'01'}; document.querySelector('#start-endless-button').click(); true`);
   await waitFor(cdp, `document.querySelector('#game-screen').dataset.quizType==='mapFlash' && document.querySelector('#timer-text').textContent==='記憶中'`);
   await waitFor(cdp, `document.querySelector('#timer-text').textContent!=='記憶中'`, 4_000);
+  assert(await evaluate(cdp, `!document.querySelector('#visual-stage .map-target-overlay') && !document.querySelector('#visual-stage .target')`), "地図フラッシュ記憶後にハイライトや輪郭線オーバーレイが残っています");
   await evaluate(cdp, `(() => { const input=[...document.querySelectorAll('input[name="answer"]')].find(item=>item.value!=='北海道'); input.checked=true; input.dispatchEvent(new Event('change')); document.querySelector('#submit-answer-button').click(); return true; })()`);
   await waitFor(cdp, `document.querySelector('#feedback-dialog').open`);
   assert(await evaluate(cdp, `(() => { const item=JSON.parse(localStorage.getItem('prefecture-minigame-v2')).progress['01:B']; return item.streak===0 && item.mastery<=.5 && document.querySelector('#feedback-points').textContent.includes('3問'); })()`), "見本付き問題の誤答を通常誤答より軽く扱っています");
