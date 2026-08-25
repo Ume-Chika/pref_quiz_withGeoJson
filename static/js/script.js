@@ -9,7 +9,7 @@ const SKILLS = {
 };
 const LOCATION_TYPES = ["locate", "locateJapan", "mapMemory", "shapeLocate", "capitalLocate", "dishLocate"];
 const NATIONWIDE_LOCATION_TYPES = ["locateJapan", "shapeLocate", "capitalLocate", "dishLocate"];
-const ANIMATED_TYPES = ["spotlight", "reveal", "flash", "mapMemory", "mapFlash", "shapeLocate"];
+const ANIMATED_TYPES = ["spotlight", "reveal", "flash", "slitFlow", "mapMemory", "mapFlash", "shapeLocate"];
 
 const $ = (id) => document.getElementById(id);
 const screens = ["loading-screen", "error-screen", "home-screen", "game-screen", "result-screen"].map($);
@@ -475,7 +475,7 @@ function buildQuestion(prefecture, skill, forcedType = "") {
   const mastery = item.mastery || 0;
   let type;
   if (skill === "A") {
-    const modes = !item.attempts ? ["shapeMemory"] : mastery < .15 ? ["silhouette", "reveal"] : mastery < .45 ? ["silhouette", "reveal", "spotlight", "silhouetteReverse"] : ["spotlight", "flash", "reveal", "silhouette", "silhouetteReverse"];
+    const modes = !item.attempts ? ["shapeMemory"] : mastery < .15 ? ["silhouette", "reveal"] : mastery < .45 ? ["silhouette", "reveal", "slitFlow", "spotlight", "silhouetteReverse"] : ["spotlight", "flash", "slitFlow", "reveal", "silhouette", "silhouetteReverse"];
     if (canUseIntegratedMode(mastery, getProgress(prefecture.code, "B").mastery)) modes.push("mapShape");
     type = randomMode(modes, "silhouette");
   } else if (skill === "B") {
@@ -488,7 +488,7 @@ function buildQuestion(prefecture, skill, forcedType = "") {
     if (canUseIntegratedMode(mastery, getProgress(prefecture.code, "B").mastery)) modes.push("capitalMap", "capitalLocate");
     type = randomMode(modes, "capital");
   } else if (skill === "D") {
-    const modes = ["region", "regionMember"];
+    const modes = ["region", "regionMember", "regionShape"];
     if (canUseIntegratedMode(mastery, getProgress(prefecture.code, "A").mastery)) modes.push("shapeRegion");
     if (canUseIntegratedMode(mastery, getProgress(prefecture.code, "B").mastery)) modes.push("regionMap");
     if (canUseIntegratedMode(mastery, getProgress(prefecture.code, "C").mastery)) modes.push("capitalRegion");
@@ -502,7 +502,7 @@ function buildQuestion(prefecture, skill, forcedType = "") {
   type = forcedType || type;
 
   const question = { prefecture, skill, type, isNew: !item.attempts, choices: [], correct: "" };
-  if (["shapeMemory", "silhouette", "reveal", "spotlight", "flash", "silhouetteReverse", "mapShape", "map", "mapChoice", "mapFlash", ...LOCATION_TYPES].includes(type)) {
+  if (["shapeMemory", "silhouette", "reveal", "spotlight", "flash", "slitFlow", "silhouetteReverse", "mapShape", "map", "mapChoice", "mapFlash", ...LOCATION_TYPES].includes(type)) {
     question.correct = prefecture.name;
     question.choices = nameChoices(prefecture, type === "mapChoice" ? Math.max(.3, mastery) : mastery, skill === "A" ? "shape" : "geo", skill);
   } else if (["capital", "capitalMap", "capitalShape"].includes(type)) {
@@ -511,7 +511,7 @@ function buildQuestion(prefecture, skill, forcedType = "") {
   } else if (type === "capitalReverse") {
     question.correct = prefecture.name;
     question.choices = nameChoices(prefecture, mastery, "geo", "C");
-  } else if (["region", "regionMap", "capitalRegion", "shapeRegion"].includes(type)) {
+  } else if (["region", "regionMap", "regionShape", "capitalRegion", "shapeRegion"].includes(type)) {
     question.correct = prefecture.region;
     question.choices = shuffle([prefecture.region, ...shuffle([...new Set(facts.map((fact) => fact.region))].filter((region) => region !== prefecture.region)).slice(0, 3)]);
   } else if (type === "regionMember") {
@@ -608,6 +608,7 @@ function setQuestionCopy(question) {
     reveal: ["じわじわ表示", "だんだん見える県はどこ？", "輪郭上のどこかから、ゆっくり形が広がります。"],
     spotlight: ["スポットライト", "暗闇に隠れた県はどこ？", "動く光から輪郭をつかんでください。"],
     flash: ["フラッシュ記憶", "さっき見えた県はどこ？", "形は一瞬だけ表示されます。"],
+    slitFlow: ["隙間シルエット", "隙間を流れていったのはどの県？", "細い隙間を通る輪郭を目で追ってください。"],
     silhouetteReverse: ["形を選ぶ", `${question.prefecture.name}の形はどれ？`, "4つの輪郭から選んでください。"],
     mapShape: ["地図→形", "黄色く光る県の形はどれ？", "位置と形を結びつけましょう。"],
     map: ["周辺地図", "黄色く光る都道府県はどこ？", "周りの県との位置関係も手がかりです。"],
@@ -626,6 +627,7 @@ function setQuestionCopy(question) {
     region: ["地方区分", `${question.prefecture.name}が属する地方は？`, "本アプリでは内閣府資料の8区分を使います。"],
     regionMember: ["地方区分", `${question.prefecture.region}に含まれるのは？`, "当てはまる都道府県を選んでください。"],
     regionMap: ["地方地図", "黄色くまとまった地方はどこ？", "地方の広がりを地図で確認してください。"],
+    regionShape: ["地方の形", "この地方はどこ？", "まとまりの形から地方名を答えてください。"],
     shapeRegion: ["形→地方", "この形の都道府県は何地方？", "形から地方まで結びつけましょう。"],
     capitalRegion: ["県庁所在地→地方", `${question.prefecture.capital}が県庁所在地の都道府県は何地方？`, "県庁所在地から地方まで思い出してください。"],
     dish: ["郷土料理", `農林水産省の郷土料理百選で「${question.prefecture.dish}」が選ばれた都道府県は？`, "正しい都道府県を選んでください。"],
@@ -693,6 +695,21 @@ function renderVisual(question, token) {
     if (type === "reveal" && !reducedMotion) {
       ui.keyboardHint.textContent = "6秒間は輪郭の変化を観察します";
       lockPreview(token, 6000, () => {}, "観察中");
+    }
+  } else if (type === "slitFlow") {
+    if (reducedMotion) ui.stage.innerHTML = silhouetteSvg(prefecture);
+    else {
+      const reverse = Math.random() < .5 ? " reverse" : "";
+      ui.stage.innerHTML = `<div class="slit-flow"><div class="slit-moving${reverse}">${silhouetteSvg(prefecture)}</div><div class="slit-cover" aria-hidden="true"></div></div><div class="memory-curtain">どの県だった？</div>`;
+      ui.stage.querySelector(".memory-curtain").style.animationDelay = "5.2s";
+      ui.keyboardHint.textContent = "隙間を通る形を記憶します";
+      ui.answerFieldset.hidden = true;
+      ui.submit.hidden = true;
+      lockPreview(token, 5200, () => {
+        ui.answerFieldset.hidden = false;
+        ui.submit.hidden = saved.settings.answerMode === "instant";
+        ui.keyboardHint.innerHTML = saved.settings.answerMode === "instant" ? "<kbd>1</kbd>–<kbd>4</kbd> で回答" : "<kbd>1</kbd>–<kbd>4</kbd> 選択　<kbd>Enter</kbd> 決定";
+      });
     }
   } else if (type === "silhouetteReverse") {
     ui.stage.innerHTML = `<div class="fact-prompt"><span>A</span><strong>${prefecture.name}</strong></div>`;
@@ -774,6 +791,9 @@ function renderVisual(question, token) {
   } else if (type === "regionMap") {
     const targetCodes = prefectures.filter((item) => item.region === prefecture.region).map((item) => item.code);
     ui.stage.innerHTML = svgMap(prefectures, boundsOf(prefectures.map((item) => item.mainGeometry)), { targetCodes, label: "対象地方を強調した日本地図" });
+  } else if (type === "regionShape") {
+    const regional = prefectures.filter((item) => item.region === prefecture.region);
+    ui.stage.innerHTML = svgMap(regional, expandedBounds(boundsOf(regional.map((item) => item.mainGeometry)), .62), { targetCodes: regional.map((item) => item.code), label: "名前を答える地方のまとまり" });
   } else if (type === "compass") {
     ui.stage.innerHTML = `<div class="compass-prompt"><span>基準<br><strong>${question.reference.name}</strong></span><b aria-hidden="true">→</b><span>どちら？<br><strong>${prefecture.name}</strong></span></div>`;
   } else {
@@ -965,7 +985,7 @@ function queueReview(review) {
 }
 
 function questionEvidence(type, correct = true) {
-  return ["shapeMemory", "flash", "mapMemory", "mapFlash"].includes(type) ? correct ? .4 : 1 : ["mapShape", "shapeLocate", "capitalMap", "capitalShape", "capitalLocate", "regionMap", "shapeRegion", "capitalRegion", "dishMap", "dishShapeChoice", "dishLocate"].includes(type) ? .65 : 1;
+  return ["shapeMemory", "flash", "slitFlow", "mapMemory", "mapFlash"].includes(type) ? correct ? .4 : 1 : ["mapShape", "shapeLocate", "capitalMap", "capitalShape", "capitalLocate", "regionMap", "shapeRegion", "capitalRegion", "dishMap", "dishShapeChoice", "dishLocate"].includes(type) ? .65 : 1;
 }
 
 function showFeedback(question, correct, timedOut, points, answer) {
