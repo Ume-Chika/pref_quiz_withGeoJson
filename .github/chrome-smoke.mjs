@@ -276,7 +276,7 @@ try {
     const fact = factsByCode[current.code];
     const correct = current.skill === "A" || current.skill === "B" ? fact.name : current.skill === "C" ? fact.capital : current.skill === "D" ? fact.region : fact.dish;
     await evaluate(cdp, `(() => { const input=[...document.querySelectorAll('input[name="answer"]')].find(item=>item.value===${JSON.stringify(correct)}); input.checked=true; input.dispatchEvent(new Event('change')); document.querySelector('#submit-answer-button').click(); return !document.querySelector('#feedback-dialog').open; })()`);
-    if (question === 1) assert(await evaluate(cdp, `document.querySelector('#question-number').textContent==='2/30' && [...document.querySelectorAll('input[name="answer"]')].every(input=>input.disabled)`), "実力テストで同じタップが次の問題にも入力されるのを防げません");
+    if (question === 1) assert(await evaluate(cdp, `document.querySelector('#question-number').textContent==='2/30' && [...document.querySelectorAll('input[name="answer"]')].every(input=>input.disabled) && document.querySelector('#timer-text').textContent==='次の問題'`), "実力テストで同じタップが次の問題にも入力されるのを防げません");
   }
   await waitFor(cdp, `document.querySelector('#result-screen:not([hidden])')`);
   const examState = await evaluate(cdp, `JSON.parse(localStorage.getItem('prefecture-minigame-v2'))`);
@@ -473,7 +473,7 @@ try {
     await waitFor(cdp, `document.querySelector('#feedback-dialog').open`);
     if (round === 1) await evaluate(cdp, `document.querySelector('#next-question-button').click(); true`);
   }
-  assert(await evaluate(cdp, `document.querySelector('#combo-count').textContent === '2' && document.querySelector('#score-count').textContent === '2' && document.querySelector('#feedback-points').textContent.includes('理解度指数')`), "連続正解、正解数または理解度表示が不正です");
+  assert(await evaluate(cdp, `document.querySelector('#combo-count').textContent === '2' && document.querySelector('#score-count').textContent === '2' && document.querySelector('#feedback-points').textContent.includes('学習記録を更新') && !document.querySelector('#feedback-points').textContent.includes('理解度指数')`), "連続正解、正解数または学習記録表示が不正です");
   await evaluate(cdp, `document.querySelector('#quit-game-button').click(); document.querySelector('#result-home-button').click(); delete globalThis.__prefQuizTest; true`);
 
   await evaluate(cdp, `(() => { const future=Date.now()+864e5; const item={attempts:3,correct:3,streak:3,lastSeen:future,averageMs:5000,timeouts:0,nextDue:future+5*60e3,mastery:.8,recent:[1,1,1]}; localStorage.setItem('prefecture-minigame-v2',JSON.stringify({schema:2,settings:{sound:false,volume:.5,answerMode:'confirm'},progress:{'01:B':item},highScore:0,recent:[]})); location.reload(); return true; })()`);

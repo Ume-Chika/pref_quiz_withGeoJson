@@ -1,6 +1,6 @@
 "use strict";
 
-import { blankProgress, canIntroduceNewItem, canUseIntegratedMode, compassVector, deadlinePassed, examScore, hasBasicMastery, normalizeProgress, prefectureUnderstanding, recordAnswer, schedulingPriority, skillsForMastery, understandingIndex, understandingMilestone } from "./learning.mjs";
+import { blankProgress, canIntroduceNewItem, canUseIntegratedMode, compassVector, deadlinePassed, examScore, geometryRepresentativePoint, hasBasicMastery, normalizeProgress, prefectureUnderstanding, recordAnswer, schedulingPriority, skillsForMastery, understandingIndex, understandingMilestone } from "./learning.mjs";
 
 const STORAGE_KEY = "prefecture-minigame-v2";
 const QUESTION_SECONDS = 15;
@@ -142,7 +142,7 @@ async function loadData() {
       const mainGeometry = largestPolygonGeometry(feature.geometry);
       return {
         ...byName.get(feature.properties.name), feature, mainGeometry,
-        center: centerOfGeometry(mainGeometry), shape: shapeStats(mainGeometry)
+        center: geometryRepresentativePoint(mainGeometry), shape: shapeStats(mainGeometry)
       };
     }).sort((a, b) => Number(a.code) - Number(b.code));
     unlockedBasicCount();
@@ -183,49 +183,6 @@ function boundsOf(items) {
   }), { minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity });
 }
 
-function centerOfGeometry(geometry) {
-  const polygon = geometry.type === "Polygon" ? geometry.coordinates : largestPolygonGeometry(geometry).coordinates;
-  const ring = polygon[0];
-  let crossSum = 0;
-  let xSum = 0;
-  let ySum = 0;
-  for (let index = 0; index < ring.length - 1; index += 1) {
-    const cross = ring[index][0] * ring[index + 1][1] - ring[index + 1][0] * ring[index][1];
-    crossSum += cross;
-    xSum += (ring[index][0] + ring[index + 1][0]) * cross;
-    ySum += (ring[index][1] + ring[index + 1][1]) * cross;
-  }
-  const bounds = boundsOf([geometry]);
-  const centroid = Math.abs(crossSum) > 1e-9 ? [xSum / (3 * crossSum), ySum / (3 * crossSum)] : [(bounds.minX + bounds.maxX) / 2, (bounds.minY + bounds.maxY) / 2];
-  if (pointInRing(centroid, ring)) return centroid;
-  let widest = { width: -1, point: centroid };
-  for (const ratio of [.5, .4, .6, .3, .7, .2, .8]) {
-    const y = bounds.minY + (bounds.maxY - bounds.minY) * ratio;
-    const intersections = [];
-    for (let index = 0, previous = ring.length - 1; index < ring.length; previous = index, index += 1) {
-      const a = ring[index];
-      const b = ring[previous];
-      if ((a[1] > y) !== (b[1] > y)) intersections.push(a[0] + (y - a[1]) * (b[0] - a[0]) / (b[1] - a[1]));
-    }
-    intersections.sort((a, b) => a - b);
-    for (let index = 0; index + 1 < intersections.length; index += 2) {
-      const width = intersections[index + 1] - intersections[index];
-      if (width > widest.width) widest = { width, point: [(intersections[index] + intersections[index + 1]) / 2, y] };
-    }
-  }
-  return widest.point;
-}
-
-function pointInRing(point, ring) {
-  let inside = false;
-  for (let index = 0, previous = ring.length - 1; index < ring.length; previous = index, index += 1) {
-    const a = ring[index];
-    const b = ring[previous];
-    if ((a[1] > point[1]) !== (b[1] > point[1]) && point[0] < (b[0] - a[0]) * (point[1] - a[1]) / (b[1] - a[1]) + a[0]) inside = !inside;
-  }
-  return inside;
-}
-
 function ringArea(ring) {
   let area = 0;
   for (let index = 0; index < ring.length - 1; index += 1) {
@@ -246,7 +203,7 @@ function silhouetteGeometry(prefecture) {
   const mainBounds = boundsOf([prefecture.mainGeometry]);
   const nearbyBounds = expandedBounds(mainBounds, 2.5);
   const coordinates = geometry.coordinates.filter((polygon) => {
-    const center = centerOfGeometry({ type: "Polygon", coordinates: polygon });
+    const center = geometryRepresentativePoint({ type: "Polygon", coordinates: polygon });
     return center[0] >= nearbyBounds.minX && center[0] <= nearbyBounds.maxX
       && center[1] >= nearbyBounds.minY && center[1] <= nearbyBounds.maxY;
   });
@@ -605,8 +562,7 @@ function buildQuestion(prefecture, skill, forcedType = "", masteryOverride = nul
     question.correct = prefecture.dish;
     question.choices = valueChoices(prefecture, "dish", mastery);
   } else if (type === "compass") {
-    const nearby = prefectures.filter((item) => item.code !== prefecture.code && item.region === prefecture.region);
-    const candidates = nearby.length ? nearby : prefectures.filter((item) => item.code !== prefecture.code);
+    const candidates = prefectures.filter((item) => item.code !== prefecture.code);
     const ranked = candidates.map((item) => ({ item, ...compassVector(prefecture.center, item.center) })).sort((a, b) => a.distance - b.distance);
     question.reference = ranked.find(({ margin }) => margin >= 7.5)?.item || ranked[0].item;
     const { dx, dy } = compassVector(prefecture.center, question.reference.center);
@@ -675,15 +631,16 @@ function renderQuestion() {
   ui.keyboardHint.innerHTML = saved.settings.answerMode === "instant" ? "<kbd>1</kbd>–<kbd>4</kbd> で回答" : "<kbd>1</kbd>–<kbd>4</kbd> 選択　<kbd>Enter</kbd> 決定";
   ui.stage.className = "visual-stage";
   setQuestionCopy(question);
-  session.inputReadyAt = Date.now() + (session.mode === "exam" && session.answers.length ? 350 : 0);
+  const inputDelay = session.mode === "exam" && session.answers.length ? 350 : 0;
+  session.inputReadyAt = Date.now() + inputDelay;
   renderAnswers(question);
   if (session.inputReadyAt > Date.now()) {
     ui.answerGrid.querySelectorAll("input").forEach((input) => { input.disabled = true; });
     setTimeout(() => {
       if (token === questionToken) ui.answerGrid.querySelectorAll("input").forEach((input) => { input.disabled = false; });
-    }, 350);
+    }, inputDelay);
   }
-  session.startedAt = Date.now();
+  session.startedAt = session.inputReadyAt;
   session.answerClockStartedAt = session.startedAt;
   session.deadline = session.startedAt + QUESTION_SECONDS * 1000;
   session.timerHoldUntil = 0;
@@ -980,6 +937,13 @@ function renderAnswers(question) {
 
 function updateTimer(token) {
   if (token !== questionToken || !session || session.answered) return;
+  if (session.inputReadyAt > Date.now()) {
+    ui.timer.style.transform = "scaleX(1)";
+    ui.timerRoot.setAttribute("aria-valuenow", String(QUESTION_SECONDS));
+    ui.timerText.textContent = "次の問題";
+    timerFrame = requestAnimationFrame(() => updateTimer(token));
+    return;
+  }
   if (session.timerHoldUntil > Date.now()) {
     ui.timer.style.transform = "scaleX(1)";
     ui.timerRoot.setAttribute("aria-valuenow", String(QUESTION_SECONDS));
