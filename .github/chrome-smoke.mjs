@@ -221,7 +221,7 @@ try {
   assert(Object.values(reloadedState.progress).reduce((sum, item) => sum + item.attempts, 0) === 10 && reloadedState.recent.length === 10 && Number(await evaluate(cdp, `document.querySelector('#understanding-index').textContent`)) === resultSummary.score, "再読込後に学習履歴または理解度指数を保持できません");
   await evaluate(cdp, `globalThis.__prefQuizTest={type:'mapMemory',skill:'B',code:'01'}; document.querySelector('#start-endless-button').click(); true`);
   await waitFor(cdp, `document.querySelector('#quiz-type').textContent === '地図記憶'`);
-  assert(await evaluate(cdp, `document.querySelector('#timer-text').textContent === '記憶中' && document.querySelector('#submit-answer-button').hidden`), "地図記憶の待機表示または即時回答設定が不正です");
+  assert(await evaluate(cdp, `document.querySelector('#timer-text').textContent === '記憶中' && document.querySelector('#submit-answer-button').hidden && document.querySelectorAll('#game-screen .target').length === 0 && Boolean(document.querySelector('.shape-location-preview'))`), "地図記憶の形プレビュー待機表示または正解非露出が不正です");
   assert(await evaluate(cdp, `document.querySelectorAll('.map-prefecture[data-code]').length > 1`), "場所問題の地図が一択になっています");
   await new Promise((resolveWait) => setTimeout(resolveWait, 2200));
   await evaluate(cdp, `document.querySelector('.map-prefecture[data-code]').dispatchEvent(new MouseEvent('click',{bubbles:true}))`);

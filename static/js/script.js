@@ -756,7 +756,7 @@ function setQuestionCopy(question) {
     mapChoice: ["地図を選ぶ", `${question.prefecture.name}はどの地図？`, "4つの周辺地図から選んでください。"],
     locate: ["場所タップ", `${question.prefecture.name}はどこ？`, "日本地図から直接タップしてください。"],
     locateJapan: ["全国地図タップ", `${question.prefecture.name}はどこ？`, "日本全体の地図で、県の中心付近をタップしてください。"],
-    mapMemory: ["地図記憶", `${question.prefecture.name}はどこ？`, "最初の2秒だけ正解の場所が光ります。"],
+    mapMemory: ["地図記憶", "この形の都道府県はどこ？", `形を覚えて、${question.prefecture.region}周辺の地図から探してください。`],
     shapeLocate: ["形→地図", "この形の都道府県はどこ？", "形を覚えて、全国地図から選んでください。"],
     mapFlash: ["地図フラッシュ", "さっき光った都道府県はどこ？", "位置を短時間で記憶してください。"],
     compass: ["方角", `${question.reference?.name || "基準の県"}から見て${question.prefecture.name}はどちら？`, "中心位置を基準にした、おおよその方角です。"],
@@ -777,8 +777,9 @@ function setQuestionCopy(question) {
     dishShapeChoice: ["郷土料理→形", `「${question.prefecture.dish}」が選ばれた都道府県の形は？`, "4つの輪郭から選んでください。"],
     dishLocate: ["郷土料理→地図", `農林水産省の郷土料理百選で「${question.prefecture.dish}」が選ばれた都道府県は？`, "日本地図から場所を選んでください。"]
   }[question.type];
-  if (["locate", "mapMemory"].includes(question.type)) copy[2] = `${question.prefecture.region}周辺の地図から選んでください。`;
-  if (!saved.settings.visualEffects && ["spotlight", "reveal", "flash", "mapFlash"].includes(question.type)) {
+  if (["locate"].includes(question.type)) copy[2] = `${question.prefecture.region}周辺の地図から選んでください。`;
+  if (["mapMemory"].includes(question.type)) copy[2] = `形を覚えて、${question.prefecture.region}周辺の地図から探してください。`;
+  if (!saved.settings.visualEffects && ["spotlight", "reveal", "flash", "mapFlash", "mapMemory"].includes(question.type)) {
     copy[2] = question.type === "mapFlash" ? "設定で視覚効果がOFFのため、位置を静止表示しています。" : "設定で視覚効果がOFFのため、輪郭を静止表示しています。";
   }
   [ui.type.textContent, ui.title.textContent, ui.help.textContent] = copy;
@@ -883,11 +884,11 @@ function renderVisual(question, token) {
     const nationwide = NATIONWIDE_LOCATION_TYPES.includes(type);
     const visiblePrefectures = nationwide ? prefectures : regional;
     const viewBounds = expandedBounds(boundsOf(visiblePrefectures.map((item) => item.mainGeometry)), nationwide ? .62 : regional.length > 1 ? .54 : .55);
-    const targetCode = type === "mapMemory" ? prefecture.code : "";
-    const label = type === "capitalLocate" ? "県庁所在地を手がかりに都道府県を選ぶ日本地図" : type === "dishLocate" ? "郷土料理を手がかりに都道府県を選ぶ日本地図" : type === "shapeLocate" ? "シルエットを手がかりに都道府県を選ぶ日本地図" : nationwide ? `${prefecture.name}の位置を選ぶ日本地図` : `${prefecture.name}の位置を選ぶ${prefecture.region}周辺の地図`;
+    const targetCode = "";
+    const label = type === "capitalLocate" ? "県庁所在地を手がかりに都道府県を選ぶ日本地図" : type === "dishLocate" ? "郷土料理を手がかりに都道府県を選ぶ日本地図" : type === "shapeLocate" ? "シルエットを手がかりに都道府県を選ぶ日本地図" : type === "mapMemory" ? "シルエットを手がかりに都道府県を選ぶ地方地図" : nationwide ? `${prefecture.name}の位置を選ぶ日本地図` : `${prefecture.name}の位置を選ぶ${prefecture.region}周辺の地図`;
     ui.stage.innerHTML = svgMap(visiblePrefectures, viewBounds, { targetCode, clickable: true, label });
     ui.stage.classList.toggle("nationwide-stage", nationwide);
-    if (type === "mapMemory") ui.stage.insertAdjacentHTML("beforeend", '<span class="memory-status" aria-live="polite">2秒だけ記憶</span>');
+    if (type === "mapMemory") ui.stage.insertAdjacentHTML("beforeend", `<div class="shape-location-preview">${silhouetteSvg(prefecture)}<span class="memory-status" aria-live="polite">2秒だけ形を記憶</span></div>`);
     if (type === "shapeLocate") ui.stage.insertAdjacentHTML("beforeend", `<div class="shape-location-preview">${silhouetteSvg(prefecture)}<span class="memory-status" aria-live="polite">1.5秒だけ形を記憶</span></div>`);
     ui.answerFieldset.hidden = true;
     ui.submit.hidden = saved.settings.answerMode === "instant";
