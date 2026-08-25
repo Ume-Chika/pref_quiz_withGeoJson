@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { gzipSync } from "node:zlib";
-import { blankProgress, canIntroduceNewItem, canUseIntegratedMode, compassVector, deadlinePassed, examScore, hasBasicMastery, normalizeProgress, recordAnswer, schedulingPriority, skillsForMastery, understandingIndex, understandingMilestone } from "../static/js/learning.mjs";
+import { blankProgress, canIntroduceNewItem, canUseIntegratedMode, compassVector, deadlinePassed, examScore, geometryRepresentativePoint, hasBasicMastery, normalizeProgress, recordAnswer, schedulingPriority, skillsForMastery, understandingIndex, understandingMilestone } from "../static/js/learning.mjs";
 
 const required = [
   "index.html",
@@ -214,18 +214,9 @@ for (const item of facts.prefectures) {
   dishes.add(item.dish);
 }
 
-const centerByName = new Map(geo.features.map((feature) => {
-  const polygons = feature.geometry.type === "Polygon" ? [feature.geometry.coordinates] : feature.geometry.coordinates;
-  const area = (ring) => Math.abs(ring.slice(1).reduce((sum, point, index) => sum + ring[index][0] * point[1] - point[0] * ring[index][1], 0) / 2);
-  const polygon = polygons.sort((a, b) => area(b[0]) - area(a[0]))[0];
-  const points = polygon.flat();
-  const xs = points.map(([x]) => x);
-  const ys = points.map(([, y]) => y);
-  return [feature.properties.name, [(Math.min(...xs) + Math.max(...xs)) / 2, (Math.min(...ys) + Math.max(...ys)) / 2]];
-}));
+const centerByName = new Map(geo.features.map((feature) => [feature.properties.name, geometryRepresentativePoint(feature.geometry)]));
 for (const target of facts.prefectures) {
-  const regional = facts.prefectures.filter((item) => item.code !== target.code && item.region === target.region);
-  const candidates = regional.length ? regional : facts.prefectures.filter((item) => item.code !== target.code);
+  const candidates = facts.prefectures.filter((item) => item.code !== target.code);
   const clearReference = candidates.map((item) => compassVector(centerByName.get(target.name), centerByName.get(item.name))).sort((a, b) => a.distance - b.distance).find(({ margin }) => margin >= 7.5);
   if (!clearReference) throw new Error(`8方位の境界から十分離れた参照県がありません: ${target.name}`);
 }
