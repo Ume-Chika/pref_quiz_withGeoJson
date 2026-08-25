@@ -188,7 +188,12 @@ try {
     await waitFor(cdp, `document.querySelector('#timer-text').textContent !== '記憶中'`, 5_000);
     const code = await evaluate(cdp, `document.querySelector('#game-screen').dataset.code`);
     await evaluate(cdp, `(() => { const type=document.querySelector('#game-screen').dataset.quizType; if(${JSON.stringify(locationTypes)}.includes(type)){ document.querySelector('.map-prefecture[data-code="${code}"]').dispatchEvent(new MouseEvent('click',{bubbles:true})); } else { const input=[...document.querySelectorAll('input[name="answer"]')].find(item=>item.value===${JSON.stringify(namesByCode[code])}); input.checked=true; input.dispatchEvent(new Event('change')); } document.querySelector('#submit-answer-button').click(); return true; })()`);
-    await waitFor(cdp, `document.querySelector('#feedback-dialog').open`);
+    try {
+      await waitFor(cdp, `document.querySelector('#feedback-dialog').open`);
+    } catch (error) {
+      const state = await evaluate(cdp, `({question:${question},type:document.querySelector('#game-screen').dataset.quizType,code:document.querySelector('#game-screen').dataset.code,selected:document.querySelector('input[name="answer"]:checked')?.value||'',answered:document.querySelector('#submit-answer-button').disabled,feedbackOpen:document.querySelector('#feedback-dialog').open})`);
+      throw new Error(`問題${question}の正誤画面が開きません: ${JSON.stringify(state)} / ${errors.join(" / ")} / ${error.message}`);
+    }
     assert(await evaluate(cdp, `document.querySelector('#feedback-kicker').textContent === 'CORRECT'`), `問題${question}を正答として判定できません`);
     assert(await evaluate(cdp, `document.querySelector('#feedback-detail').textContent.length > 5`), "解説が空です");
     await evaluate(cdp, `document.querySelector('#next-question-button').click()`);
