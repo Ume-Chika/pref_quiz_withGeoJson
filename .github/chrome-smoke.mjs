@@ -264,7 +264,7 @@ try {
     await waitFor(cdp, `document.querySelector('#game-screen:not([hidden])') && document.querySelector('#game-screen').dataset.quizType === '${type}'`);
     await waitFor(cdp, `document.activeElement===document.querySelector('#question-title')`);
     assert(await evaluate(cdp, `getComputedStyle(document.querySelector('#question-title')).outlineStyle==='none'`), `${type}: 問題見出しに不要なフォーカス枠が出ています`);
-    const masteryBefore = type === "flash" ? await evaluate(cdp, `JSON.parse(localStorage.getItem('prefecture-minigame-v2')).progress['${code}:${skill}']?.mastery||0`) : 0;
+    const masteryBefore = ["flash", "slitFlow"].includes(type) ? await evaluate(cdp, `JSON.parse(localStorage.getItem('prefecture-minigame-v2')).progress['${code}:${skill}']?.mastery||0`) : 0;
     assert(await evaluate(cdp, `document.querySelectorAll('input[name="answer"]').length === 4 && new Set([...document.querySelectorAll('input[name="answer"]')].map(input => input.value)).size === 4`), `${type}: 4つの一意な選択肢がありません`);
     assert(await evaluate(cdp, `[...document.querySelectorAll('.answer-option label')].filter(label => label.getClientRects().length).every(label => Math.round(label.getBoundingClientRect().height) >= 44) && getComputedStyle(document.querySelector('#keyboard-hint')).display !== 'none'`), `${type}: タップ領域またはキー案内が不正です`);
     if (type === "shapeMemory") assert(await evaluate(cdp, `document.querySelector('#timer-text').textContent==='記憶中' && document.querySelector('#answer-fieldset').hidden && document.querySelector('#visual-stage .silhouette') && document.querySelector('#visual-stage').textContent.includes('北海道')`), "初見の形と県名を同時に提示できません");
@@ -321,7 +321,7 @@ try {
     assert(await evaluate(cdp, `document.querySelector('#feedback-dialog').scrollTop===0`), `${type}: 正誤画面が解説より下へ自動スクロールしています`);
     assert(await evaluate(cdp, `document.querySelector('#feedback-kicker').textContent === 'CORRECT' && document.querySelector('#feedback-detail').textContent.length > 5`), `${type}: 正答または解説が不正です`);
     if (type === "flash") assert(await evaluate(cdp, `JSON.parse(localStorage.getItem('prefecture-minigame-v2')).progress['${code}:${skill}'].mastery-${masteryBefore}<.1`), "フラッシュ記憶の正解を通常問題と同じ強さで記録しています");
-    if (type === "slitFlow") assert(await evaluate(cdp, `(() => { const item=JSON.parse(localStorage.getItem('prefecture-minigame-v2')).progress['${code}:${skill}']; return item.nextDue-item.lastSeen>=23*60*60e3; })()`), "隙間シルエットの正解で復習間隔を不必要に5分へ戻しています");
+    if (type === "slitFlow") assert(await evaluate(cdp, `(() => { const mastery=JSON.parse(localStorage.getItem('prefecture-minigame-v2')).progress['${code}:${skill}'].mastery; const evidence=(mastery-${masteryBefore})/((1-${masteryBefore})*.22); return Math.abs(evidence-.65)<.01; })()`), "隙間シルエットの正解証拠が想定した0.65ではありません");
     assert(await evaluate(cdp, `(() => { const card=document.querySelector('#feedback-comparison .correct-answer[data-code="${code}"]'); return document.querySelectorAll('#feedback-comparison .feedback-shape-card').length===1 && card?.querySelectorAll('.map-prefecture').length===47 && card.querySelector('.map-prefecture.target[data-map-code="${code}"]'); })()`), `${type}: 正解県の形と周辺位置を1枚で再確認できません`);
     if (type === "shapeMemory") assert(await evaluate(cdp, `(() => { const paths=[...document.querySelectorAll('#feedback-comparison .feedback-map .map-prefecture')]; return paths.filter(path=>{const box=path.getBBox();return box.x<650&&box.x+box.width>0&&box.y<410&&box.y+box.height>0;}).length>1; })()`), "正解県と同じ拡大率で周辺県の輪郭を表示できません");
     if (type === "silhouette") {
