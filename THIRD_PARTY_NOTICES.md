@@ -4,6 +4,10 @@
 
 公開版はHTML、CSS、ブラウザ標準API、Vanilla JavaScriptだけで動作し、第三者JavaScriptライブラリやWebフォントを読み込みません。
 
+## アプリ固有素材
+
+`static/favicon.svg`、`static/icon-512.png`、`static/social-card.svg`、`static/social-card.png` は本リポジトリ用に作成した固有素材です。第三者のロゴ、写真、イラストは含まず、アプリのソースコードと同じMIT Licenseを適用します。
+
 ## データ
 
 地理・問題データはアプリのMIT Licenseの対象外です。各データの出典、加工内容、利用条件は [DATA_SOURCES.md](DATA_SOURCES.md) を参照してください。

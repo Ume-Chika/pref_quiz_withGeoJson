@@ -4,6 +4,16 @@
 
 **公開ページ:** https://ume-chika.github.io/pref_quiz_withGeoJson/
 
+## 資料案内
+
+| 資料 | 役割 |
+| --- | --- |
+| [要件書.md](要件書.md) | 合意した目的・仕様・完了条件の正本 |
+| [実装状況.md](実装状況.md) | 要件を何で検証しているかの対応表 |
+| [DATA_SOURCES.md](DATA_SOURCES.md) | 地理・問題データの出典、加工、利用条件 |
+| [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) | 第三者成果物と開発ツールのライセンス |
+| [LICENSE](LICENSE) | アプリのソースコードと固有素材に適用するMIT License |
+
 ## 特徴
 
 - おすすめ学習10問、実力テスト30問、エンドレス学習
@@ -24,8 +34,8 @@
 
 1. 「おすすめ学習 10問」「実力テスト 30問」「エンドレス学習」から開始します。
 2. 15秒以内に選択肢または地図から回答します。
-3. 正誤と短い補足を確認し、次の問題へ進みます。
-4. 通常学習では理解度指数と次の復習候補、実力テストでは最後にまとめて実力スコアを確認できます。
+3. 通常学習では各問の正誤・形・周辺位置を確認して次へ進みます。実力テストの答え合わせは最後にまとめて行います。
+4. 10問終了後は現在の理解度指数と次の復習候補、実力テスト終了後は実力スコアを確認できます。
 
 ホームの「白地図を眺める」では、学習記録から判定した得意な県を緑、復習がおすすめの県を赤で表示できます。2色はそれぞれチェックボックスで隠せます。県にホバーまたはタップすると、県名・地方・県庁所在地・郷土料理と直近10問内の結果を表示します。地図はスライダーまたはボタンで100〜250%まで25%刻みで拡大でき、いつでも元の倍率に戻せます。
 
@@ -55,11 +65,15 @@ python3 -m http.server 8000
 ## 構成
 
 ```text
-index.html          画面
-static/css/         スタイル
-static/js/          ゲームと学習ロジック
-static/data/        公開用の問題・地理データ
-.github/workflows/  検査とGitHub Pages公開
+index.html             画面と共有用メタデータ
+sources.html           公開ページ内の出典表示
+static/css/            スタイル
+static/js/             ゲームと学習ロジック
+static/data/           公開用の問題・地理データ
+static/favicon.svg     ファビコン
+static/social-card.*   Discord・LINE等の共有画像
+scripts/               境界データの再生成
+.github/               自動検査とGitHub Pages公開
 ```
 
 ## 開発と公開
@@ -76,6 +90,8 @@ CHROME_BIN="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" node .
 2行目はmacOS版Chromeの例です。ほかの環境では `CHROME_BIN` にChrome実行ファイルを指定してください。
 
 GitHubリポジトリの **Settings → Pages → Build and deployment → Source** は **GitHub Actions** を選択してください。
+
+利用者向けの挙動を変えた場合はREADMEと[実装状況.md](実装状況.md)、合意仕様を変えた場合は[要件書.md](要件書.md)も更新します。データや開発用ツールを変更した場合は、対応する出典・ライセンス文書を同じコミットで更新します。
 
 ## データとライセンス
 
