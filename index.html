@@ -54,7 +54,7 @@
         <div class="hero-card">
           <div>
             <p class="eyebrow">遊ぶほど、あなた向けに</p>
-            <h1>日本のかたちを<br>ミニゲームで覚えよう。</h1>
+            <h1><span>日本のかたちを</span><br><span>ミニゲームで覚えよう。</span></h1>
             <p class="hero-copy">苦手な県と忘れかけた問題を自動で選びます。まずは10問、気軽に挑戦。</p>
           </div>
           <div id="hero-map" class="hero-map" aria-hidden="true"></div>
@@ -151,14 +151,14 @@
           <span class="review-icon" aria-hidden="true">↻</span>
           <div><h2>次のおすすめ</h2><p id="result-review">新しい県に挑戦しましょう。</p></div>
         </div>
-        <section id="result-mistakes" class="result-mistakes" hidden>
-          <h2>今回覚え直す県</h2>
-          <div id="result-mistake-list" class="result-mistake-list"></div>
-        </section>
         <div class="result-actions">
           <button id="replay-button" class="primary-button" type="button">もう10問</button>
           <button id="result-home-button" class="secondary-button" type="button">ホームへ</button>
         </div>
+        <section id="result-mistakes" class="result-mistakes" hidden>
+          <h2>今回覚え直す県</h2>
+          <div id="result-mistake-list" class="result-mistake-list"></div>
+        </section>
       </section>
     </main>
 
@@ -223,8 +223,8 @@
       <div class="dialog-header"><div><p class="eyebrow">理解度マップ</p><h2 id="study-map-title">白地図を眺める</h2></div><button class="close-button" value="close" aria-label="閉じる">×</button></div>
       <p class="study-map-help">緑は得意、赤は復習がおすすめの県です。学習記録から自動更新し、県に触れると直近の回答も確認できます。</p>
       <div class="study-map-filters" aria-label="習熟度の色分け">
-        <label><input id="study-map-show-strong" type="checkbox" checked><i class="legend-correct">○</i>得意な県を緑色にする</label>
-        <label><input id="study-map-show-weak" type="checkbox" checked><i class="legend-incorrect">×</i>苦手な県を赤色にする</label>
+        <label><input id="study-map-show-strong" type="checkbox" checked><i class="legend-correct">○</i>得意を緑色</label>
+        <label><input id="study-map-show-weak" type="checkbox" checked><i class="legend-incorrect">×</i>苦手を赤色</label>
       </div>
       <div class="study-map-toolbar" aria-label="地図の拡大縮小">
         <button id="study-map-zoom-out" type="button" aria-label="地図を縮小">−</button>
