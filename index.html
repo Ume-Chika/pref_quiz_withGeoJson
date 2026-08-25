@@ -5,8 +5,23 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#f7f4ed">
   <meta name="description" content="遊ぶほど自分に合った問題が出る、軽量な都道府県学習ミニゲーム。">
+  <meta property="og:type" content="website">
+  <meta property="og:locale" content="ja_JP">
+  <meta property="og:site_name" content="都道府県ミニゲーム">
+  <meta property="og:title" content="都道府県ミニゲーム｜日本のかたちを遊んで覚えよう">
+  <meta property="og:description" content="苦手に合わせた10問で、都道府県の形・位置・県庁所在地を楽しく学習。登録不要で記録はブラウザ内だけに保存します。">
+  <meta property="og:url" content="https://ume-chika.github.io/pref_quiz_withGeoJson/">
+  <meta property="og:image" content="https://ume-chika.github.io/pref_quiz_withGeoJson/static/social-card.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="都道府県ミニゲーム 日本のかたちを遊んで覚えよう">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="都道府県ミニゲーム｜日本のかたちを遊んで覚えよう">
+  <meta name="twitter:description" content="苦手に合わせた10問で、都道府県の形・位置・県庁所在地を楽しく学習。">
+  <meta name="twitter:image" content="https://ume-chika.github.io/pref_quiz_withGeoJson/static/social-card.png">
   <title>都道府県ミニゲーム</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231f7658'/%3E%3Ctext x='32' y='46' text-anchor='middle' font-size='43' fill='white'%3E〒%3C/text%3E%3C/svg%3E">
+  <link rel="icon" href="./static/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="./static/icon-512.png">
   <link rel="stylesheet" href="./static/css/style.css">
 </head>
 <body>
@@ -76,7 +91,7 @@
         <section class="mode-preview" aria-labelledby="mode-preview-title">
           <div class="section-heading">
             <div>
-              <p class="eyebrow">QUIZ MIX</p>
+              <p class="eyebrow">出題形式</p>
               <h2 id="mode-preview-title">いろいろな見え方で出題</h2>
             </div>
             <span>自動選択</span>
@@ -119,7 +134,7 @@
       </section>
 
       <section id="result-screen" class="screen result-screen" hidden>
-        <p class="eyebrow">RESULT</p>
+        <p class="eyebrow">学習結果</p>
         <h1 id="result-title">10問おつかれさま！</h1>
         <div class="result-score">
           <span id="result-score-label" class="result-score-label">都道府県理解度</span>
@@ -155,7 +170,7 @@
 
   <dialog id="feedback-dialog" class="app-dialog feedback-dialog" aria-labelledby="feedback-title" aria-describedby="feedback-detail">
     <div id="feedback-mark" class="feedback-mark" aria-hidden="true">○</div>
-    <p id="feedback-kicker" class="eyebrow">CORRECT</p>
+    <p id="feedback-kicker" class="eyebrow">正解</p>
     <h2 id="feedback-title" tabindex="-1">正解！</h2>
     <p id="feedback-detail">正解は東京都です。</p>
     <div id="feedback-comparison" class="feedback-comparison" aria-label="回答した県と正解の県の形と場所"></div>
@@ -197,7 +212,7 @@
 
   <dialog id="progress-dialog" class="app-dialog progress-dialog" aria-labelledby="progress-title">
     <form method="dialog">
-      <div class="dialog-header"><div><p class="eyebrow">LEARNING</p><h2 id="progress-title">学習記録</h2></div><button class="close-button" value="close" aria-label="閉じる">×</button></div>
+      <div class="dialog-header"><div><p class="eyebrow">学習状況</p><h2 id="progress-title">学習記録</h2></div><button class="close-button" value="close" aria-label="閉じる">×</button></div>
       <div id="skill-progress" class="skill-progress"></div>
       <section class="weak-section"><h3>いま復習したい県</h3><div id="weak-prefectures" class="weak-list"></div></section>
     </form>
@@ -205,7 +220,7 @@
 
   <dialog id="study-map-dialog" class="app-dialog study-map-dialog" aria-labelledby="study-map-title">
     <form method="dialog">
-      <div class="dialog-header"><div><p class="eyebrow">MASTERY MAP</p><h2 id="study-map-title">白地図を眺める</h2></div><button class="close-button" value="close" aria-label="閉じる">×</button></div>
+      <div class="dialog-header"><div><p class="eyebrow">理解度マップ</p><h2 id="study-map-title">白地図を眺める</h2></div><button class="close-button" value="close" aria-label="閉じる">×</button></div>
       <p class="study-map-help">緑は得意、赤は復習がおすすめの県です。学習記録から自動更新し、県に触れると直近の回答も確認できます。</p>
       <div class="study-map-filters" aria-label="習熟度の色分け">
         <label><input id="study-map-show-strong" type="checkbox" checked><i class="legend-correct">○</i>得意な県を緑色にする</label>
