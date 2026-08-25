@@ -896,6 +896,7 @@ function renderVisual(question, token) {
       ui.stage.insertAdjacentHTML("beforeend", '<span class="memory-status" aria-live="polite">1.5秒だけ記憶</span>');
       lockPreview(token, 1500, () => {
         ui.stage.querySelector(".target")?.classList.remove("target");
+        ui.stage.querySelector(".map-target-overlay")?.remove();
         ui.stage.querySelector(".memory-status")?.remove();
       });
     }
@@ -946,6 +947,7 @@ function renderVisual(question, token) {
     if (["mapMemory", "shapeLocate"].includes(type)) setTimeout(() => {
       if (token === questionToken) {
         ui.stage.querySelector(".target")?.classList.remove("target");
+        ui.stage.querySelector(".map-target-overlay")?.remove();
         ui.stage.querySelector(".memory-status")?.remove();
         ui.stage.querySelector(".shape-location-preview")?.remove();
         session.locationLocked = false;
@@ -1127,7 +1129,7 @@ function selectLocation(code) {
 
 function answerLocation(code) {
   if (!session || session.answered) return;
-  completeAnswer(prefectures.find((prefecture) => prefecture.code === code)?.name || "", false);
+  completeAnswer(prefectures.find((p) => p.code === code)?.name || "", false);
 }
 
 function completeAnswer(answer, timedOut) {
@@ -1188,7 +1190,11 @@ function questionEvidence(type, correct = true) {
 
 function showFeedback(question, correct, timedOut, answer) {
   ui.feedback.classList.toggle("incorrect", !correct);
-  ui.feedbackMark.textContent = correct ? "○" : timedOut ? "⌛" : "×";
+  ui.feedbackMark.innerHTML = correct
+    ? '<svg viewBox="0 0 36 36"><circle cx="18" cy="18" r="11" fill="none" stroke="currentColor" stroke-width="4.5"/></svg>'
+    : timedOut
+    ? "⌛"
+    : '<svg viewBox="0 0 36 36"><path d="M10 10l16 16m0-16L10 26" fill="none" stroke="currentColor" stroke-width="4.5" stroke-linecap="round"/></svg>';
   ui.feedbackKicker.textContent = correct ? "正解" : timedOut ? "時間切れ" : "不正解";
   ui.feedbackTitle.textContent = correct ? randomOf(["正解！", "やった！", "その調子！"]) : timedOut ? "時間切れ" : "おしい！";
   ui.feedbackDetail.textContent = feedbackDetail(question);
@@ -1333,22 +1339,25 @@ function finishGame() {
 function weakestItems(limit = 8) {
   return Object.entries(saved.progress).filter(([, item]) => item.attempts).map(([key, item]) => {
     const [code, skill] = key.split(":");
-    return { prefecture: prefectures.find((prefecture) => prefecture.code === code), skill, ...item };
+    return { prefecture: prefectures.find((p) => p.code === code), skill, ...item };
   }).filter((item) => item.prefecture).sort((a, b) => a.mastery - b.mastery || b.attempts - a.attempts).slice(0, limit);
 }
 
 function renderProgress() {
   const container = $("skill-progress");
   container.innerHTML = "";
+  const basicCount = unlockedBasicCount();
   Object.entries(SKILLS).forEach(([code, skill]) => {
-    const items = prefectures.map((prefecture) => getProgress(prefecture.code, code));
-    const attempts = items.reduce((sum, item) => sum + item.attempts, 0);
-    const correct = items.reduce((sum, item) => sum + item.correct, 0);
-    const mastery = items.reduce((sum, item) => sum + (item.mastery || 0), 0) / 47;
+    const items = prefectures.map((p) => getProgress(p.code, code));
+    const attempts = items.reduce((s, i) => s + i.attempts, 0);
+    const correct = items.reduce((s, i) => s + i.correct, 0);
+    const mastery = items.reduce((s, i) => s + (i.mastery || 0), 0) / 47;
     const row = document.createElement("div");
     row.className = "skill-row";
-    const status = unlockedBasicCount() < skill.unlockAt ? `基本${skill.unlockAt}県で解放` : `${attempts}問`;
-    row.innerHTML = `<span class="skill-code">${code}</span><div><div class="skill-name"><span>${skill.name}</span><span>${status}</span></div><div class="progress-track"><div class="progress-fill" style="width:${Math.round(mastery * 100)}%"></div></div></div><span class="skill-rate">${attempts ? `${Math.round(correct / attempts * 100)}%` : "—"}</span>`;
+    const status = basicCount < skill.unlockAt
+      ? `あと${skill.unlockAt - basicCount}県習得で解放`
+      : `挑戦数 ${attempts} 回 正答率 ${attempts ? Math.round(correct / attempts * 100) : 0}%`;
+    row.innerHTML = `<span class="skill-code">${code}</span><div><div class="skill-name"><span>${skill.name}</span><span>${status}</span></div><div class="progress-track"><div class="progress-fill" style="width:${Math.round(mastery * 100)}%"></div></div></div>`;
     container.append(row);
   });
   const weak = weakestItems();
