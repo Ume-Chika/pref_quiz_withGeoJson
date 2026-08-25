@@ -187,7 +187,6 @@ kbd { padding: 1px 5px; border: 1px solid #c4cac5; border-bottom-width: 2px; bor
 .source-card dl { display: grid; grid-template-columns: 6em 1fr; gap: 7px 12px; }
 .source-card dt { color: var(--muted); font-weight: 800; }
 .source-card dd { margin: 0; }
-.source-card a { color: var(--accent-dark); }
 .source-note { color: var(--muted); font-size: .78rem; }
 .source-back { display: block; width: fit-content; margin-top: 24px; color: var(--ink) !important; text-decoration: none; }
 dialog:not([open]) { display: none !important; }
@@ -261,11 +260,9 @@ dialog:not([open]) { display: none !important; }
 .study-map-toolbar input[type="range"] { min-width: 90px; width: 110px; height: 44px; accent-color: var(--accent); }
 .study-map-toolbar output { min-width: 44px; color: var(--muted); font-size: .75rem; font-variant-numeric: tabular-nums; text-align: center; }
 .study-map-canvas { flex: 1 1 0; min-height: 0; min-width: 0; width: 100%; max-width: 100%; height: 100%; max-height: 100%; overflow: auto; overscroll-behavior: contain; border: 1px solid var(--line); border-radius: 18px; background: #eef5f1; cursor: default; position: relative; touch-action: pan-x pan-y; user-select: none; box-sizing: border-box; }
-.study-map-canvas.is-zoomed { cursor: grab; }
-.study-map-canvas.is-dragging { cursor: grabbing; user-select: none; }
 .study-map-canvas svg { display: block; width: 100%; height: 100%; min-width: 100%; min-height: 100%; cursor: pointer; touch-action: manipulation; }
-.study-map-canvas.is-zoomed svg { cursor: grab; }
-.study-map-canvas.is-dragging svg { cursor: grabbing; }
+.study-map-canvas.is-zoomed, .study-map-canvas.is-zoomed svg { cursor: grab; }
+.study-map-canvas.is-dragging, .study-map-canvas.is-dragging svg { cursor: grabbing; user-select: none; }
 .study-map-canvas .map-prefecture { transition: fill .12s ease, stroke .12s ease; }
 .study-map-canvas .map-prefecture.mastery-strong { fill: #4d9b78; stroke: #075c4c; }
 .study-map-canvas .map-prefecture.mastery-weak { fill: #c7675c; stroke: #742d27; stroke-dasharray: 4 3; }

@@ -5,13 +5,14 @@ import { blankProgress, canIntroduceNewItem, canUseIntegratedMode, compassVector
 const STORAGE_KEY = "prefecture-minigame-v2";
 const QUESTION_SECONDS = 15;
 const SKILLS = {
-  A: { name: "形", unlockAt: 0 }, B: { name: "位置", unlockAt: 0 }, C: { name: "県庁所在地", unlockAt: 3 }, D: { name: "地方区分", unlockAt: 8 }, E: { name: "郷土料理", unlockAt: 15 }
+  A: { name: "形", unlockAt: 0 }, B: { name: "位置", unlockAt: 0 }, C: { name: "地方区分", unlockAt: 3 }, D: { name: "県庁所在地", unlockAt: 8 }, E: { name: "郷土料理", unlockAt: 15 }
 };
 const LOCATION_TYPES = ["locate", "locateJapan", "mapMemory", "shapeLocate", "capitalLocate", "dishLocate"];
 const NATIONWIDE_LOCATION_TYPES = ["locateJapan", "shapeLocate", "capitalLocate", "dishLocate"];
 const ANIMATED_TYPES = ["spotlight", "reveal", "flash", "slitFlow", "mapMemory", "mapFlash", "shapeLocate"];
-const EXAM_TYPES = { A: "silhouette", B: "mapChoice", C: "capital", D: "region", E: "dishReverse" };
+const EXAM_TYPES = { A: "silhouette", B: "mapChoice", C: "region", D: "capital", E: "dishReverse" };
 const EXAM_REGION_COUNTS = { "北海道地方": 1, "東北地方": 4, "関東地方": 4, "中部地方": 6, "近畿地方": 4, "中国地方": 3, "四国地方": 3, "九州地方": 5 };
+const STAGES = ["未学習", "学び始め", "探索中", "基礎づくり", "アマチュア", "プロ", "ベテラン", "マスター", "愛国者", "都道府県を極めしもの", "歩く地図帳", "完全制覇"];
 
 const $ = (id) => document.getElementById(id);
 const screens = ["loading-screen", "error-screen", "home-screen", "game-screen", "result-screen"].map($);
@@ -539,7 +540,7 @@ function renderHome() {
   const due = dueKeys.size;
   const examAverage = saved.examScores.length ? Math.round(saved.examScores.reduce((sum, score) => sum + score, 0) / saved.examScores.length) : null;
   ui.understanding.textContent = index;
-  ui.understandingStage.textContent = index ? index < 250 ? "学び始め" : index < 500 ? "基礎形成中" : index < 750 ? "定着中" : index < 900 ? "応用中" : "総仕上げ" : "未学習";
+  ui.understandingStage.textContent = STAGES[index === 0 ? 0 : index >= 1000 ? 11 : Math.floor(index / 100) + 1];
   ui.challenged.textContent = learning;
   ui.learning.textContent = `基本を習得 ${basicMasteredCount()}県`;
   ui.reviewCount.textContent = due;
@@ -630,16 +631,16 @@ function buildQuestion(prefecture, skill, forcedType = "", masteryOverride = nul
     if (canUseIntegratedMode(mastery, getProgress(prefecture.code, "A").mastery)) modes.push("shapeLocate");
     type = randomMode(modes, "map");
   } else if (skill === "C") {
-    const modes = ["capital", "capitalReverse"];
-    if (canUseIntegratedMode(mastery, getProgress(prefecture.code, "A").mastery)) modes.push("capitalShape");
-    if (canUseIntegratedMode(mastery, getProgress(prefecture.code, "B").mastery)) modes.push("capitalMap", "capitalLocate");
-    type = randomMode(modes, "capital");
-  } else if (skill === "D") {
     const modes = ["region", "regionMember"];
     if (canUseIntegratedMode(mastery, getProgress(prefecture.code, "A").mastery)) modes.push("shapeRegion");
     if (canUseIntegratedMode(mastery, getProgress(prefecture.code, "B").mastery)) modes.push("regionMap", "regionShape");
-    if (canUseIntegratedMode(mastery, getProgress(prefecture.code, "C").mastery)) modes.push("capitalRegion");
     type = randomMode(modes, "region");
+  } else if (skill === "D") {
+    const modes = ["capital", "capitalReverse"];
+    if (canUseIntegratedMode(mastery, getProgress(prefecture.code, "A").mastery)) modes.push("capitalShape");
+    if (canUseIntegratedMode(mastery, getProgress(prefecture.code, "B").mastery)) modes.push("capitalMap", "capitalLocate");
+    if (canUseIntegratedMode(mastery, getProgress(prefecture.code, "C").mastery)) modes.push("capitalRegion");
+    type = randomMode(modes, "capital");
   } else {
     const modes = ["dish", "dishReverse"];
     if (canUseIntegratedMode(mastery, getProgress(prefecture.code, "B").mastery)) modes.push("dishMap", "dishLocate");
@@ -657,7 +658,7 @@ function buildQuestion(prefecture, skill, forcedType = "", masteryOverride = nul
     question.choices = valueChoices(prefecture, "capital", mastery);
   } else if (type === "capitalReverse") {
     question.correct = prefecture.name;
-    question.choices = nameChoices(prefecture, mastery, "geo", "C");
+    question.choices = nameChoices(prefecture, mastery, "geo", "D");
   } else if (["region", "regionMap", "regionShape", "capitalRegion", "shapeRegion"].includes(type)) {
     question.correct = prefecture.region;
     question.choices = shuffle([prefecture.region, ...shuffle([...new Set(facts.map((fact) => fact.region))].filter((region) => region !== prefecture.region)).slice(0, 3)]);
@@ -709,7 +710,7 @@ function valueChoices(target, field, mastery = 0) {
   const sameRegion = shuffle(prefectures.filter((item) => item.code !== target.code && item.region === target.region));
   const others = shuffle(prefectures.filter((item) => item.code !== target.code && item.region !== target.region));
   const candidates = mastery > .35 ? [...sameRegion, ...others] : shuffle([...sameRegion, ...others]);
-  const confusion = recentConfusion(target, field === "capital" ? "C" : "E");
+  const confusion = recentConfusion(target, field === "capital" ? "D" : "E");
   const ordered = confusion ? [confusion, ...candidates.filter((item) => item.code !== confusion.code)] : candidates;
   return shuffle([target[field], ...ordered.slice(0, 3).map((item) => item[field])]);
 }
@@ -1256,8 +1257,8 @@ function feedbackDetail(question) {
   if (question.skill === "A") return `正解は「${pref.name}」。輪郭と周辺県に対する位置を確認しましょう。`;
   if (question.type === "compass") return `${question.reference.name}から見て${pref.name}は、おおよそ${question.correct}です。`;
   if (question.skill === "B") return `${pref.name}は${pref.region}にあります。`;
-  if (question.skill === "C") return `${pref.name}の県庁所在地は${pref.capital}です。`;
-  if (question.skill === "D") return `${pref.name}は本アプリの区分では${pref.region}です。`;
+  if (question.skill === "C") return `${pref.name}は本アプリの区分では${pref.region}です。`;
+  if (question.skill === "D") return `${pref.name}の県庁所在地は${pref.capital}です。`;
   return `農林水産省の郷土料理百選では、${pref.name}から${pref.dish}が選ばれています。`;
 }
 
@@ -1356,7 +1357,7 @@ function renderProgress() {
     row.className = "skill-row";
     const status = basicCount < skill.unlockAt
       ? `あと${skill.unlockAt - basicCount}県習得で解放`
-      : `挑戦数 ${attempts} 回 正答率 ${attempts ? Math.round(correct / attempts * 100) : 0}%`;
+      : `挑戦数 ${attempts}回 正答率 ${attempts ? Math.round(correct / attempts * 100) : 0}%`;
     row.innerHTML = `<span class="skill-code">${code}</span><div><div class="skill-name"><span>${skill.name}</span><span>${status}</span></div><div class="progress-track"><div class="progress-fill" style="width:${Math.round(mastery * 100)}%"></div></div></div>`;
     container.append(row);
   });

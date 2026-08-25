@@ -83,7 +83,7 @@ try {
   assert(await evaluate(cdp, `!document.querySelector('#sound-setting').checked`), "効果音の初期値がOFFではありません");
   assert(await evaluate(cdp, `document.querySelector('#visual-effects-setting').checked`), "視覚効果の初期値がONではありません");
   assert(await evaluate(cdp, `document.querySelector('#volume-setting').disabled && document.querySelector('#volume-setting').value === '0.5'`), "音量の初期値が不正です");
-  assert(await evaluate(cdp, `document.querySelector('#understanding-index').textContent==='0' && document.querySelector('#challenged-count').textContent==='0' && document.querySelector('#review-count').textContent==='0' && document.querySelector('#exam-summary').textContent.includes('答え合わせは最後')`), "ホームの理解度・学習範囲・復習・試験状態が初期値ではありません");
+  assert(await evaluate(cdp, `document.querySelector('#understanding-index').textContent==='0' && document.querySelector('#understanding-stage').textContent==='未学習' && document.querySelector('#challenged-count').textContent==='0' && document.querySelector('#review-count').textContent==='0' && document.querySelector('#exam-summary').textContent.includes('答え合わせは最後')`), "ホームの理解度・学習範囲・復習・試験状態が初期値ではありません");
   assert(await evaluate(cdp, `fetch('./sources.html').then(r => r.ok)`), "出典ページを取得できません");
   assert(await evaluate(cdp, `Boolean(document.querySelector('.app-footer .app-version')?.textContent)`), "フッターにバージョン表記がありません");
   await evaluate(cdp, `document.querySelector('#progress-button').click(); true`);
@@ -94,7 +94,7 @@ try {
   await cdp.command("Emulation.setDeviceMetricsOverride", { width: 1366, height: 768, deviceScaleFactor: 1, mobile: false });
   const shortHome = await evaluate(cdp, `(() => { const heading=document.querySelector('.hero-card h1'); const range=document.createRange(); range.selectNodeContents(heading.lastChild); return {secondLineRects:range.getClientRects().length,startBottom:document.querySelector('#start-ten-button').getBoundingClientRect().bottom,height:innerHeight}; })()`);
   assert(shortHome.secondLineRects === 1 && shortHome.startBottom <= shortHome.height, `PCの短い画面で見出しが不自然に折り返すか開始ボタンが隠れます: ${JSON.stringify(shortHome)}`);
-  for (const scenario of [{ type: "silhouetteReverse", skill: "A", code: "01" }, { type: "slitFlow", skill: "A", code: "01" }, { type: "mapChoice", skill: "B", code: "01" }, { type: "regionShape", skill: "D", code: "40" }, { type: "capitalRegion", skill: "D", code: "01" }, { type: "locateJapan", skill: "B", code: "01" }]) {
+  for (const scenario of [{ type: "silhouetteReverse", skill: "A", code: "01" }, { type: "slitFlow", skill: "A", code: "01" }, { type: "mapChoice", skill: "B", code: "01" }, { type: "regionShape", skill: "C", code: "40" }, { type: "capitalRegion", skill: "D", code: "01" }, { type: "locateJapan", skill: "B", code: "01" }]) {
     await evaluate(cdp, `globalThis.__prefQuizTest=${JSON.stringify(scenario)}; document.querySelector('#start-endless-button').click(); true`);
     await waitFor(cdp, `document.querySelector('#game-screen:not([hidden])') && (document.querySelectorAll('input[name="answer"]').length === 4 || document.querySelectorAll('.map-prefecture.clickable').length === 47)`);
     if (scenario.type === "slitFlow") await waitFor(cdp, `!document.querySelector('#answer-fieldset').hidden`, 6_500);
@@ -105,7 +105,7 @@ try {
   }
   await evaluate(cdp, `delete globalThis.__prefQuizTest; true`);
   await cdp.command("Emulation.setDeviceMetricsOverride", { width: 320, height: 568, deviceScaleFactor: 1, mobile: true });
-  for (const scenario of [{ type: "silhouetteReverse", skill: "A", code: "01" }, { type: "slitFlow", skill: "A", code: "01" }, { type: "regionShape", skill: "D", code: "40" }, { type: "locateJapan", skill: "B", code: "01" }]) {
+  for (const scenario of [{ type: "silhouetteReverse", skill: "A", code: "01" }, { type: "slitFlow", skill: "A", code: "01" }, { type: "regionShape", skill: "C", code: "40" }, { type: "locateJapan", skill: "B", code: "01" }]) {
     await evaluate(cdp, `globalThis.__prefQuizTest=${JSON.stringify(scenario)}; document.querySelector('#start-endless-button').click(); true`);
     await waitFor(cdp, `document.querySelector('#game-screen:not([hidden])') && document.querySelector('#game-screen').dataset.quizType==='${scenario.type}'`);
     if (scenario.type === "slitFlow") await waitFor(cdp, `!document.querySelector('#answer-fieldset').hidden`, 6_500);
@@ -172,7 +172,7 @@ try {
   await waitFor(cdp, `document.querySelector('#home-screen:not([hidden])')`, 10_000);
   await evaluate(cdp, `document.querySelector('#progress-button').click(); true`);
   await waitFor(cdp, `document.querySelector('#progress-dialog').open`);
-  assert(await evaluate(cdp, `JSON.parse(localStorage.getItem('prefecture-minigame-v2')).unlockedBasic===15 && [...document.querySelectorAll('#skill-progress .skill-row')].slice(2).every(row=>row.querySelector('.skill-name span:last-child').textContent==='挑戦数 0 回 正答率 0%')`), "解放後に基本習熟が下がるとC・D・Eが再ロックされます");
+  assert(await evaluate(cdp, `JSON.parse(localStorage.getItem('prefecture-minigame-v2')).unlockedBasic===15 && [...document.querySelectorAll('#skill-progress .skill-row')].slice(2).every(row=>row.querySelector('.skill-name span:last-child').textContent==='挑戦数 0回 正答率 0%')`), "解放後に基本習熟が下がるとC・D・Eが再ロックされます");
   await evaluate(cdp, `document.querySelector('#progress-dialog .close-button').click(); true`);
   await evaluate(cdp, `localStorage.setItem('prefecture-minigame-v2', JSON.stringify({schema:2,settings:{sound:false,answerMode:'broken'},progress:{'01:A':{attempts:'bad',correct:99,mastery:4,recent:null}},highScore:'bad',recent:null,pendingReviews:[{code:'03',skill:'A',type:'broken',remaining:0},{code:'03',skill:'A',type:'silhouette',remaining:2}]})); location.reload(); true`);
   await waitFor(cdp, `document.querySelector('#home-screen:not([hidden])')`, 10_000);
@@ -284,7 +284,7 @@ try {
     examSkills.push(current.skill);
     examTypes.push(current.type);
     const fact = factsByCode[current.code];
-    const correct = current.skill === "A" || current.skill === "B" ? fact.name : current.skill === "C" ? fact.capital : current.skill === "D" ? fact.region : fact.dish;
+    const correct = current.skill === "A" || current.skill === "B" ? fact.name : current.skill === "C" ? fact.region : current.skill === "D" ? fact.capital : fact.dish;
     await evaluate(cdp, `(() => { const input=[...document.querySelectorAll('input[name="answer"]')].find(item=>item.value===${JSON.stringify(correct)}); input.checked=true; input.dispatchEvent(new Event('change')); document.querySelector('#submit-answer-button').click(); return !document.querySelector('#feedback-dialog').open; })()`);
     if (question === 1) assert(await evaluate(cdp, `document.querySelector('#question-number').textContent==='2/30' && [...document.querySelectorAll('input[name="answer"]')].every(input=>input.disabled) && document.querySelector('#timer-text').textContent==='次の問題'`), "実力テストで同じタップが次の問題にも入力されるのを防げません");
   }
@@ -293,7 +293,7 @@ try {
   assert(new Set(examCodes).size === 30, "実力テストで同じ県を重複出題しています");
   assert(Object.keys({ A: 0, B: 0, C: 0, D: 0, E: 0 }).every((skill) => examSkills.filter((item) => item === skill).length === 6), "実力テストが5分野を各6問出題していません");
   assert(Object.entries({ "北海道地方": 1, "東北地方": 4, "関東地方": 4, "中部地方": 6, "近畿地方": 4, "中国地方": 3, "四国地方": 3, "九州地方": 5 }).every(([region, count]) => examCodes.filter((code) => factsByCode[code].region === region).length === count), "実力テストの地方構成が偏っています");
-  assert(examTypes.every((type, index) => type === ({ A: "silhouette", B: "mapChoice", C: "capital", D: "region", E: "dishReverse" })[examSkills[index]]), "実力テストに学習用の可変形式が混在しています");
+  assert(examTypes.every((type, index) => type === ({ A: "silhouette", B: "mapChoice", C: "region", D: "capital", E: "dishReverse" })[examSkills[index]]), "実力テストに学習用の可変形式が混在しています");
   assert(await evaluate(cdp, `document.querySelector('#result-score').textContent==='1000' && document.querySelector('#result-correct').textContent==='30/30' && document.querySelector('#result-rate').textContent==='100%' && document.querySelector('#result-score-label').textContent.includes('偶然正解') && document.querySelector('#result-review').textContent.includes('全分野満点') && document.querySelector('#result-review').textContent.includes('理解度指数へ影響しません') && document.querySelector('#replay-button').textContent.includes('おすすめ学習')`), "実力テストの結果または学習への導線が不正です");
   assert(JSON.stringify(examState.progress) === JSON.stringify(beforeExam.progress) && JSON.stringify(examState.recent) === JSON.stringify(beforeExam.recent) && JSON.stringify(examState.pendingReviews) === JSON.stringify(beforeExam.pendingReviews) && examState.examScores.length === 1 && examState.examScores[0] === 1000, "実力テストが通常学習を変更したか試験結果を保存できません");
   await evaluate(cdp, `document.querySelector('#result-home-button').click(); true`);
@@ -307,8 +307,8 @@ try {
     ["flash", "A", "01", "北海道"], ["slitFlow", "A", "01", "北海道"], ["silhouetteReverse", "A", "01", "北海道"], ["mapShape", "A", "01", "北海道"],
     ["map", "B", "01", "北海道"], ["locate", "B", "01", "北海道"], ["locateJapan", "B", "01", "北海道"],
     ["mapChoice", "B", "01", "北海道"], ["mapMemory", "B", "01", "北海道"], ["mapFlash", "B", "01", "北海道"], ["compass", "B", "01", "北"], ["shapeLocate", "B", "01", "北海道"],
-    ["capital", "C", "01", "札幌市"], ["capitalReverse", "C", "01", "北海道"], ["capitalMap", "C", "01", "札幌市"], ["capitalShape", "C", "01", "札幌市"], ["capitalLocate", "C", "01", "北海道"],
-    ["region", "D", "02", "東北地方"], ["regionMember", "D", "02", "青森県"], ["regionMap", "D", "02", "東北地方"], ["regionShape", "D", "02", "東北地方"], ["shapeRegion", "D", "02", "東北地方"], ["capitalRegion", "D", "01", "北海道地方"],
+    ["region", "C", "02", "東北地方"], ["regionMember", "C", "02", "青森県"], ["regionMap", "C", "02", "東北地方"], ["regionShape", "C", "02", "東北地方"], ["shapeRegion", "C", "02", "東北地方"],
+    ["capital", "D", "01", "札幌市"], ["capitalReverse", "D", "01", "北海道"], ["capitalMap", "D", "01", "札幌市"], ["capitalShape", "D", "01", "札幌市"], ["capitalLocate", "D", "01", "北海道"], ["capitalRegion", "D", "01", "北海道地方"],
     ["dish", "E", "01", "北海道"], ["dishReverse", "E", "01", "ジンギスカン"], ["dishMap", "E", "01", "ジンギスカン"], ["dishShapeChoice", "E", "01", "北海道"], ["dishLocate", "E", "01", "北海道"],
   ];
   for (const [type, skill, code, correct] of modes) {
@@ -390,7 +390,7 @@ try {
   }
 
   for (const testKey of ["1", "2", "3", "4"]) {
-    await evaluate(cdp, `globalThis.__prefQuizTest={type:'capital',skill:'C',code:'01'}; document.querySelector('#start-endless-button').click(); true`);
+    await evaluate(cdp, `globalThis.__prefQuizTest={type:'capital',skill:'D',code:'01'}; document.querySelector('#start-endless-button').click(); true`);
     await waitFor(cdp, `document.querySelector('#game-screen:not([hidden])') && document.querySelectorAll('input[name="answer"]').length===4`);
     await evaluate(cdp, `(() => { const input=[...document.querySelectorAll('input[name="answer"]')].find(item => item.value === '札幌市'); input.checked=true; input.dispatchEvent(new Event('change')); document.querySelector('#submit-answer-button').click(); return true; })()`);
     await waitFor(cdp, `document.querySelector('#feedback-dialog').open`);
@@ -435,29 +435,29 @@ try {
   await evaluate(cdp, `document.querySelector('#quit-game-button').click(); delete globalThis.__prefQuizTest; true`);
   await waitFor(cdp, `document.querySelector('#home-screen:not([hidden])')`);
 
-  await evaluate(cdp, `globalThis.__prefQuizTest={type:'capitalShape',skill:'C',code:'01'}; document.querySelector('#start-endless-button').click(); true`);
+  await evaluate(cdp, `globalThis.__prefQuizTest={type:'capitalShape',skill:'D',code:'01'}; document.querySelector('#start-endless-button').click(); true`);
   await waitFor(cdp, `document.querySelector('#game-screen:not([hidden])') && document.querySelector('#game-screen').dataset.quizType === 'capitalShape'`);
   await evaluate(cdp, `(() => { const input=[...document.querySelectorAll('input[name="answer"]')].find(item=>item.value!=='札幌市'); globalThis.__wrongCapital=input.value; input.checked=true; input.dispatchEvent(new Event('change')); document.querySelector('#submit-answer-button').click(); return true; })()`);
   await waitFor(cdp, `document.querySelector('#feedback-dialog').open`);
   assert(await evaluate(cdp, `(() => { const cards=[...document.querySelectorAll('#feedback-comparison .feedback-shape-card')]; const recent=JSON.parse(localStorage.getItem('prefecture-minigame-v2')).recent[0]; return cards.length===2 && cards[0].dataset.code && cards[0].dataset.code!=='01' && cards[1].dataset.code==='01' && recent.selectedCode===cards[0].dataset.code && document.querySelector('#feedback-points').textContent.includes('3問') && cards.every(card=>card.querySelector('.map-prefecture.target[data-map-code="'+card.dataset.code+'"]')); })()`), "統合形式の誤答を3問後の復習へ入れられないか、選択県の形と場所を逆引きできません");
-  await evaluate(cdp, `document.querySelector('#quit-game-button').click(); document.querySelector('#result-home-button').click(); globalThis.__prefQuizTest={type:'capital',skill:'C',code:'01'}; document.querySelector('#start-endless-button').click(); true`);
+  await evaluate(cdp, `document.querySelector('#quit-game-button').click(); document.querySelector('#result-home-button').click(); globalThis.__prefQuizTest={type:'capital',skill:'D',code:'01'}; document.querySelector('#start-endless-button').click(); true`);
   await waitFor(cdp, `document.querySelector('#game-screen').dataset.quizType==='capital'`);
   assert(await evaluate(cdp, `[...document.querySelectorAll('input[name="answer"]')].some(input=>input.value===globalThis.__wrongCapital)`), "実際に混同した県庁所在地を次回の選択肢へ再提示できません");
   await evaluate(cdp, `document.querySelector('#quit-game-button').click(); delete globalThis.__prefQuizTest; delete globalThis.__wrongCapital; true`);
   await waitFor(cdp, `document.querySelector('#home-screen:not([hidden])')`);
 
-  await evaluate(cdp, `globalThis.__prefQuizTest={type:'region',skill:'D',code:'02'}; document.querySelector('#start-endless-button').click(); true`);
+  await evaluate(cdp, `globalThis.__prefQuizTest={type:'region',skill:'C',code:'02'}; document.querySelector('#start-endless-button').click(); true`);
   await waitFor(cdp, `document.querySelector('#game-screen:not([hidden])') && document.querySelector('#game-screen').dataset.quizType === 'region'`);
   await evaluate(cdp, `(() => { const input=[...document.querySelectorAll('input[name="answer"]')].find(item=>item.value!=='東北地方'); globalThis.__wrongRegion=input.value; input.checked=true; input.dispatchEvent(new Event('change')); document.querySelector('#submit-answer-button').click(); return true; })()`);
   await waitFor(cdp, `document.querySelector('#feedback-dialog').open`);
   assert(await evaluate(cdp, `document.querySelectorAll('#feedback-comparison .feedback-shape-card').length===1 && document.querySelector('#feedback-comparison .correct-answer').dataset.code==='02' && document.querySelector('#feedback-comparison .correct-answer small').textContent.includes(globalThis.__wrongRegion)`), "地方の誤答に架空の選択県を表示しています");
   await evaluate(cdp, `document.querySelector('#quit-game-button').click(); document.querySelector('#result-home-button').click(); delete globalThis.__prefQuizTest; delete globalThis.__wrongRegion; true`);
 
-  await evaluate(cdp, `(() => { const progress={}; const future=Date.now()+30*864e5; const learned={attempts:5,correct:5,streak:3,lastSeen:1,averageMs:5000,timeouts:0,nextDue:future,mastery:.8,recent:[1]}; for(let number=1;number<=15;number++){const code=String(number).padStart(2,'0'); progress[code+':A']={...learned}; progress[code+':B']={...learned};} progress['01:C']={...learned,nextDue:1}; localStorage.setItem('prefecture-minigame-v2',JSON.stringify({schema:2,settings:{sound:false,volume:.5,answerMode:'confirm'},progress,highScore:0,recent:[]})); location.reload(); return true; })()`);
+  await evaluate(cdp, `(() => { const progress={}; const future=Date.now()+30*864e5; const learned={attempts:5,correct:5,streak:3,lastSeen:1,averageMs:5000,timeouts:0,nextDue:future,mastery:.8,recent:[1]}; for(let number=1;number<=15;number++){const code=String(number).padStart(2,'0'); progress[code+':A']={...learned}; progress[code+':B']={...learned}; progress[code+':C']={...learned};} progress['01:D']={...learned,nextDue:1}; localStorage.setItem('prefecture-minigame-v2',JSON.stringify({schema:2,settings:{sound:false,volume:.5,answerMode:'confirm'},progress,highScore:0,recent:[]})); location.reload(); return true; })()`);
   await waitFor(cdp, `document.querySelector('#home-screen:not([hidden])')`, 10_000);
   await evaluate(cdp, `Math.random=()=>.999999; document.querySelector('#start-endless-button').click(); true`);
   await waitFor(cdp, `document.querySelector('#game-screen:not([hidden])')`);
-  assert(await evaluate(cdp, `globalThis.__prefQuizTest===undefined && document.querySelector('#game-screen').dataset.skill==='C' && document.querySelector('#game-screen').dataset.quizType==='capitalLocate'`), "習熟条件成立後に県庁所在地→地図が通常選択されません");
+  assert(await evaluate(cdp, `globalThis.__prefQuizTest===undefined && document.querySelector('#game-screen').dataset.skill==='D' && document.querySelector('#game-screen').dataset.quizType==='capitalRegion'`), "習熟条件成立後に県庁所在地→地方が通常選択されません");
 
   await evaluate(cdp, `(() => { const progress={}; const future=Date.now()+30*864e5; const learned={attempts:5,correct:5,streak:3,lastSeen:1,averageMs:5000,timeouts:0,nextDue:future,mastery:.8,recent:[1]}; for(let number=1;number<=15;number++){const code=String(number).padStart(2,'0'); progress[code+':A']={...learned}; progress[code+':B']={...learned};} progress['01:E']={...learned,nextDue:1}; localStorage.setItem('prefecture-minigame-v2',JSON.stringify({schema:2,settings:{sound:false,volume:.5,answerMode:'confirm'},progress,highScore:0,recent:[]})); location.reload(); return true; })()`);
   await waitFor(cdp, `document.querySelector('#home-screen:not([hidden])')`, 10_000);
