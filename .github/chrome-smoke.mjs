@@ -85,6 +85,7 @@ try {
   assert(await evaluate(cdp, `document.querySelector('#volume-setting').disabled && document.querySelector('#volume-setting').value === '0.5'`), "音量の初期値が不正です");
   assert(await evaluate(cdp, `document.querySelector('#understanding-index').textContent==='0' && document.querySelector('#challenged-count').textContent==='0' && document.querySelector('#review-count').textContent==='0' && document.querySelector('#exam-summary').textContent.includes('答え合わせは最後')`), "ホームの理解度・学習範囲・復習・試験状態が初期値ではありません");
   assert(await evaluate(cdp, `fetch('./sources.html').then(r => r.ok)`), "出典ページを取得できません");
+  assert(await evaluate(cdp, `Boolean(document.querySelector('.app-footer .app-version')?.textContent)`), "フッターにバージョン表記がありません");
   await evaluate(cdp, `document.querySelector('#progress-button').click(); true`);
   await waitFor(cdp, `document.querySelector('#progress-dialog').open`);
   assert(await evaluate(cdp, `(() => { const text=[...document.querySelectorAll('#skill-progress .skill-name')].map(item=>item.textContent); return text.some(value=>value.includes('基本3県で解放')) && text.some(value=>value.includes('基本8県で解放')) && text.some(value=>value.includes('基本15県で解放')); })()`), "学習記録にC・D・Eの解放条件を表示できません");
@@ -374,9 +375,8 @@ try {
     if (type === "slitFlow") assert(await evaluate(cdp, `(() => { const mastery=JSON.parse(localStorage.getItem('prefecture-minigame-v2')).progress['${code}:${skill}'].mastery; const evidence=(mastery-${masteryBefore})/((1-${masteryBefore})*.22); return Math.abs(evidence-.65)<.01; })()`), "隙間シルエットの正解証拠が想定した0.65ではありません");
     assert(await evaluate(cdp, `(() => { const card=document.querySelector('#feedback-comparison .correct-answer[data-code="${code}"]'); return document.querySelectorAll('#feedback-comparison .feedback-shape-card').length===1 && card?.querySelectorAll('.map-prefecture').length===47 && card.querySelector('.map-prefecture.target[data-map-code="${code}"]'); })()`), `${type}: 正解県の形と周辺位置を1枚で再確認できません`);
     if (type === "shapeMemory") assert(await evaluate(cdp, `(() => { const paths=[...document.querySelectorAll('#feedback-comparison .feedback-map .map-prefecture')]; return paths.filter(path=>{const box=path.getBBox();return box.x<650&&box.x+box.width>0&&box.y<410&&box.y+box.height>0;}).length>1; })()`), "正解県と同じ拡大率で周辺県の輪郭を表示できません");
-    const nextKey = type === "silhouette" ? "Enter" : type === "reveal" ? "1" : type === "spotlight" ? "2" : type === "flash" ? "3" : type === "slitFlow" ? "4" : null;
-    if (nextKey) {
-      await evaluate(cdp, `document.dispatchEvent(new KeyboardEvent('keydown',{key:'${nextKey}',bubbles:true})); true`);
+    if (type === "silhouette") {
+      await evaluate(cdp, `document.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true})); true`);
       await waitFor(cdp, `!document.querySelector('#feedback-dialog').open && document.querySelector('#question-number').textContent==='2/∞'`);
       await evaluate(cdp, `document.querySelector('#quit-game-button').click(); true`);
       await waitFor(cdp, `document.querySelector('#result-screen:not([hidden])')`);
@@ -386,6 +386,19 @@ try {
       await waitFor(cdp, `document.querySelector('#result-screen:not([hidden])')`);
       await evaluate(cdp, `document.querySelector('#result-home-button').click(); true`);
     }
+    await waitFor(cdp, `document.querySelector('#home-screen:not([hidden])')`);
+  }
+
+  for (const testKey of ["1", "2", "3", "4"]) {
+    await evaluate(cdp, `globalThis.__prefQuizTest={type:'capital',skill:'C',code:'01'}; document.querySelector('#start-endless-button').click(); true`);
+    await waitFor(cdp, `document.querySelector('#game-screen:not([hidden])') && document.querySelectorAll('input[name="answer"]').length===4`);
+    await evaluate(cdp, `(() => { const input=[...document.querySelectorAll('input[name="answer"]')].find(item => item.value === '札幌市'); input.checked=true; input.dispatchEvent(new Event('change')); document.querySelector('#submit-answer-button').click(); return true; })()`);
+    await waitFor(cdp, `document.querySelector('#feedback-dialog').open`);
+    await evaluate(cdp, `document.dispatchEvent(new KeyboardEvent('keydown',{key:'${testKey}',bubbles:true})); true`);
+    await waitFor(cdp, `!document.querySelector('#feedback-dialog').open && document.querySelector('#question-number').textContent==='2/∞'`);
+    await evaluate(cdp, `document.querySelector('#quit-game-button').click(); true`);
+    await waitFor(cdp, `document.querySelector('#result-screen:not([hidden])')`);
+    await evaluate(cdp, `document.querySelector('#result-home-button').click(); true`);
     await waitFor(cdp, `document.querySelector('#home-screen:not([hidden])')`);
   }
   await evaluate(cdp, `(() => { delete globalThis.__prefQuizTest; const state=JSON.parse(localStorage.getItem('prefecture-minigame-v2')); state.pendingReviews=[]; localStorage.setItem('prefecture-minigame-v2',JSON.stringify(state)); return true; })()`);
