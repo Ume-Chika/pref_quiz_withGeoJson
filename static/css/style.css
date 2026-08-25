@@ -276,7 +276,13 @@ button.danger-button { color: var(--danger); border: 1px solid #e5b1ab; backgrou
 .study-map-canvas .map-prefecture.mastery-weak.selected { fill: #d9786d; stroke: #5e241f; stroke-width: 2; }
 .study-map-canvas .map-prefecture:hover, .study-map-canvas .map-prefecture:focus-visible { stroke: #1e563e; stroke-width: 2; outline: none; }
 .study-map-canvas .map-prefecture:focus:not(:focus-visible) { outline: none; }
-.study-map-highlight-overlay { fill: none; stroke: transparent; stroke-width: 2; vector-effect: non-scaling-stroke; pointer-events: none; }
+.study-map-highlight-overlay, .stage-map-highlight-overlay, .map-target-overlay { fill: none; stroke: transparent; stroke-width: 2.5; vector-effect: non-scaling-stroke; pointer-events: none; }
+.map-target-overlay { stroke: #a26300; }
+.feedback-map .map-target-overlay { stroke: var(--accent-dark); stroke-width: 3; }
+.feedback-shape-card.selected-wrong .map-target-overlay { stroke: #6d2924; }
+.stage-map-highlight-overlay { stroke-width: 3; }
+.stage-map-highlight-overlay.is-active { stroke: #a26300; }
+.study-map-highlight-overlay { stroke-width: 2; }
 .study-map-highlight-overlay.is-active { stroke: #1e563e; }
 .study-map-highlight-overlay.mastery-strong.is-active { stroke: #05483b; }
 .study-map-highlight-overlay.mastery-weak.is-active { stroke: #5e241f; stroke-dasharray: 4 3; }

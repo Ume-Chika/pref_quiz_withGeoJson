@@ -248,13 +248,18 @@ function geometryPath(geometry, project) {
 
 function svgMap(features, viewBounds, { width = 700, height = 470, targetCode = "", targetCodes = [], clickable = false, label = "日本地図" } = {}) {
   const project = projector(viewBounds, width, height);
+  const isTarget = (code) => code === targetCode || targetCodes.includes(code);
+  const targets = [];
   const paths = features.map((prefecture, index) => {
-    const isTarget = prefecture.code === targetCode || targetCodes.includes(prefecture.code);
+    const target = isTarget(prefecture.code);
+    const d = geometryPath(prefecture.feature.geometry, project);
+    if (target) targets.push(d);
     const [centerX, centerY] = project(prefecture.center);
     const attrs = clickable ? `tabindex="${index ? -1 : 0}" role="button" data-code="${prefecture.code}" data-center-x="${centerX.toFixed(2)}" data-center-y="${centerY.toFixed(2)}" aria-label="${prefecture.name}"` : `data-map-code="${prefecture.code}"`;
-    return `<path class="map-prefecture${isTarget ? " target" : ""}${clickable ? " clickable" : ""}" d="${geometryPath(prefecture.feature.geometry, project)}" ${attrs}/>`;
+    return `<path class="map-prefecture${target ? " target" : ""}${clickable ? " clickable" : ""}" d="${d}" ${attrs}/>`;
   }).join("");
-  return `<svg viewBox="0 0 ${width} ${height}" role="${clickable ? "group" : "img"}" aria-label="${label}" preserveAspectRatio="xMidYMid meet">${paths}</svg>`;
+  const overlays = targets.map((d) => `<path class="map-target-overlay" d="${d}" aria-hidden="true"/>`).join("");
+  return `<svg viewBox="0 0 ${width} ${height}" role="${clickable ? "group" : "img"}" aria-label="${label}" preserveAspectRatio="xMidYMid meet">${paths}${overlays}</svg>`;
 }
 
 function silhouetteSvg(prefecture, effect = "plain") {
@@ -346,16 +351,9 @@ function renderStudyMap() {
   window.addEventListener("pointercancel", stopDragging);
 
   const updateOverlay = () => {
-    const selectedPath = paths.find((path) => path.classList.contains("selected"));
-    if (selectedPath) {
-      overlay.setAttribute("d", selectedPath.getAttribute("d") || "");
-      const strong = selectedPath.classList.contains("mastery-strong") ? " mastery-strong" : "";
-      const weak = selectedPath.classList.contains("mastery-weak") ? " mastery-weak" : "";
-      overlay.setAttribute("class", `study-map-highlight-overlay is-active${strong}${weak}`);
-    } else {
-      overlay.setAttribute("d", "");
-      overlay.setAttribute("class", "study-map-highlight-overlay");
-    }
+    const s = paths.find((path) => path.classList.contains("selected"));
+    overlay.setAttribute("d", s ? s.getAttribute("d") || "" : "");
+    overlay.setAttribute("class", s ? `study-map-highlight-overlay is-active${s.classList.contains("mastery-strong") ? " mastery-strong" : ""}${s.classList.contains("mastery-weak") ? " mastery-weak" : ""}` : "study-map-highlight-overlay");
   };
 
   const clearSelection = () => {
@@ -493,12 +491,8 @@ function renderStudyMapColors(paths = [...ui.studyMapCanvas.querySelectorAll(".m
     path.classList.toggle("mastery-weak", showWeak && path.dataset.mastery === "weak");
   });
   const overlay = ui.studyMapCanvas.querySelector(".study-map-highlight-overlay");
-  const selectedPath = paths.find((path) => path.classList.contains("selected"));
-  if (overlay && selectedPath) {
-    const strong = selectedPath.classList.contains("mastery-strong") ? " mastery-strong" : "";
-    const weak = selectedPath.classList.contains("mastery-weak") ? " mastery-weak" : "";
-    overlay.setAttribute("class", `study-map-highlight-overlay is-active${strong}${weak}`);
-  }
+  const s = paths.find((path) => path.classList.contains("selected"));
+  if (overlay && s) overlay.setAttribute("class", `study-map-highlight-overlay is-active${s.classList.contains("mastery-strong") ? " mastery-strong" : ""}${s.classList.contains("mastery-weak") ? " mastery-weak" : ""}`);
 }
 
 function renderStudyMapDetail(prefecture, recent) {
@@ -1115,7 +1109,19 @@ function selectLocation(code) {
   if (saved.settings.answerMode === "instant") { answerLocation(code); return; }
   session.selectedLocation = code;
   ui.stage.querySelectorAll(".map-prefecture.selected").forEach((path) => path.classList.remove("selected"));
-  ui.stage.querySelector(`.map-prefecture[data-code="${code}"]`)?.classList.add("selected");
+  const targetPath = ui.stage.querySelector(`.map-prefecture[data-code="${code}"]`);
+  if (targetPath) {
+    targetPath.classList.add("selected");
+    let overlay = ui.stage.querySelector(".stage-map-highlight-overlay");
+    if (!overlay) {
+      overlay = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      overlay.setAttribute("class", "stage-map-highlight-overlay");
+      overlay.setAttribute("aria-hidden", "true");
+      ui.stage.querySelector("svg")?.appendChild(overlay);
+    }
+    overlay?.setAttribute("d", targetPath.getAttribute("d") || "");
+    overlay?.setAttribute("class", "stage-map-highlight-overlay is-active");
+  }
   ui.submit.disabled = false;
 }
 
