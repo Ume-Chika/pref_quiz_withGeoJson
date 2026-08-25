@@ -627,7 +627,7 @@ function setQuestionCopy(question) {
     region: ["地方区分", `${question.prefecture.name}が属する地方は？`, "本アプリでは内閣府資料の8区分を使います。"],
     regionMember: ["地方区分", `${question.prefecture.region}に含まれるのは？`, "当てはまる都道府県を選んでください。"],
     regionMap: ["地方地図", "黄色くまとまった地方はどこ？", "地方の広がりを地図で確認してください。"],
-    regionShape: ["地方の形", "この地方はどこ？", "まとまりの形から地方名を答えてください。"],
+    regionShape: ["地方の形", "黄色い県を含む地方はどこ？", "県境を残した地方全体の形から答えてください。"],
     shapeRegion: ["形→地方", "この形の都道府県は何地方？", "形から地方まで結びつけましょう。"],
     capitalRegion: ["県庁所在地→地方", `${question.prefecture.capital}が県庁所在地の都道府県は何地方？`, "県庁所在地から地方まで思い出してください。"],
     dish: ["郷土料理", `農林水産省の郷土料理百選で「${question.prefecture.dish}」が選ばれた都道府県は？`, "正しい都道府県を選んでください。"],
@@ -798,7 +798,7 @@ function renderVisual(question, token) {
     ui.stage.innerHTML = svgMap(prefectures, boundsOf(prefectures.map((item) => item.mainGeometry)), { targetCodes, label: "対象地方を強調した日本地図" });
   } else if (type === "regionShape") {
     const regional = prefectures.filter((item) => item.region === prefecture.region);
-    ui.stage.innerHTML = svgMap(regional, expandedBounds(boundsOf(regional.map((item) => item.mainGeometry)), .62), { targetCodes: regional.map((item) => item.code), label: "名前を答える地方のまとまり" });
+    ui.stage.innerHTML = svgMap(regional, expandedBounds(boundsOf(regional.map((item) => item.mainGeometry)), .62), { targetCode: prefecture.code, label: "対象県を黄色く示した地方のまとまり" });
   } else if (type === "compass") {
     ui.stage.innerHTML = `<div class="compass-prompt"><span>基準<br><strong>${question.reference.name}</strong></span><b aria-hidden="true">→</b><span>どちら？<br><strong>${prefecture.name}</strong></span></div>`;
   } else {
@@ -990,7 +990,7 @@ function queueReview(review) {
 }
 
 function questionEvidence(type, correct = true) {
-  return ["shapeMemory", "flash", "slitFlow", "mapMemory", "mapFlash"].includes(type) ? correct ? .4 : 1 : ["mapShape", "shapeLocate", "capitalMap", "capitalShape", "capitalLocate", "regionMap", "regionShape", "shapeRegion", "capitalRegion", "dishMap", "dishShapeChoice", "dishLocate"].includes(type) ? .65 : 1;
+  return ["shapeMemory", "flash", "mapMemory", "mapFlash"].includes(type) ? correct ? .4 : 1 : ["slitFlow", "mapShape", "shapeLocate", "capitalMap", "capitalShape", "capitalLocate", "regionMap", "regionShape", "shapeRegion", "capitalRegion", "dishMap", "dishShapeChoice", "dishLocate"].includes(type) ? .65 : 1;
 }
 
 function showFeedback(question, correct, timedOut, points, answer) {
