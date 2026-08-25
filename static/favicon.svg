@@ -1,4 +1,45 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <rect width="64" height="64" rx="15" fill="#117a65"/>
-  <path d="M19 19h26v6H19zm4 10h18v5H23zm7 0h5v20h-5z" fill="#fffdf8"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <clipPath id="squircle">
+      <rect x="16" y="16" width="480" height="480" rx="108" ry="108" />
+    </clipPath>
+    <clipPath id="lens-clip">
+      <circle cx="230" cy="230" r="172" />
+    </clipPath>
+    <mask id="outside-lens-mask">
+      <rect x="0" y="0" width="512" height="512" fill="#FFFFFF" />
+      <circle cx="230" cy="230" r="175.5" fill="#000000" />
+    </mask>
+  </defs>
+
+  <!-- Black Squircle Base -->
+  <rect x="16" y="16" width="480" height="480" rx="108" ry="108" fill="#121212" />
+
+  <!-- Outer Osaka Shape (White on Black) -->
+  <g clip-path="url(#squircle)">
+    <path d="M 95.49,464.59 L 105.56,452.85 L 158.58,437.89 L 182.84,416.52 L 241.99,349.77 L 242.32,328.45 L 251.39,325.52 L 260.22,314.79 L 264.03,272.27 L 257.81,241.73 L 262.58,221.18 L 280.72,198.18 L 272.89,158.13 L 276.29,90.07 L 255.42,77.44 L 239.03,59.28 L 237.29,32.00 L 278.42,40.51 L 299.80,68.75 L 326.47,86.31 L 339.49,82.48 L 336.11,71.98 L 344.91,61.07 L 356.93,80.15 L 381.62,92.87 L 413.27,147.41 L 416.51,163.42 L 392.45,231.83 L 381.70,277.56 L 369.21,307.08 L 391.19,344.48 L 395.72,362.39 L 391.35,413.83 L 381.86,419.63 L 358.51,421.64 L 311.50,444.95 L 284.99,442.61 L 148.11,480.00 L 102.87,476.16 L 95.49,464.59 Z" fill="#FFFFFF" />
+  </g>
+
+  <!-- Center Lens (App Cream #F7F4ED) -->
+  <circle cx="230" cy="230" r="172" fill="#F7F4ED" />
+
+  <!-- Inner Osaka Shape (Brand Emerald #117A65 on Cream) -->
+  <g clip-path="url(#lens-clip)">
+    <path d="M 95.49,464.59 L 105.56,452.85 L 158.58,437.89 L 182.84,416.52 L 241.99,349.77 L 242.32,328.45 L 251.39,325.52 L 260.22,314.79 L 264.03,272.27 L 257.81,241.73 L 262.58,221.18 L 280.72,198.18 L 272.89,158.13 L 276.29,90.07 L 255.42,77.44 L 239.03,59.28 L 237.29,32.00 L 278.42,40.51 L 299.80,68.75 L 326.47,86.31 L 339.49,82.48 L 336.11,71.98 L 344.91,61.07 L 356.93,80.15 L 381.62,92.87 L 413.27,147.41 L 416.51,163.42 L 392.45,231.83 L 381.70,277.56 L 369.21,307.08 L 391.19,344.48 L 395.72,362.39 L 391.35,413.83 L 381.86,419.63 L 358.51,421.64 L 311.50,444.95 L 284.99,442.61 L 148.11,480.00 L 102.87,476.16 L 95.49,464.59 Z" fill="#117A65" />
+  </g>
+
+  <!-- Handle Elements: strictly clipped by squircle and masked outside lens -->
+  <g clip-path="url(#squircle)" mask="url(#outside-lens-mask)">
+    <!-- 1. Outer Thin White Rim -->
+    <line x1="352.5" y1="352.5" x2="520" y2="520" stroke="#FFFFFF" stroke-width="47.0" stroke-linecap="round" />
+    <!-- 2. Inner Thin Black Rim -->
+    <line x1="354.5" y1="354.5" x2="520" y2="520" stroke="#121212" stroke-width="40.0" stroke-linecap="round" />
+    <!-- 3. Handle Core (#F7F4ED) -->
+    <line x1="354.5" y1="354.5" x2="520" y2="520" stroke="#F7F4ED" stroke-width="32.0" stroke-linecap="round" />
+  </g>
+
+  <!-- Lens Rim Rings -->
+  <circle cx="230" cy="230" r="172" fill="none" stroke="#121212" stroke-width="6" />
+  <circle cx="230" cy="230" r="175" fill="none" stroke="#FFFFFF" stroke-width="3.5" />
+  <rect x="16" y="16" width="480" height="480" rx="108" ry="108" fill="none" stroke="#121212" stroke-width="4" />
 </svg>
