@@ -79,6 +79,7 @@ try {
   assert(await evaluate(cdp, `document.querySelectorAll('#hero-map path').length === 47`), "ホーム地図が47都道府県ではありません");
   assert(await evaluate(cdp, `document.documentElement.scrollWidth <= document.documentElement.clientWidth`), "スマートフォン幅で横スクロールが発生しています");
   assert(await evaluate(cdp, `[...document.querySelectorAll('button')].filter(button => button.getClientRects().length).every(button => button.getBoundingClientRect().height >= 44)`), "操作ボタンが44px未満です");
+  assert(await evaluate(cdp, `[...document.querySelectorAll('dialog')].every(d => d.open || (getComputedStyle(d).display === 'none' && d.offsetHeight === 0))`), "閉じたダイアログが画面上に露出しています");
   assert(await evaluate(cdp, `!document.querySelector('#sound-setting').checked`), "効果音の初期値がOFFではありません");
   assert(await evaluate(cdp, `document.querySelector('#visual-effects-setting').checked`), "視覚効果の初期値がONではありません");
   assert(await evaluate(cdp, `document.querySelector('#volume-setting').disabled && document.querySelector('#volume-setting').value === '0.5'`), "音量の初期値が不正です");
