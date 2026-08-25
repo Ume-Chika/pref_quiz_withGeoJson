@@ -20,6 +20,24 @@ export function hasBasicMastery(shapeMastery, locationMastery) {
   return shapeMastery >= .45 && locationMastery >= .45;
 }
 
+export function prefectureUnderstanding(progress, code) {
+  const mastery = (skill) => Math.max(0, Math.min(1, Number(progress?.[`${code}:${skill}`]?.mastery) || 0));
+  const shape = mastery("A");
+  const location = mastery("B");
+  const basics = .35 * (shape + location) + .3 * Math.sqrt(shape * location);
+  return .7 * basics + .1 * (mastery("C") + mastery("D") + mastery("E"));
+}
+
+export function understandingIndex(progress) {
+  const total = Array.from({ length: 47 }, (_, index) => prefectureUnderstanding(progress, String(index + 1).padStart(2, "0"))).reduce((sum, value) => sum + value, 0);
+  return Math.round(total / 47 * 1000);
+}
+
+export function examScore(correct, total = 30) {
+  const rate = total > 0 ? Math.max(0, Math.min(total, Number(correct) || 0)) / total : 0;
+  return Math.round(1000 * Math.max(0, (rate - .25) / .75));
+}
+
 export function canUseIntegratedMode(targetMastery, prerequisiteMastery) {
   return targetMastery >= .55 && prerequisiteMastery >= .45;
 }
