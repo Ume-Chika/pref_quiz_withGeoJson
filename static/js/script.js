@@ -295,9 +295,10 @@ function renderStudyMap() {
   setStudyMapZoom(1);
   const svg = canvas.querySelector("svg");
   const paths = [...svg.querySelectorAll(".map-prefecture[data-code]")];
+  const statusMap = getStudyMapMasteryStatuses();
   paths.forEach((path) => {
     const prefecture = prefectures.find((item) => item.code === path.dataset.code);
-    const status = prefectureMasteryStatus(prefecture);
+    const status = prefectureMasteryStatus(prefecture, statusMap);
     path.dataset.mastery = status.kind;
     path.setAttribute("aria-label", `${prefecture.name}、${status.label}、理解度${status.index}`);
   });
@@ -409,17 +410,48 @@ function setStudyMapZoom(nextZoom) {
   $("study-map-zoom-reset").disabled = studyMapZoom === 1;
 }
 
-function prefectureMasteryStatus(prefecture) {
-  const items = Object.keys(SKILLS).map((skill) => getProgress(prefecture.code, skill));
-  const attempted = items.some((item) => item.attempts);
-  const hasMiss = items.some((item) => item.recent.some((answer) => answer !== 1));
-  const reviewDue = items.some((item) => item.attempts && item.nextDue <= Date.now()) || saved.pendingReviews.some((review) => review.code === prefecture.code);
-  const index = Math.round(prefectureUnderstanding(saved.progress, prefecture.code) * 1000);
-  if (!attempted) return { kind: "unlearned", label: "未学習", index };
-  if (reviewDue) return { kind: "weak", label: "苦手・復習おすすめ", index };
-  if (index >= 550) return { kind: "strong", label: "得意", index };
-  if (index < 250 && hasMiss) return { kind: "weak", label: "苦手", index };
-  return { kind: "learning", label: "学習中", index };
+function getStudyMapMasteryStatuses() {
+  const statusMap = new Map();
+  const attemptedList = [];
+  for (const prefecture of prefectures) {
+    const items = Object.keys(SKILLS).map((skill) => getProgress(prefecture.code, skill));
+    const attempted = items.some((item) => item.attempts > 0);
+    const score = prefectureUnderstanding(saved.progress, prefecture.code);
+    const index = Math.round(score * 1000);
+    if (attempted) {
+      attemptedList.push({ prefecture, score, index });
+    } else {
+      statusMap.set(prefecture.code, { kind: "unlearned", label: "未学習", index });
+    }
+  }
+  const N = attemptedList.length;
+  if (N > 0) {
+    attemptedList.sort((a, b) => b.score - a.score);
+    const k = Math.floor(N * 0.2);
+    if (k === 0) {
+      for (const item of attemptedList) {
+        statusMap.set(item.prefecture.code, { kind: "learning", label: "学習中", index: item.index });
+      }
+    } else {
+      const topThreshold = attemptedList[k - 1].score;
+      const bottomThreshold = attemptedList[N - k].score;
+      for (let i = 0; i < N; i++) {
+        const item = attemptedList[i];
+        if (topThreshold > bottomThreshold && i < k) {
+          statusMap.set(item.prefecture.code, { kind: "strong", label: "得意", index: item.index });
+        } else if (topThreshold > bottomThreshold && i >= N - k) {
+          statusMap.set(item.prefecture.code, { kind: "weak", label: "苦手", index: item.index });
+        } else {
+          statusMap.set(item.prefecture.code, { kind: "learning", label: "学習中", index: item.index });
+        }
+      }
+    }
+  }
+  return statusMap;
+}
+
+function prefectureMasteryStatus(prefecture, statusMap = getStudyMapMasteryStatuses()) {
+  return statusMap.get(prefecture.code) || { kind: "unlearned", label: "未学習", index: 0 };
 }
 
 function renderStudyMapColors(paths = [...ui.studyMapCanvas.querySelectorAll(".map-prefecture[data-code]")]) {
