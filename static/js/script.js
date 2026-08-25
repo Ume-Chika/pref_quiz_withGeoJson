@@ -408,14 +408,8 @@ function setStudyMapZoom(nextZoom) {
   if (svg) {
     const centerX = canvas.scrollWidth ? (canvas.scrollLeft + canvas.clientWidth / 2) / canvas.scrollWidth : .5;
     const centerY = canvas.scrollHeight ? (canvas.scrollTop + canvas.clientHeight / 2) / canvas.scrollHeight : .5;
-    const isMobile = matchMedia("(max-width: 620px)").matches;
-    if (isMobile) {
-      svg.style.width = `${studyMapZoom * 100}%`;
-      svg.style.height = `${studyMapZoom * 300}px`;
-    } else {
-      svg.style.width = `${studyMapZoom * 100}%`;
-      svg.style.height = `${studyMapZoom * 100}%`;
-    }
+    svg.style.width = `${studyMapZoom * 100}%`;
+    svg.style.height = `${studyMapZoom * 100}%`;
     requestAnimationFrame(() => {
       canvas.scrollLeft = centerX * canvas.scrollWidth - canvas.clientWidth / 2;
       canvas.scrollTop = centerY * canvas.scrollHeight - canvas.clientHeight / 2;
