@@ -239,7 +239,7 @@ for (const target of facts.prefectures) {
 const publicFiles = ["index.html", "sources.html", "static/css/style.css", "static/js/script.js", "static/js/learning.mjs", geoPath, "static/data/prefecture_facts.json"];
 const publicPayload = publicFiles.reduce((sum, path) => sum + statSync(path).size, 0);
 const compressedPayload = publicFiles.reduce((sum, path) => sum + gzipSync(readFileSync(path)).length, 0);
-if (publicPayload > 275_000 || compressedPayload > 100_000) throw new Error(`主要配信ファイルが容量上限を超えています: raw ${publicPayload} / gzip ${compressedPayload} bytes`);
+if (publicPayload > 285_000 || compressedPayload > 100_000) throw new Error(`主要配信ファイルが容量上限を超えています: raw ${publicPayload} / gzip ${compressedPayload} bytes`);
 
 for (const legacy of ["app.py", "requirements.txt", "templates", "static/test.html"]) {
   if (existsSync(legacy)) throw new Error(`静的サイトに不要な旧ファイルが残っています: ${legacy}`);

@@ -290,9 +290,10 @@ function renderHeroMap() {
 
 function renderStudyMap() {
   const recent = saved.recent.slice(0, 10);
-  ui.studyMapCanvas.innerHTML = svgMap(prefectures, boundsOf(prefectures), { width: 700, height: 540, clickable: true, label: "都道府県ごとの現在習熟度を示す日本白地図" });
+  const canvas = ui.studyMapCanvas;
+  canvas.innerHTML = svgMap(prefectures, boundsOf(prefectures), { width: 700, height: 540, clickable: true, label: "都道府県ごとの現在習熟度を示す日本白地図" });
   setStudyMapZoom(1);
-  const svg = ui.studyMapCanvas.querySelector("svg");
+  const svg = canvas.querySelector("svg");
   const paths = [...svg.querySelectorAll(".map-prefecture[data-code]")];
   paths.forEach((path) => {
     const prefecture = prefectures.find((item) => item.code === path.dataset.code);
@@ -301,6 +302,43 @@ function renderStudyMap() {
     path.setAttribute("aria-label", `${prefecture.name}、${status.label}、理解度${status.index}`);
   });
   renderStudyMapColors(paths);
+
+  let isDragging = false;
+  let hasDragged = false;
+  let dragStartX = 0;
+  let dragStartY = 0;
+  let scrollStartX = 0;
+  let scrollStartY = 0;
+
+  canvas.onpointerdown = (event) => {
+    if (studyMapZoom <= 1 || event.button !== 0) return;
+    isDragging = true;
+    hasDragged = false;
+    dragStartX = event.clientX;
+    dragStartY = event.clientY;
+    scrollStartX = canvas.scrollLeft;
+    scrollStartY = canvas.scrollTop;
+    canvas.classList.add("is-dragging");
+  };
+
+  window.addEventListener("pointermove", (event) => {
+    if (!isDragging) return;
+    const dx = event.clientX - dragStartX;
+    const dy = event.clientY - dragStartY;
+    if (Math.abs(dx) > 4 || Math.abs(dy) > 4) {
+      hasDragged = true;
+    }
+    canvas.scrollLeft = scrollStartX - dx;
+    canvas.scrollTop = scrollStartY - dy;
+  });
+
+  const stopDragging = () => {
+    if (!isDragging) return;
+    isDragging = false;
+    canvas.classList.remove("is-dragging");
+  };
+  window.addEventListener("pointerup", stopDragging);
+  window.addEventListener("pointercancel", stopDragging);
 
   const showCode = (code) => {
     const prefecture = prefectures.find((item) => item.code === code);
@@ -312,9 +350,13 @@ function renderStudyMap() {
     });
     renderStudyMapDetail(prefecture, recent);
   };
-  svg.addEventListener("pointerover", (event) => showCode(event.target.closest?.("[data-code]")?.dataset.code));
+  svg.addEventListener("pointerover", (event) => {
+    if (isDragging) return;
+    showCode(event.target.closest?.("[data-code]")?.dataset.code);
+  });
   svg.addEventListener("focusin", (event) => showCode(event.target.closest?.(".map-prefecture[data-code]")?.dataset.code));
   svg.addEventListener("click", (event) => {
+    if (hasDragged) { hasDragged = false; return; }
     const hitCode = event.target.closest?.(".map-prefecture[data-code]")?.dataset.code;
     if (hitCode) { showCode(hitCode); return; }
     const point = new DOMPoint(event.clientX, event.clientY).matrixTransform(svg.getScreenCTM().inverse());
@@ -343,12 +385,18 @@ function setStudyMapZoom(nextZoom) {
   const canvas = ui.studyMapCanvas;
   const svg = canvas.querySelector("svg");
   studyMapZoom = Math.max(1, Math.min(2.5, nextZoom));
+  canvas.classList.toggle("is-zoomed", studyMapZoom > 1);
   if (svg) {
     const centerX = canvas.scrollWidth ? (canvas.scrollLeft + canvas.clientWidth / 2) / canvas.scrollWidth : .5;
     const centerY = canvas.scrollHeight ? (canvas.scrollTop + canvas.clientHeight / 2) / canvas.scrollHeight : .5;
-    const baseHeight = matchMedia("(max-width: 620px)").matches ? 300 : 350;
-    svg.style.width = `${studyMapZoom * 100}%`;
-    svg.style.height = `${studyMapZoom * baseHeight}px`;
+    const isMobile = matchMedia("(max-width: 620px)").matches;
+    if (isMobile) {
+      svg.style.width = `${studyMapZoom * 100}%`;
+      svg.style.height = `${studyMapZoom * 300}px`;
+    } else {
+      svg.style.width = `${studyMapZoom * 100}%`;
+      svg.style.height = `${studyMapZoom * 100}%`;
+    }
     requestAnimationFrame(() => {
       canvas.scrollLeft = centerX * canvas.scrollWidth - canvas.clientWidth / 2;
       canvas.scrollTop = centerY * canvas.scrollHeight - canvas.clientHeight / 2;
