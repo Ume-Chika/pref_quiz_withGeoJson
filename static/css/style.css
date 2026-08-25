@@ -37,7 +37,7 @@ button:focus-visible, select:focus-visible, input:focus-visible { outline: 3px s
 .app-shell { width: min(100%, 920px); min-height: 100vh; margin: 0 auto; padding: 0 16px; }
 .app-header { position: relative; z-index: 10; display: flex; align-items: center; justify-content: space-between; min-height: 72px; border-bottom: 1px solid rgba(29, 41, 36, .1); }
 .brand { display: inline-flex; gap: 10px; align-items: center; padding: 8px 0; border: 0; background: transparent; font-weight: 800; letter-spacing: -.02em; cursor: pointer; }
-.brand-mark { display: grid; width: 34px; height: 34px; place-items: center; color: white; border-radius: 11px 11px 14px 9px; background: var(--accent); transform: rotate(-3deg); }
+.brand-mark { display: block; width: 34px; height: 34px; border-radius: 8px; flex-shrink: 0; }
 .header-actions { display: flex; gap: 6px; }
 .icon-button, .close-button { min-width: 44px; min-height: 44px; padding: 0 10px; border: 0; border-radius: 12px; background: transparent; font-size: .82rem; font-weight: 700; cursor: pointer; }
 .icon-button:hover, .close-button:hover { background: rgba(17, 122, 101, .08); }
