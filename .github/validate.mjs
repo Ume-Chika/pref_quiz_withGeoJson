@@ -1,7 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { gzipSync } from "node:zlib";
 import { blankProgress, canIntroduceNewItem, canUseIntegratedMode, compassVector, deadlinePassed, examScore, geometryRepresentativePoint, hasBasicMastery, normalizeProgress, recordAnswer, schedulingPriority, skillsForMastery, understandingIndex, understandingMilestone } from "../static/js/learning.mjs";
 
@@ -15,11 +15,14 @@ const required = [
   "static/data/prefecture_facts.json",
   "static/favicon.svg",
   "static/icon-512.png",
+  "static/social-card.svg",
   "static/social-card.png",
   ".github/chrome-smoke.mjs",
   ".github/workflows/pages.yml",
   "lighthouserc.json",
   "README.md",
+  "要件書.md",
+  "実装状況.md",
   "LICENSE",
   "DATA_SOURCES.md",
   "THIRD_PARTY_NOTICES.md",
@@ -27,6 +30,15 @@ const required = [
 
 for (const path of required) {
   if (!existsSync(path)) throw new Error(`必須ファイルがありません: ${path}`);
+}
+
+for (const document of required.filter((path) => path.endsWith(".md"))) {
+  for (const [, href] of readFileSync(document, "utf8").matchAll(/\]\(([^)]+)\)/g)) {
+    const target = href.split("#")[0];
+    if (target && !/^[a-z]+:/i.test(target) && !existsSync(join(dirname(document), decodeURIComponent(target)))) {
+      throw new Error(`文書内リンクの参照先がありません: ${document} → ${target}`);
+    }
+  }
 }
 
 for (const name of readdirSync("static/js").filter((name) => /\.m?js$/.test(name))) {
@@ -190,7 +202,10 @@ if (statSync(geoPath).size > 500_000) {
   throw new Error("公開用GeoJSONが500KBを超えています");
 }
 
-const facts = JSON.parse(readFileSync("static/data/prefecture_facts.json", "utf8"));
+const factsBytes = readFileSync("static/data/prefecture_facts.json");
+const factsHash = createHash("sha256").update(factsBytes).digest("hex");
+if (!readFileSync("DATA_SOURCES.md", "utf8").includes(factsHash)) throw new Error("問題データの版がデータ出典文書に記録されていません");
+const facts = JSON.parse(factsBytes);
 if (facts.prefectures?.length !== 47) {
   throw new Error("基礎問題データは47都道府県を含む必要があります");
 }
