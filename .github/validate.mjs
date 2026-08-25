@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { gzipSync } from "node:zlib";
-import { blankProgress, canIntroduceNewItem, canUseIntegratedMode, compassVector, deadlinePassed, hasBasicMastery, normalizeProgress, recordAnswer, schedulingPriority, skillsForMastery } from "../static/js/learning.mjs";
+import { blankProgress, canIntroduceNewItem, canUseIntegratedMode, compassVector, deadlinePassed, examScore, hasBasicMastery, normalizeProgress, recordAnswer, schedulingPriority, skillsForMastery, understandingIndex } from "../static/js/learning.mjs";
 
 const required = [
   "index.html",
@@ -114,6 +114,21 @@ const nearDue = { ...firstCorrect, lastSeen: now - 59 * 60e3, nextDue: now + 60e
 const farDue = { ...firstCorrect, lastSeen: now - 60e3, nextDue: now + 59 * 60e3 };
 if (schedulingPriority(nearDue, { now, random: 0 }) <= schedulingPriority(farDue, { now, random: 0 })) {
   throw new Error("期限前の項目を復習予定の近さで並べられていません");
+}
+
+const allMastery = (skills) => Object.fromEntries(Array.from({ length: 47 }, (_, index) => String(index + 1).padStart(2, "0")).flatMap((code) => skills.map((skill) => [`${code}:${skill}`, { mastery: 1 }])));
+if (understandingIndex({}) !== 0 || understandingIndex(allMastery(["A"])) !== 245 || understandingIndex(allMastery(["A", "B"])) !== 700 || understandingIndex(allMastery(["A", "B", "C", "D", "E"])) !== 1000) {
+  throw new Error("都道府県理解度指数の基準値が不正です");
+}
+const partialIndex = understandingIndex({ "01:A": { mastery: .3, attempts: 1, averageMs: 5000 } });
+if (understandingIndex({ "01:A": { mastery: .4, attempts: 99, averageMs: 15000 } }) < partialIndex || understandingIndex({ "01:A": { mastery: 4 }, "01:B": { mastery: -2 } }) > 15) {
+  throw new Error("理解度指数が習熟度に対して単調でないか、不正値を制限できていません");
+}
+if (understandingIndex({ "01:A": { mastery: .4, attempts: 1, correct: 1, averageMs: 1000, timeouts: 0 } }) !== understandingIndex({ "01:A": { mastery: .4, attempts: 99, correct: 3, averageMs: 15000, timeouts: 80 } })) {
+  throw new Error("理解度指数が回答速度や出題回数に左右されています");
+}
+if ([0, 22, 333, 733, 1000].some((score, index) => examScore([0, 8, 15, 24, 30][index]) !== score) || examScore(30, 0) !== 0) {
+  throw new Error("実力テストの偶然正解補正が不正です");
 }
 
 const geoPath = "static/data/low_prefectures.geojson";

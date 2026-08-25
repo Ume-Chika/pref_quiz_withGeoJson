@@ -46,26 +46,29 @@
         </div>
 
         <div class="summary-grid" aria-label="学習状況">
-          <article class="summary-card">
-            <span class="summary-label">基本を習得</span>
-            <strong id="learned-count">0</strong><span>/47</span>
-            <small id="learning-count">まだ未挑戦</small>
+          <article class="summary-card understanding-card">
+            <span class="summary-label">都道府県理解度</span>
+            <strong id="understanding-index">0</strong><span>/1000</span>
+            <small id="understanding-stage">未学習</small>
           </article>
           <article class="summary-card">
-            <span class="summary-label">これまで</span>
-            <strong id="total-attempts">0</strong><span>問</span>
+            <span class="summary-label">挑戦した県</span>
+            <strong id="challenged-count">0</strong><span>/47</span>
+            <small id="learning-count">基本を習得 0県</small>
           </article>
           <article class="summary-card">
-            <span class="summary-label">最高スコア</span>
-            <strong id="high-score">0</strong><span>点</span>
+            <span class="summary-label">要復習</span>
+            <strong id="review-count">0</strong><span>件</span>
+            <small>期限・誤答から自動選択</small>
           </article>
         </div>
 
         <div class="start-panel">
           <button id="start-ten-button" class="primary-button start-button" type="button">
-            <span>10問チャレンジ</span><small>おすすめ</small>
+            <span>おすすめ学習 10問</span><small>復習優先</small>
           </button>
-          <button id="start-endless-button" class="secondary-button" type="button">エンドレスで遊ぶ</button>
+          <button id="start-exam-button" class="secondary-button exam-button" type="button"><span>実力テスト 30問</span><small id="exam-summary">全5分野・約8分・答え合わせは最後</small></button>
+          <button id="start-endless-button" class="secondary-button" type="button">エンドレス学習</button>
           <button id="study-map-button" class="secondary-button" type="button">白地図を眺める</button>
           <p id="next-review-hint" class="subtle-hint">最初は基本の形から出題します。</p>
         </div>
@@ -87,8 +90,8 @@
       <section id="game-screen" class="screen game-screen" hidden aria-labelledby="question-title">
         <div class="game-hud">
           <div class="hud-item"><span>問題</span><strong id="question-number">1/10</strong></div>
-          <div class="hud-item combo-item"><span>コンボ</span><strong id="combo-count">0</strong></div>
-          <div class="hud-item score-item"><span>スコア</span><strong id="score-count">0</strong></div>
+          <div class="hud-item combo-item"><span id="combo-label">連続正解</span><strong id="combo-count">0</strong></div>
+          <div class="hud-item score-item"><span id="score-label">正解</span><strong id="score-count">0</strong></div>
         </div>
 
         <div class="timer-row">
@@ -119,13 +122,14 @@
         <p class="eyebrow">RESULT</p>
         <h1 id="result-title">10問おつかれさま！</h1>
         <div class="result-score">
-          <strong id="result-score">0</strong><span>点</span>
-          <p id="result-record" class="record-badge" hidden>ハイスコア更新！</p>
+          <span id="result-score-label" class="result-score-label">都道府県理解度</span>
+          <strong id="result-score">0</strong><span id="result-score-unit">/1000</span>
+          <p id="result-record" class="record-badge" hidden>理解度を更新しました</p>
         </div>
         <div class="result-grid">
           <article><span>正解</span><strong id="result-correct">0/10</strong></article>
           <article><span>正答率</span><strong id="result-rate">0%</strong></article>
-          <article><span>最大コンボ</span><strong id="result-combo">0</strong></article>
+          <article><span id="result-combo-label">最大連続正解</span><strong id="result-combo">0</strong></article>
           <article><span>時間切れ</span><strong id="result-timeouts">0</strong></article>
         </div>
         <div class="review-card">
@@ -155,7 +159,7 @@
     <h2 id="feedback-title" tabindex="-1">正解！</h2>
     <p id="feedback-detail">正解は東京都です。</p>
     <div id="feedback-comparison" class="feedback-comparison" aria-label="回答した県と正解の県の形と場所"></div>
-    <p id="feedback-points" class="feedback-points">+250点</p>
+    <p id="feedback-points" class="feedback-points">理解度指数を更新しました</p>
     <div class="dialog-actions">
       <button id="next-question-button" class="primary-button" type="button">次の問題</button>
       <button id="quit-game-button" class="text-button" type="button">ここで終了</button>
@@ -185,7 +189,7 @@
         </select>
       </label>
       <div class="danger-zone">
-        <div><strong>学習データを消去</strong><small>記録・設定・ハイスコアを初期化します</small></div>
+        <div><strong>学習データを消去</strong><small>学習記録・設定・実力テスト結果を初期化します</small></div>
         <button id="reset-data-button" class="danger-button" type="button">すべて消去</button>
       </div>
     </form>
@@ -201,18 +205,23 @@
 
   <dialog id="study-map-dialog" class="app-dialog study-map-dialog" aria-labelledby="study-map-title">
     <form method="dialog">
-      <div class="dialog-header"><div><p class="eyebrow">RECENT 10</p><h2 id="study-map-title">白地図を眺める</h2></div><button class="close-button" value="close" aria-label="閉じる">×</button></div>
-      <p class="study-map-help">都道府県に触れると詳しく見られます。同じ都道府県は直近の回答を表示します。</p>
-      <div class="study-map-legend" aria-label="地図の凡例"><span><i class="legend-correct">○</i>正解</span><span><i class="legend-incorrect">×</i>不正解・時間切れ</span><span><i class="legend-neutral">－</i>未出題</span></div>
+      <div class="dialog-header"><div><p class="eyebrow">MASTERY MAP</p><h2 id="study-map-title">白地図を眺める</h2></div><button class="close-button" value="close" aria-label="閉じる">×</button></div>
+      <p class="study-map-help">緑は得意、赤は復習がおすすめの県です。学習記録から自動更新し、県に触れると直近の回答も確認できます。</p>
+      <div class="study-map-filters" aria-label="習熟度の色分け">
+        <label><input id="study-map-show-strong" type="checkbox" checked><i class="legend-correct">○</i>得意な県を緑色にする</label>
+        <label><input id="study-map-show-weak" type="checkbox" checked><i class="legend-incorrect">×</i>苦手な県を赤色にする</label>
+      </div>
       <div class="study-map-toolbar" aria-label="地図の拡大縮小">
         <button id="study-map-zoom-out" type="button" aria-label="地図を縮小">−</button>
-        <output id="study-map-zoom-value" aria-live="polite">100%</output>
+        <label class="visually-hidden" for="study-map-zoom">地図の倍率</label>
+        <input id="study-map-zoom" type="range" min="1" max="2.5" step="0.25" value="1">
+        <output id="study-map-zoom-value" for="study-map-zoom" aria-live="polite">100%</output>
         <button id="study-map-zoom-in" type="button" aria-label="地図を拡大">＋</button>
         <button id="study-map-zoom-reset" type="button">元に戻す</button>
       </div>
       <div id="study-map-canvas" class="study-map-canvas"></div>
       <section id="study-map-detail" class="study-map-detail" aria-live="polite">
-        <p id="study-map-status" class="study-map-status">直近10問では未出題</p>
+        <p id="study-map-status" class="study-map-status">未学習・理解度 0/1000</p>
         <h3 id="study-map-name">都道府県</h3>
         <p><span id="study-map-region">地方</span>・県庁所在地 <strong id="study-map-capital">—</strong></p>
         <p>郷土料理百選 <strong id="study-map-dish">—</strong></p>
@@ -224,7 +233,7 @@
 
   <dialog id="confirm-reset-dialog" class="app-dialog confirm-dialog" aria-labelledby="reset-title" aria-describedby="reset-description">
     <h2 id="reset-title">本当に消去しますか？</h2>
-    <p id="reset-description">学習記録・設定・ハイスコアは元に戻せません。</p>
+    <p id="reset-description">学習記録・設定・実力テスト結果は元に戻せません。</p>
     <div class="dialog-actions">
       <button id="confirm-reset-button" class="danger-button" type="button">消去する</button>
       <button id="cancel-reset-button" class="secondary-button" type="button">キャンセル</button>
