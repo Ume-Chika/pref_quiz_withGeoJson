@@ -739,9 +739,7 @@ function renderQuestion() {
   ui.scoreLabel.textContent = session.mode === "exam" ? "回答済み" : "正解";
   ui.score.textContent = session.mode === "exam" ? session.answers.length : session.answers.filter((answer) => answer.correct).length;
   ui.submit.disabled = true;
-  ui.submit.hidden = saved.settings.answerMode === "instant";
-  ui.answerFieldset.hidden = false;
-  ui.keyboardHint.innerHTML = saved.settings.answerMode === "instant" ? "<kbd>1</kbd>–<kbd>4</kbd> で回答" : "<kbd>1</kbd>–<kbd>4</kbd> 選択　<kbd>Enter</kbd> 決定";
+  restoreChoiceControls();
   ui.stage.className = "visual-stage";
   setQuestionCopy(question);
   const inputDelay = session.mode === "exam" && session.answers.length ? 350 : 0;
@@ -761,6 +759,16 @@ function renderQuestion() {
   showScreen(ui.game);
   requestAnimationFrame(() => ui.title.focus({ preventScroll: true }));
   updateTimer(token);
+}
+
+function setChoiceKeyboardHint() {
+  ui.keyboardHint.innerHTML = saved.settings.answerMode === "instant" ? "<kbd>1</kbd>–<kbd>4</kbd> で回答" : "<kbd>1</kbd>–<kbd>4</kbd> 選択　<kbd>Enter</kbd> 決定";
+}
+
+function restoreChoiceControls() {
+  ui.answerFieldset.hidden = false;
+  ui.submit.hidden = saved.settings.answerMode === "instant";
+  setChoiceKeyboardHint();
 }
 
 function setQuestionCopy(question) {
@@ -822,9 +830,7 @@ function renderVisual(question, token) {
       ui.type.textContent = "形を思い出す";
       ui.title.textContent = `${prefecture.name}の形はどれ？`;
       ui.help.textContent = "見本で見た輪郭を4つから選んでください。";
-      ui.answerFieldset.hidden = false;
-      ui.submit.hidden = saved.settings.answerMode === "instant";
-      ui.keyboardHint.innerHTML = saved.settings.answerMode === "instant" ? "<kbd>1</kbd>–<kbd>4</kbd> で回答" : "<kbd>1</kbd>–<kbd>4</kbd> 選択　<kbd>Enter</kbd> 決定";
+      restoreChoiceControls();
     };
     if (reducedMotion) {
       ui.stage.querySelector(".memory-curtain").remove();
@@ -854,7 +860,10 @@ function renderVisual(question, token) {
       curtain.className = "memory-curtain";
       curtain.textContent = "思い出して答えよう";
       ui.stage.append(curtain);
-      lockPreview(token, 1750);
+      ui.keyboardHint.textContent = "形を一瞬だけ記憶します";
+      ui.answerFieldset.hidden = true;
+      ui.submit.hidden = true;
+      lockPreview(token, 1750, restoreChoiceControls);
     }
     if (type === "reveal" && !reducedMotion) {
       ui.keyboardHint.textContent = "わかった時点ですぐ回答できます";
@@ -876,11 +885,7 @@ function renderVisual(question, token) {
       ui.keyboardHint.textContent = "隙間を通る形を記憶します";
       ui.answerFieldset.hidden = true;
       ui.submit.hidden = true;
-      lockPreview(token, 5200, () => {
-        ui.answerFieldset.hidden = false;
-        ui.submit.hidden = saved.settings.answerMode === "instant";
-        ui.keyboardHint.innerHTML = saved.settings.answerMode === "instant" ? "<kbd>1</kbd>–<kbd>4</kbd> で回答" : "<kbd>1</kbd>–<kbd>4</kbd> 選択　<kbd>Enter</kbd> 決定";
-      });
+      lockPreview(token, 5200, restoreChoiceControls);
     }
   } else if (type === "silhouetteReverse") {
     ui.stage.innerHTML = `<div class="fact-prompt"><span>A</span><strong>${prefecture.name}</strong></div>`;
@@ -895,10 +900,14 @@ function renderVisual(question, token) {
     ui.stage.innerHTML = svgMap(regional, viewBounds, { targetCode: prefecture.code, label: "短時間だけ対象を強調する地方地図" });
     if (!reducedMotion) {
       ui.stage.insertAdjacentHTML("beforeend", '<span class="memory-status" aria-live="polite">1.5秒だけ記憶</span>');
+      ui.keyboardHint.textContent = "位置を短時間で記憶します";
+      ui.answerFieldset.hidden = true;
+      ui.submit.hidden = true;
       lockPreview(token, 1500, () => {
         ui.stage.querySelector(".target")?.classList.remove("target");
         ui.stage.querySelector(".map-target-overlay")?.remove();
         ui.stage.querySelector(".memory-status")?.remove();
+        restoreChoiceControls();
       });
     }
   } else if (LOCATION_TYPES.includes(type)) {
