@@ -22,6 +22,7 @@ const ui = {
   understanding: $("understanding-index"), understandingStage: $("understanding-stage"), challenged: $("challenged-count"), learning: $("learning-count"), reviewCount: $("review-count"), examSummary: $("exam-summary"), reviewHint: $("next-review-hint"),
   questionNumber: $("question-number"), comboLabel: $("combo-label"), combo: $("combo-count"), scoreLabel: $("score-label"), score: $("score-count"), timer: $("timer-bar"), timerRoot: $("timer"), timerText: $("timer-text"),
   type: $("quiz-type"), title: $("question-title"), help: $("question-help"), stage: $("visual-stage"),
+  stageZoomToolbar: $("stage-zoom-toolbar"), stageZoom: $("stage-zoom"), stageZoomValue: $("stage-zoom-value"), stageZoomOut: $("stage-zoom-out"), stageZoomIn: $("stage-zoom-in"), stageZoomReset: $("stage-zoom-reset"),
   answerFieldset: $("answer-fieldset"), answerGrid: $("answer-grid"), submit: $("submit-answer-button"), keyboardHint: $("keyboard-hint"),
   feedback: $("feedback-dialog"), feedbackMark: $("feedback-mark"), feedbackKicker: $("feedback-kicker"),
   feedbackTitle: $("feedback-title"), feedbackDetail: $("feedback-detail"), feedbackComparison: $("feedback-comparison"), feedbackPoints: $("feedback-points"),
@@ -314,43 +315,6 @@ function renderStudyMap() {
   });
   renderStudyMapColors(paths);
 
-  let isDragging = false;
-  let hasDragged = false;
-  let dragStartX = 0;
-  let dragStartY = 0;
-  let scrollStartX = 0;
-  let scrollStartY = 0;
-
-  canvas.onpointerdown = (event) => {
-    if (studyMapZoom <= 1 || event.button !== 0) return;
-    isDragging = true;
-    hasDragged = false;
-    dragStartX = event.clientX;
-    dragStartY = event.clientY;
-    scrollStartX = canvas.scrollLeft;
-    scrollStartY = canvas.scrollTop;
-    canvas.classList.add("is-dragging");
-  };
-
-  window.addEventListener("pointermove", (event) => {
-    if (!isDragging) return;
-    const dx = event.clientX - dragStartX;
-    const dy = event.clientY - dragStartY;
-    if (Math.abs(dx) > 4 || Math.abs(dy) > 4) {
-      hasDragged = true;
-    }
-    canvas.scrollLeft = scrollStartX - dx;
-    canvas.scrollTop = scrollStartY - dy;
-  });
-
-  const stopDragging = () => {
-    if (!isDragging) return;
-    isDragging = false;
-    canvas.classList.remove("is-dragging");
-  };
-  window.addEventListener("pointerup", stopDragging);
-  window.addEventListener("pointercancel", stopDragging);
-
   const updateOverlay = () => {
     const s = paths.find((path) => path.classList.contains("selected"));
     overlay.setAttribute("d", s ? s.getAttribute("d") || "" : "");
@@ -378,12 +342,12 @@ function renderStudyMap() {
     renderStudyMapDetail(prefecture, recent);
   };
   svg.addEventListener("pointerover", (event) => {
-    if (isDragging) return;
+    if (studyMapZoomController?.isDragging()) return;
     const hitCode = event.target.closest?.("[data-code]")?.dataset.code;
     if (hitCode) showCode(hitCode, true);
   });
   canvas.addEventListener("pointerleave", () => {
-    if (!isDragging) clearSelection();
+    if (!studyMapZoomController?.isDragging()) clearSelection();
   });
   svg.addEventListener("focusin", (event) => {
     const hitCode = event.target.closest?.(".map-prefecture[data-code]")?.dataset.code;
@@ -393,7 +357,7 @@ function renderStudyMap() {
     if (!svg.contains(event.relatedTarget)) clearSelection();
   });
   svg.addEventListener("click", (event) => {
-    if (hasDragged) { hasDragged = false; return; }
+    if (studyMapZoomController?.hasDragged()) { studyMapZoomController.clearDragged(); return; }
     const hitCode = event.target.closest?.(".map-prefecture[data-code]")?.dataset.code;
     if (hitCode) { showCode(hitCode, true); return; }
     const point = new DOMPoint(event.clientX, event.clientY).matrixTransform(svg.getScreenCTM().inverse());
@@ -418,26 +382,97 @@ function renderStudyMap() {
   showCode(initial.code, false);
 }
 
+function createMapZoomController({
+  container,
+  zoomInput,
+  zoomValue,
+  zoomOutBtn,
+  zoomInBtn,
+  zoomResetBtn,
+  minZoom = 1,
+  maxZoom = 5,
+  step = 0.25,
+}) {
+  let currentZoom = 1;
+  let isDragging = false;
+  let hasDragged = false;
+  let dragStartX = 0;
+  let dragStartY = 0;
+  let scrollStartX = 0;
+  let scrollStartY = 0;
+
+  const setZoom = (nextZoom) => {
+    currentZoom = Math.max(minZoom, Math.min(maxZoom, nextZoom));
+    container.classList.toggle("is-zoomed", currentZoom > 1);
+    const svg = container.querySelector("svg");
+    if (svg) {
+      const centerX = container.scrollWidth ? (container.scrollLeft + container.clientWidth / 2) / container.scrollWidth : .5;
+      const centerY = container.scrollHeight ? (container.scrollTop + container.clientHeight / 2) / container.scrollHeight : .5;
+      svg.style.width = `${currentZoom * 100}%`;
+      svg.style.height = `${currentZoom * 100}%`;
+      requestAnimationFrame(() => {
+        container.scrollLeft = centerX * container.scrollWidth - container.clientWidth / 2;
+        container.scrollTop = centerY * container.scrollHeight - container.clientHeight / 2;
+      });
+    }
+    if (zoomValue) zoomValue.textContent = `${Math.round(currentZoom * 100)}%`;
+    if (zoomInput) zoomInput.value = String(currentZoom);
+    if (zoomOutBtn) zoomOutBtn.disabled = currentZoom <= minZoom;
+    if (zoomInBtn) zoomInBtn.disabled = currentZoom >= maxZoom;
+    if (zoomResetBtn) zoomResetBtn.disabled = currentZoom === 1;
+  };
+
+  zoomOutBtn?.addEventListener("click", () => setZoom(currentZoom - step));
+  zoomInBtn?.addEventListener("click", () => setZoom(currentZoom + step));
+  zoomResetBtn?.addEventListener("click", () => setZoom(1));
+  zoomInput?.addEventListener("input", (event) => setZoom(Number(event.target.value)));
+
+  container.addEventListener("pointerdown", (event) => {
+    if (currentZoom <= 1 || event.button !== 0) return;
+    isDragging = true;
+    hasDragged = false;
+    dragStartX = event.clientX;
+    dragStartY = event.clientY;
+    scrollStartX = container.scrollLeft;
+    scrollStartY = container.scrollTop;
+    container.classList.add("is-dragging");
+  });
+
+  window.addEventListener("pointermove", (event) => {
+    if (!isDragging) return;
+    const dx = event.clientX - dragStartX;
+    const dy = event.clientY - dragStartY;
+    if (Math.abs(dx) > 4 || Math.abs(dy) > 4) {
+      hasDragged = true;
+    }
+    container.scrollLeft = scrollStartX - dx;
+    container.scrollTop = scrollStartY - dy;
+  });
+
+  const stopDragging = () => {
+    if (!isDragging) return;
+    isDragging = false;
+    container.classList.remove("is-dragging");
+  };
+  window.addEventListener("pointerup", stopDragging);
+  window.addEventListener("pointercancel", stopDragging);
+
+  return {
+    getZoom: () => currentZoom,
+    setZoom,
+    reset: () => setZoom(1),
+    hasDragged: () => hasDragged,
+    clearDragged: () => { hasDragged = false; },
+    isDragging: () => isDragging,
+  };
+}
+
+let studyMapZoomController = null;
+let stageMapZoomController = null;
+
 function setStudyMapZoom(nextZoom) {
-  const canvas = ui.studyMapCanvas;
-  const svg = canvas.querySelector("svg");
-  studyMapZoom = Math.max(1, Math.min(5, nextZoom));
-  canvas.classList.toggle("is-zoomed", studyMapZoom > 1);
-  if (svg) {
-    const centerX = canvas.scrollWidth ? (canvas.scrollLeft + canvas.clientWidth / 2) / canvas.scrollWidth : .5;
-    const centerY = canvas.scrollHeight ? (canvas.scrollTop + canvas.clientHeight / 2) / canvas.scrollHeight : .5;
-    svg.style.width = `${studyMapZoom * 100}%`;
-    svg.style.height = `${studyMapZoom * 100}%`;
-    requestAnimationFrame(() => {
-      canvas.scrollLeft = centerX * canvas.scrollWidth - canvas.clientWidth / 2;
-      canvas.scrollTop = centerY * canvas.scrollHeight - canvas.clientHeight / 2;
-    });
-  }
-  $("study-map-zoom-value").textContent = `${Math.round(studyMapZoom * 100)}%`;
-  $("study-map-zoom").value = String(studyMapZoom);
-  $("study-map-zoom-out").disabled = studyMapZoom <= 1;
-  $("study-map-zoom-in").disabled = studyMapZoom >= 5;
-  $("study-map-zoom-reset").disabled = studyMapZoom === 1;
+  studyMapZoomController?.setZoom(nextZoom);
+  studyMapZoom = studyMapZoomController?.getZoom() ?? 1;
 }
 
 function getStudyMapMasteryStatuses() {
@@ -817,6 +852,11 @@ function setQuestionCopy(question) {
 function renderVisual(question, token) {
   const { prefecture, type } = question;
   const reducedMotion = !saved.settings.visualEffects;
+  const nationwide = NATIONWIDE_LOCATION_TYPES.includes(type);
+  if (ui.stageZoomToolbar) {
+    ui.stageZoomToolbar.hidden = !nationwide;
+    if (!nationwide) stageMapZoomController?.reset();
+  }
   if (type === "shapeMemory") {
     const islandCount = prefecture.feature.geometry.type === "MultiPolygon" ? prefecture.feature.geometry.coordinates.length : 1;
     const previewMs = Math.min(4000, Math.round(2500 + (1 - getProgress(prefecture.code, "A").mastery) * 700 + (islandCount - 1) * 150));
@@ -919,6 +959,7 @@ function renderVisual(question, token) {
     const label = type === "capitalLocate" ? "県庁所在地を手がかりに都道府県を選ぶ日本地図" : type === "dishLocate" ? "郷土料理を手がかりに都道府県を選ぶ日本地図" : type === "shapeLocate" ? "シルエットを手がかりに都道府県を選ぶ日本地図" : type === "mapMemory" ? "シルエットを手がかりに都道府県を選ぶ地方地図" : nationwide ? `${prefecture.name}の位置を選ぶ日本地図` : `${prefecture.name}の位置を選ぶ${prefecture.region}周辺の地図`;
     ui.stage.innerHTML = svgMap(visiblePrefectures, viewBounds, { targetCode, clickable: true, label });
     ui.stage.classList.toggle("nationwide-stage", nationwide);
+    if (nationwide) stageMapZoomController?.reset();
     if (type === "mapMemory") ui.stage.insertAdjacentHTML("beforeend", `<div class="shape-location-preview">${silhouetteSvg(prefecture)}<span class="memory-status" aria-live="polite">2秒だけ形を記憶</span></div>`);
     if (type === "shapeLocate") ui.stage.insertAdjacentHTML("beforeend", `<div class="shape-location-preview">${silhouetteSvg(prefecture)}<span class="memory-status" aria-live="polite">1.5秒だけ形を記憶</span></div>`);
     ui.answerFieldset.hidden = true;
@@ -927,10 +968,20 @@ function renderVisual(question, token) {
     ui.keyboardHint.textContent = saved.settings.answerMode === "instant" ? "タップ／Tab・矢印で移動、Enterで回答" : "タップ／Tab・矢印で選び、Enterまたは「これで決定」";
     session.locationLocked = ["mapMemory", "shapeLocate"].includes(type);
     ui.stage.querySelectorAll("[data-code]").forEach((path) => {
-      path.addEventListener("click", () => selectLocation(path.dataset.code));
+      path.addEventListener("click", () => {
+        if (nationwide && stageMapZoomController?.hasDragged()) {
+          stageMapZoomController.clearDragged();
+          return;
+        }
+        selectLocation(path.dataset.code);
+      });
     });
     const keyboardPaths = [...ui.stage.querySelectorAll(".map-prefecture[data-code]")];
     ui.stage.querySelector("svg").addEventListener("click", (event) => {
+      if (nationwide && stageMapZoomController?.hasDragged()) {
+        stageMapZoomController.clearDragged();
+        return;
+      }
       if (event.target.closest(".map-prefecture[data-code]")) return;
       const svg = event.currentTarget;
       const point = new DOMPoint(event.clientX, event.clientY).matrixTransform(svg.getScreenCTM().inverse());
@@ -1294,6 +1345,8 @@ function finishGame() {
   cancelAnimationFrame(timerFrame);
   questionToken += 1;
   if (ui.feedback.open) ui.feedback.close();
+  if (ui.stageZoomToolbar) ui.stageZoomToolbar.hidden = true;
+  stageMapZoomController?.reset();
   if (session?.mode === "exam" && session.answers.length < session.limit) { session = null; renderHome(); showScreen(ui.home); return; }
   if (!session?.answers.length) { session = null; renderHome(); showScreen(ui.home); return; }
   const isExam = session.mode === "exam";
@@ -1413,11 +1466,25 @@ $("retry-button").addEventListener("click", loadData);
 $("start-ten-button").addEventListener("click", () => startGame(10));
 $("start-exam-button").addEventListener("click", () => startGame(30, "exam"));
 $("start-endless-button").addEventListener("click", () => startGame(null));
+studyMapZoomController = createMapZoomController({
+  container: ui.studyMapCanvas,
+  zoomInput: $("study-map-zoom"),
+  zoomValue: $("study-map-zoom-value"),
+  zoomOutBtn: $("study-map-zoom-out"),
+  zoomInBtn: $("study-map-zoom-in"),
+  zoomResetBtn: $("study-map-zoom-reset"),
+});
+
+stageMapZoomController = createMapZoomController({
+  container: ui.stage,
+  zoomInput: $("stage-zoom"),
+  zoomValue: $("stage-zoom-value"),
+  zoomOutBtn: $("stage-zoom-out"),
+  zoomInBtn: $("stage-zoom-in"),
+  zoomResetBtn: $("stage-zoom-reset"),
+});
+
 $("study-map-button").addEventListener("click", () => { renderStudyMap(); ui.studyMap.showModal(); });
-$("study-map-zoom-out").addEventListener("click", () => setStudyMapZoom(studyMapZoom - .25));
-$("study-map-zoom-in").addEventListener("click", () => setStudyMapZoom(studyMapZoom + .25));
-$("study-map-zoom-reset").addEventListener("click", () => setStudyMapZoom(1));
-$("study-map-zoom").addEventListener("input", (event) => setStudyMapZoom(Number(event.target.value)));
 $("study-map-show-strong").addEventListener("change", () => renderStudyMapColors());
 $("study-map-show-weak").addEventListener("change", () => renderStudyMapColors());
 ui.submit.addEventListener("click", submitSelectedAnswer);
