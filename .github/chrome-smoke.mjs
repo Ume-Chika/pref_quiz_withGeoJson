@@ -1,9 +1,16 @@
-import { spawn } from "node:child_process";
+import { execSync, spawn } from "node:child_process";
 import { once } from "node:events";
 import { createServer } from "node:http";
-import { mkdtempSync, readFileSync, statSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { extname, join, normalize, resolve } from "node:path";
+
+// 過去のテストで残留した孤児Chromeプロセスの事前クリーンアップ
+try {
+  if (process.platform !== "win32") {
+    execSync("pkill -9 -f 'Google Chrome.*pref-quiz-chrome' 2>/dev/null || true", { stdio: "ignore" });
+  }
+} catch {}
 
 const root = resolve(".");
 const base = "/pref_quiz_withGeoJson/";
@@ -44,15 +51,59 @@ async function main() {
 await new Promise((resolveListen) => server.listen(4173, "127.0.0.1", resolveListen));
 const profile = mkdtempSync(join(tmpdir(), "pref-quiz-chrome-"));
 const chrome = spawn(process.env.CHROME_BIN || "google-chrome", [
-  "--headless",
+  "--headless=new",
   "--no-sandbox",
   "--disable-gpu",
   "--disable-dev-shm-usage",
   "--remote-debugging-port=0",
+  "--no-first-run",
+  "--no-default-browser-check",
+  "--disable-background-networking",
+  "--disable-sync",
+  "--disable-default-apps",
+  "--disable-extensions",
+  "--mute-audio",
   `--user-data-dir=${profile}`,
   "--window-size=390,844",
   "about:blank",
-], { stdio: ["ignore", "ignore", "pipe"] });
+], {
+  detached: process.platform !== "win32",
+  stdio: ["ignore", "ignore", "pipe"],
+});
+
+let isCleanedUp = false;
+const cleanup = () => {
+  if (isCleanedUp) return;
+  isCleanedUp = true;
+  try { cdp?.close(); } catch {}
+  if (chrome && chrome.exitCode === null) {
+    try {
+      if (process.platform !== "win32") {
+        try { process.kill(-chrome.pid, "SIGKILL"); } catch {}
+      }
+      chrome.kill("SIGKILL");
+    } catch {}
+  }
+  try { rmSync(profile, { recursive: true, force: true }); } catch {}
+  try { server.close(); } catch {}
+};
+
+const handleExit = (code) => {
+  cleanup();
+  process.exit(code);
+};
+
+process.once("SIGINT", () => handleExit(130));
+process.once("SIGTERM", () => handleExit(143));
+process.once("uncaughtException", (err) => {
+  console.error("未捕捉例外:", err);
+  handleExit(1);
+});
+process.once("unhandledRejection", (err) => {
+  console.error("未処理のPromise拒否:", err);
+  handleExit(1);
+});
+process.once("exit", cleanup);
 
 let cdp;
 try {
@@ -359,6 +410,7 @@ try {
         assert(await evaluate(cdp, `(() => { const paths=[...document.querySelectorAll('.map-prefecture[data-code]')]; paths[0].focus(); paths[0].dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowDown',bubbles:true})); const moved=document.activeElement!==paths[0]; document.activeElement.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true})); return moved && !document.querySelector('#submit-answer-button').disabled; })()`), "地図を方角どおりの矢印・Enterで選択できません");
         await evaluate(cdp, `document.querySelector('.map-prefecture[data-code="${code}"]').dispatchEvent(new MouseEvent('click',{bubbles:true})); document.querySelector('#submit-answer-button').click(); true`);
       } else if (type === "locateJapan") {
+        assert(await evaluate(cdp, `!document.querySelector('#stage-zoom-toolbar').hidden && document.querySelector('#stage-zoom-value').textContent==='100%'`), "全国地図タップでズームツールバーが表示されていません");
         await clickCenter(cdp, `#visual-stage .map-prefecture[data-code="${code}"]`);
         assert(await evaluate(cdp, `document.querySelector('#visual-stage .map-prefecture[data-code="${code}"]').classList.contains('selected')`), "全国地図を実ポインタで選択できません");
         await evaluate(cdp, `document.querySelector('#submit-answer-button').click(); true`);
@@ -523,10 +575,7 @@ try {
   assert(errors.length === 0, `Chromeでエラーが発生しました: ${errors.join(" / ")}`);
   console.log("Chromeで32形式、見本後の遅延検索、白地図、形比較、10問、即時・地図・キー操作、時間切れ、保存、通信復旧、全消去の確認に成功しました。");
 } finally {
-  cdp?.close();
-  chrome.kill("SIGTERM");
-  if (chrome.exitCode === null) await Promise.race([once(chrome, "exit"), new Promise((resolveWait) => setTimeout(resolveWait, 2000))]);
-  await new Promise((resolveClose) => server.close(resolveClose));
+  cleanup();
 }
 }
 
