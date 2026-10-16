@@ -90,7 +90,7 @@ if (effectiveSkillMastery({ "01:E": { mastery: .2 } }, "01", "E", { E: false }) 
   throw new Error("OFF時の満点扱いおよびON復帰時の習熟度維持が不正です");
 }
 const mockTargets = { "01": { F: [0, 1], G: [] } };
-if (!isSkillApplicable("01", "F", mockTargets) || isSkillApplicable("01", "G", mockTargets) || effectiveSkillMastery({ "01:F:0": { mastery: 1 }, "01:F:1": { mastery: .5 } }, "01", "F", null, mockTargets) !== .75 || effectiveSkillMastery({}, "01", "G", null, mockTargets) !== null) {
+if (!isSkillApplicable("01", "F", mockTargets) || isSkillApplicable("01", "G", mockTargets) || effectiveSkillMastery({ "01:F:0": { mastery: 1 }, "01:F:1": { mastery: .5 } }, "01", "F", null, mockTargets) !== .75 || effectiveSkillMastery({ "01:F": { mastery: .8 } }, "01", "F", null, mockTargets) !== .4 || effectiveSkillMastery({}, "01", "G", null, mockTargets) !== null) {
   throw new Error("複数項目区分の平均習熟度または0件県の対象外判定が不正です");
 }
 if (Math.abs(prefectureUnderstanding({ "01:A": { mastery: 1 }, "01:B": { mastery: 1 }, "01:C": { mastery: 1 }, "01:D": { mastery: 1 }, "01:E": { mastery: 1 }, "01:F:0": { mastery: 1 }, "01:F:1": { mastery: 1 } }, "01", null, mockTargets) - 1) > 1e-9) {
