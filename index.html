@@ -82,7 +82,7 @@
           <button id="start-ten-button" class="primary-button start-button" type="button">
             <span>おすすめ学習 10問</span><small>復習優先</small>
           </button>
-          <button id="start-exam-button" class="secondary-button exam-button" type="button"><span>実力テスト 30問</span><small id="exam-summary">全5分野・約8分・答え合わせは最後</small></button>
+          <button id="start-exam-button" class="secondary-button exam-button" type="button"><span>実力テスト 30問</span><small id="exam-summary">全7分野・約8分・答え合わせは最後</small></button>
           <button id="start-endless-button" class="secondary-button" type="button">エンドレス学習</button>
           <button id="study-map-button" class="secondary-button" type="button">白地図を眺める</button>
           <p id="next-review-hint" class="subtle-hint">最初は基本の形から出題します。</p>
@@ -97,7 +97,7 @@
             <span>自動選択</span>
           </div>
           <div class="mode-chips" aria-label="出題形式">
-            <span>形の見本</span><span>シルエット</span><span>隙間シルエット</span><span>形を選ぶ</span><span>地図→形</span><span>地図</span><span>地図を選ぶ</span><span>地図フラッシュ</span><span>スポットライト</span><span>形→地図</span><span>全国地図タップ</span><span>方角</span><span>県庁所在地</span><span>県庁所在地→地図</span><span>県庁所在地→地方</span><span>地方地図</span><span>地方の形</span><span>形→地方</span><span>郷土料理</span><span>郷土料理→形</span><span>郷土料理→地図</span>
+            <span>形の見本</span><span>シルエット</span><span>隙間シルエット</span><span>形を選ぶ</span><span>地図→形</span><span>地図</span><span>地図を選ぶ</span><span>地図フラッシュ</span><span>スポットライト</span><span>形→地図</span><span>全国地図タップ</span><span>方角</span><span>県庁所在地</span><span>県庁所在地→地図</span><span>県庁所在地→地方</span><span>地方地図</span><span>地方の形</span><span>形→地方</span><span>郷土料理</span><span>郷土料理→形</span><span>郷土料理→地図</span><span>有名都市</span><span>都市→形</span><span>都市→地図</span><span>主要駅</span><span>駅→形</span><span>駅→地図</span>
           </div>
         </section>
       </section>
@@ -174,7 +174,7 @@
     <footer class="app-footer">
       <span>Made with Natural Earth（加工済み・学習用）</span>
       <a href="./sources.html">出典・利用条件</a>
-      <span class="app-version">v0.1.4</span>
+      <span class="app-version">v0.2.0</span>
     </footer>
   </div>
 
@@ -194,6 +194,18 @@
   <dialog id="settings-dialog" class="app-dialog settings-dialog" aria-labelledby="settings-title">
     <form method="dialog">
       <div class="dialog-header"><h2 id="settings-title">設定</h2><button class="close-button" value="close" aria-label="閉じる">×</button></div>
+      <fieldset class="setting-row setting-column skill-settings-group">
+        <legend><strong>覚える区分</strong><small>OFFの区分は習得済み（全部正解）として扱い、ONに戻すと学習状況が戻ります</small></legend>
+        <div id="skill-settings-list" class="skill-settings-list">
+          <label class="skill-setting-item"><input id="skill-setting-A" type="checkbox" role="switch" data-skill="A" checked><span><b>A</b>形</span></label>
+          <label class="skill-setting-item"><input id="skill-setting-B" type="checkbox" role="switch" data-skill="B" checked><span><b>B</b>位置</span></label>
+          <label class="skill-setting-item"><input id="skill-setting-C" type="checkbox" role="switch" data-skill="C" checked><span><b>C</b>地方区分</span></label>
+          <label class="skill-setting-item"><input id="skill-setting-D" type="checkbox" role="switch" data-skill="D" checked><span><b>D</b>県庁所在地</span></label>
+          <label class="skill-setting-item"><input id="skill-setting-E" type="checkbox" role="switch" data-skill="E" checked><span><b>E</b>郷土料理</span></label>
+          <label class="skill-setting-item"><input id="skill-setting-F" type="checkbox" role="switch" data-skill="F" checked><span><b>F</b>有名都市</span></label>
+          <label class="skill-setting-item"><input id="skill-setting-G" type="checkbox" role="switch" data-skill="G" checked><span><b>G</b>主要駅</span></label>
+        </div>
+      </fieldset>
       <label class="setting-row">
         <span><strong>効果音</strong><small>正解・不正解を音で知らせます</small></span>
         <input id="sound-setting" type="checkbox" role="switch">
@@ -256,6 +268,7 @@
             <p id="study-map-status" class="study-map-status">未学習・理解度 0/1000</p>
             <h3 id="study-map-name">都道府県</h3>
             <p><span id="study-map-region">地方</span>・県庁所在地 <strong id="study-map-capital">—</strong></p>
+            <p>有名都市 <strong id="study-map-city">—</strong>・主要駅 <strong id="study-map-station">—</strong></p>
             <p>郷土料理百選 <strong id="study-map-dish">—</strong></p>
             <ul id="study-map-history" class="study-map-history"></ul>
           </section>

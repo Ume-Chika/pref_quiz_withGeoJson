@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { gzipSync } from "node:zlib";
-import { blankProgress, canIntroduceNewItem, canUseIntegratedMode, compassVector, deadlinePassed, examScore, geometryRepresentativePoint, hasBasicMastery, normalizeProgress, recordAnswer, schedulingPriority, skillsForMastery, understandingIndex, understandingMilestone } from "../static/js/learning.mjs";
+import { ALL_SKILLS, blankProgress, canIntroduceNewItem, canUseIntegratedMode, compassVector, deadlinePassed, effectiveSkillMastery, examScore, geometryRepresentativePoint, hasBasicMastery, isSkillEnabled, normalizeEnabledSkills, normalizeProgress, recordAnswer, schedulingPriority, skillsForMastery, understandingIndex, understandingMilestone } from "../static/js/learning.mjs";
 
 const required = [
   "index.html",
@@ -73,8 +73,21 @@ if (deadlinePassed(999, 1000) || !deadlinePassed(1000, 1000) || !deadlinePassed(
 if (!canIntroduceNewItem([{ newItem: true }, { newItem: true }, { newItem: true }]) || canIntroduceNewItem([{ newItem: true }, { newItem: true }, { newItem: true }, { newItem: true }]) || canIntroduceNewItem([{ newItem: true }, { newItem: true }, { newItem: true }, { newItem: true }, {}, {}, {}, {}, {}, { newItem: true }])) {
   throw new Error("10問あたり新規4項目の上限が不正です");
 }
-if (skillsForMastery(2).join("") !== "AB" || skillsForMastery(3).join("") !== "ABC" || skillsForMastery(7).join("") !== "ABC" || skillsForMastery(8).join("") !== "ABCD" || skillsForMastery(14).join("") !== "ABCD" || skillsForMastery(15).join("") !== "ABCDE") {
+if (ALL_SKILLS.join("") !== "ABCDEFG") {
+  throw new Error("全区分定義がA〜Gではありません");
+}
+if (skillsForMastery(2).join("") !== "AB" || skillsForMastery(3).join("") !== "ABC" || skillsForMastery(7).join("") !== "ABC" || skillsForMastery(8).join("") !== "ABCD" || skillsForMastery(14).join("") !== "ABCD" || skillsForMastery(15).join("") !== "ABCDE" || skillsForMastery(21).join("") !== "ABCDE" || skillsForMastery(22).join("") !== "ABCDEF" || skillsForMastery(29).join("") !== "ABCDEF" || skillsForMastery(30).join("") !== "ABCDEFG") {
   throw new Error("分野の段階解放境界が不正です");
+}
+if (skillsForMastery(30, { A: true, B: false, C: false, D: true, E: false, F: true, G: false }).join("") !== "ADF") {
+  throw new Error("有効にした区分だけのフィルタリングが不正です");
+}
+const allOffFallback = normalizeEnabledSkills({ A: false, B: false, C: false, D: false, E: false, F: false, G: false });
+if (!allOffFallback.A || !isSkillEnabled(allOffFallback, "A") || isSkillEnabled(allOffFallback, "E")) {
+  throw new Error("全区分OFF時の安全フォールバックが不正です");
+}
+if (effectiveSkillMastery({ "01:E": { mastery: .2 } }, "01", "E", { E: false }) !== 1 || effectiveSkillMastery({ "01:E": { mastery: .2 } }, "01", "E", { E: true }) !== .2) {
+  throw new Error("OFF時の満点扱いおよびON復帰時の習熟度維持が不正です");
 }
 if (hasBasicMastery(.9, 0) || hasBasicMastery(.44, 1) || !hasBasicMastery(.45, .45)) {
   throw new Error("形と位置の双方を習熟した県だけを段階解放へ数えられていません");
@@ -135,8 +148,11 @@ if (schedulingPriority(nearDue, { now, random: 0 }) <= schedulingPriority(farDue
 }
 
 const allMastery = (skills) => Object.fromEntries(Array.from({ length: 47 }, (_, index) => String(index + 1).padStart(2, "0")).flatMap((code) => skills.map((skill) => [`${code}:${skill}`, { mastery: 1 }])));
-if (understandingIndex({}) !== 0 || understandingIndex(allMastery(["A"])) !== 245 || understandingIndex(allMastery(["A", "B"])) !== 700 || understandingIndex(allMastery(["A", "B", "C", "D", "E"])) !== 1000) {
+if (understandingIndex({}) !== 0 || understandingIndex(allMastery(["A"])) !== 245 || understandingIndex(allMastery(["A", "B"])) !== 700 || understandingIndex(allMastery(["A", "B", "C", "D", "E", "F", "G"])) !== 1000) {
   throw new Error("都道府県理解度指数の基準値が不正です");
+}
+if (understandingIndex({}, { E: false }) !== 60 || understandingIndex({}, { A: false, B: false }) !== 700 || understandingIndex(allMastery(["A", "B", "C", "D"]), { E: false, F: false, G: false }) !== 1000) {
+  throw new Error("OFFにした区分を習得済み（全部正解）として理解度指数へ反映できていません");
 }
 const partialIndex = understandingIndex({ "01:A": { mastery: .3, attempts: 1, averageMs: 5000 } });
 if (understandingIndex({ "01:A": { mastery: .4, attempts: 99, averageMs: 15000 } }) < partialIndex || understandingIndex({ "01:A": { mastery: 4 }, "01:B": { mastery: -2 } }) > 15) {
@@ -212,21 +228,25 @@ if (facts.prefectures?.length !== 47) {
 const factCodes = new Set();
 const capitals = new Set();
 const dishes = new Set();
+const cities = new Set();
+const stations = new Set();
 const regions = new Set(["北海道地方", "東北地方", "関東地方", "中部地方", "近畿地方", "中国地方", "四国地方", "九州地方"]);
 for (const item of facts.prefectures) {
   const id = Number(item.code);
   if (!ids.has(id) || factCodes.has(id) || item.name !== geo.features.find((feature) => Number(feature.properties.pref) === id)?.properties.name) {
     throw new Error(`基礎問題データのコードまたは名称がGeoJSONと一致しません: ${item.code}`);
   }
-  if (![item.capital, item.region, item.dish].every((value) => typeof value === "string" && value)) {
-    throw new Error(`県庁所在地、地方区分、郷土料理のいずれかが空です: ${item.name}`);
+  if (![item.capital, item.region, item.dish, item.city, item.station].every((value) => typeof value === "string" && value)) {
+    throw new Error(`県庁所在地、地方区分、郷土料理、有名都市、主要駅のいずれかが空です: ${item.name}`);
   }
-  if (!regions.has(item.region) || capitals.has(item.capital) || dishes.has(item.dish)) {
+  if (!regions.has(item.region) || capitals.has(item.capital) || dishes.has(item.dish) || cities.has(item.city) || stations.has(item.station) || item.city === item.capital) {
     throw new Error(`地方区分が不正、または選択肢用の値が重複しています: ${item.name}`);
   }
   factCodes.add(id);
   capitals.add(item.capital);
   dishes.add(item.dish);
+  cities.add(item.city);
+  stations.add(item.station);
 }
 
 const centerByName = new Map(geo.features.map((feature) => [feature.properties.name, geometryRepresentativePoint(feature.geometry)]));
@@ -239,7 +259,7 @@ for (const target of facts.prefectures) {
 const publicFiles = ["index.html", "sources.html", "static/css/style.css", "static/js/script.js", "static/js/learning.mjs", geoPath, "static/data/prefecture_facts.json"];
 const publicPayload = publicFiles.reduce((sum, path) => sum + statSync(path).size, 0);
 const compressedPayload = publicFiles.reduce((sum, path) => sum + gzipSync(readFileSync(path)).length, 0);
-if (publicPayload > 290_000 || compressedPayload > 100_000) throw new Error(`主要配信ファイルが容量上限を超えています: raw ${publicPayload} / gzip ${compressedPayload} bytes`);
+if (publicPayload > 320_000 || compressedPayload > 100_000) throw new Error(`主要配信ファイルが容量上限を超えています: raw ${publicPayload} / gzip ${compressedPayload} bytes`);
 
 for (const legacy of ["app.py", "requirements.txt", "templates", "static/test.html"]) {
   if (existsSync(legacy)) throw new Error(`静的サイトに不要な旧ファイルが残っています: ${legacy}`);
