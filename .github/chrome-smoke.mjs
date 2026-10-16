@@ -16,8 +16,8 @@ const root = resolve(".");
 const base = "/pref_quiz_withGeoJson/";
 const factsByCode = Object.fromEntries(JSON.parse(readFileSync("static/data/prefecture_facts.json", "utf8")).prefectures.map((item) => [item.code, item]));
 const namesByCode = Object.fromEntries(Object.entries(factsByCode).map(([code, item]) => [code, item.name]));
-const locationTypes = ["locate", "locateJapan", "mapMemory", "shapeLocate", "capitalLocate", "dishLocate"];
-const nationwideLocationTypes = ["locateJapan", "shapeLocate", "capitalLocate", "dishLocate"];
+const locationTypes = ["locate", "locateJapan", "mapMemory", "shapeLocate", "capitalLocate", "dishLocate", "cityLocate", "stationLocate"];
+const nationwideLocationTypes = ["locateJapan", "shapeLocate", "capitalLocate", "dishLocate", "cityLocate", "stationLocate"];
 const mime = {
   ".css": "text/css; charset=utf-8",
   ".geojson": "application/geo+json",
@@ -139,8 +139,12 @@ try {
   assert(await evaluate(cdp, `Boolean(document.querySelector('.app-footer .app-version')?.textContent)`), "フッターにバージョン表記がありません");
   await evaluate(cdp, `document.querySelector('#progress-button').click(); true`);
   await waitFor(cdp, `document.querySelector('#progress-dialog').open`);
-  assert(await evaluate(cdp, `(() => { const text=[...document.querySelectorAll('#skill-progress .skill-name')].map(item=>item.textContent); return text.some(value=>value.includes('あと3県習得で解放')) && text.some(value=>value.includes('あと8県習得で解放')) && text.some(value=>value.includes('あと15県習得で解放')); })()`), "学習記録にC・D・Eの解放条件を表示できません");
+  assert(await evaluate(cdp, `(() => { const text=[...document.querySelectorAll('#skill-progress .skill-name')].map(item=>item.textContent); return text.some(value=>value.includes('あと3県習得で解放')) && text.some(value=>value.includes('あと8県習得で解放')) && text.some(value=>value.includes('あと15県習得で解放')) && text.some(value=>value.includes('あと22県習得で解放')) && text.some(value=>value.includes('あと30県習得で解放')); })()`), "学習記録にC〜Gの解放条件を表示できません");
   await evaluate(cdp, `document.querySelector('#progress-dialog .close-button').click(); true`);
+  await evaluate(cdp, `document.querySelector('#settings-button').click(); document.querySelector('#skill-setting-E').click(); document.querySelector('#settings-dialog .close-button').click(); true`);
+  assert(await evaluate(cdp, `document.querySelector('#understanding-index').textContent==='60'`), "OFFにした区分を満点（習得済み）として理解度指数へ反映できません");
+  await evaluate(cdp, `document.querySelector('#settings-button').click(); document.querySelector('#skill-setting-E').click(); document.querySelector('#settings-dialog .close-button').click(); true`);
+  assert(await evaluate(cdp, `document.querySelector('#understanding-index').textContent==='0'`), "区分をONに戻した際に元の学習状況へ戻りません");
 
   await cdp.command("Emulation.setDeviceMetricsOverride", { width: 1366, height: 768, deviceScaleFactor: 1, mobile: false });
   const shortHome = await evaluate(cdp, `(() => { const heading=document.querySelector('.hero-card h1'); const range=document.createRange(); range.selectNodeContents(heading.lastChild); return {secondLineRects:range.getClientRects().length,startBottom:document.querySelector('#start-ten-button').getBoundingClientRect().bottom,height:innerHeight}; })()`);
@@ -217,13 +221,13 @@ try {
   assert(migratedUnlock.skill === "C" && migratedUnlock.unlockedBasic >= 3, `既存分野の解放移行が不正です: ${JSON.stringify(migratedUnlock)}`);
   await evaluate(cdp, `document.querySelector('#quit-game-button').click(); true`);
   await waitFor(cdp, `document.querySelector('#home-screen:not([hidden])')`);
-  await evaluate(cdp, `(() => { const progress={}; const learned={attempts:1,correct:1,streak:1,lastSeen:1,averageMs:5000,timeouts:0,nextDue:Date.now()+864e5,mastery:.8,recent:[1]}; for(let number=1;number<=15;number++){const code=String(number).padStart(2,'0'); progress[code+':A']={...learned}; progress[code+':B']={...learned};} localStorage.setItem('prefecture-minigame-v2',JSON.stringify({schema:2,settings:{sound:false,volume:.5,answerMode:'confirm'},progress,highScore:0,recent:[]})); location.reload(); return true; })()`);
-  await waitFor(cdp, `JSON.parse(localStorage.getItem('prefecture-minigame-v2')).unlockedBasic===15`, 10_000);
+  await evaluate(cdp, `(() => { const progress={}; const learned={attempts:1,correct:1,streak:1,lastSeen:1,averageMs:5000,timeouts:0,nextDue:Date.now()+864e5,mastery:.8,recent:[1]}; for(let number=1;number<=30;number++){const code=String(number).padStart(2,'0'); progress[code+':A']={...learned}; progress[code+':B']={...learned};} localStorage.setItem('prefecture-minigame-v2',JSON.stringify({schema:2,settings:{sound:false,volume:.5,answerMode:'confirm'},progress,highScore:0,recent:[]})); location.reload(); return true; })()`);
+  await waitFor(cdp, `JSON.parse(localStorage.getItem('prefecture-minigame-v2')).unlockedBasic===30`, 10_000);
   await evaluate(cdp, `(() => { const state=JSON.parse(localStorage.getItem('prefecture-minigame-v2')); state.progress={}; localStorage.setItem('prefecture-minigame-v2',JSON.stringify(state)); location.reload(); return true; })()`);
   await waitFor(cdp, `document.querySelector('#home-screen:not([hidden])')`, 10_000);
   await evaluate(cdp, `document.querySelector('#progress-button').click(); true`);
   await waitFor(cdp, `document.querySelector('#progress-dialog').open`);
-  assert(await evaluate(cdp, `JSON.parse(localStorage.getItem('prefecture-minigame-v2')).unlockedBasic===15 && [...document.querySelectorAll('#skill-progress .skill-row')].slice(2).every(row=>row.querySelector('.skill-name span:last-child').textContent==='挑戦数 0回 正答率 0%')`), "解放後に基本習熟が下がるとC・D・Eが再ロックされます");
+  assert(await evaluate(cdp, `JSON.parse(localStorage.getItem('prefecture-minigame-v2')).unlockedBasic===30 && [...document.querySelectorAll('#skill-progress .skill-row')].slice(2).every(row=>row.querySelector('.skill-name span:last-child').textContent==='挑戦数 0回 正答率 0%')`), "解放後に基本習熟が下がるとC〜Gが再ロックされます");
   await evaluate(cdp, `document.querySelector('#progress-dialog .close-button').click(); true`);
   await evaluate(cdp, `localStorage.setItem('prefecture-minigame-v2', JSON.stringify({schema:2,settings:{sound:false,answerMode:'broken'},progress:{'01:A':{attempts:'bad',correct:99,mastery:4,recent:null}},highScore:'bad',recent:null,pendingReviews:[{code:'03',skill:'A',type:'broken',remaining:0},{code:'03',skill:'A',type:'silhouette',remaining:2}]})); location.reload(); true`);
   await waitFor(cdp, `document.querySelector('#home-screen:not([hidden])')`, 10_000);
@@ -335,16 +339,16 @@ try {
     examSkills.push(current.skill);
     examTypes.push(current.type);
     const fact = factsByCode[current.code];
-    const correct = current.skill === "A" || current.skill === "B" ? fact.name : current.skill === "C" ? fact.region : current.skill === "D" ? fact.capital : fact.dish;
+    const correct = ["A", "B", "F", "G"].includes(current.skill) ? fact.name : current.skill === "C" ? fact.region : current.skill === "D" ? fact.capital : fact.dish;
     await evaluate(cdp, `(() => { const input=[...document.querySelectorAll('input[name="answer"]')].find(item=>item.value===${JSON.stringify(correct)}); input.checked=true; input.dispatchEvent(new Event('change')); document.querySelector('#submit-answer-button').click(); return !document.querySelector('#feedback-dialog').open; })()`);
     if (question === 1) assert(await evaluate(cdp, `document.querySelector('#question-number').textContent==='2/30' && [...document.querySelectorAll('input[name="answer"]')].every(input=>input.disabled) && document.querySelector('#timer-text').textContent==='次の問題'`), "実力テストで同じタップが次の問題にも入力されるのを防げません");
   }
   await waitFor(cdp, `document.querySelector('#result-screen:not([hidden])')`);
   const examState = await evaluate(cdp, `JSON.parse(localStorage.getItem('prefecture-minigame-v2'))`);
   assert(new Set(examCodes).size === 30, "実力テストで同じ県を重複出題しています");
-  assert(Object.keys({ A: 0, B: 0, C: 0, D: 0, E: 0 }).every((skill) => examSkills.filter((item) => item === skill).length === 6), "実力テストが5分野を各6問出題していません");
+  assert(Object.keys({ A: 0, B: 0, C: 0, D: 0, E: 0, F: 0, G: 0 }).every((skill) => [4, 5].includes(examSkills.filter((item) => item === skill).length)), "実力テストが7分野を均等配分で出題していません");
   assert(Object.entries({ "北海道地方": 1, "東北地方": 4, "関東地方": 4, "中部地方": 6, "近畿地方": 4, "中国地方": 3, "四国地方": 3, "九州地方": 5 }).every(([region, count]) => examCodes.filter((code) => factsByCode[code].region === region).length === count), "実力テストの地方構成が偏っています");
-  assert(examTypes.every((type, index) => type === ({ A: "silhouette", B: "mapChoice", C: "region", D: "capital", E: "dishReverse" })[examSkills[index]]), "実力テストに学習用の可変形式が混在しています");
+  assert(examTypes.every((type, index) => type === ({ A: "silhouette", B: "mapChoice", C: "region", D: "capital", E: "dishReverse", F: "city", G: "station" })[examSkills[index]]), "実力テストに学習用の可変形式が混在しています");
   assert(await evaluate(cdp, `document.querySelector('#result-score').textContent==='1000' && document.querySelector('#result-correct').textContent==='30/30' && document.querySelector('#result-rate').textContent==='100%' && document.querySelector('#result-score-label').textContent.includes('偶然正解') && document.querySelector('#result-review').textContent.includes('全分野満点') && document.querySelector('#result-review').textContent.includes('理解度指数へ影響しません') && document.querySelector('#replay-button').textContent.includes('おすすめ学習')`), "実力テストの結果または学習への導線が不正です");
   assert(JSON.stringify(examState.progress) === JSON.stringify(beforeExam.progress) && JSON.stringify(examState.recent) === JSON.stringify(beforeExam.recent) && JSON.stringify(examState.pendingReviews) === JSON.stringify(beforeExam.pendingReviews) && examState.examScores.length === 1 && examState.examScores[0] === 1000, "実力テストが通常学習を変更したか試験結果を保存できません");
   await evaluate(cdp, `document.querySelector('#result-home-button').click(); true`);
@@ -361,6 +365,8 @@ try {
     ["region", "C", "02", "東北地方"], ["regionMember", "C", "02", "青森県"], ["regionMap", "C", "02", "東北地方"], ["regionShape", "C", "02", "東北地方"], ["shapeRegion", "C", "02", "東北地方"],
     ["capital", "D", "01", "札幌市"], ["capitalReverse", "D", "01", "北海道"], ["capitalMap", "D", "01", "札幌市"], ["capitalShape", "D", "01", "札幌市"], ["capitalLocate", "D", "01", "北海道"], ["capitalRegion", "D", "01", "北海道地方"],
     ["dish", "E", "01", "北海道"], ["dishReverse", "E", "01", "ジンギスカン"], ["dishMap", "E", "01", "ジンギスカン"], ["dishShapeChoice", "E", "01", "北海道"], ["dishLocate", "E", "01", "北海道"],
+    ["city", "F", "14", "神奈川県"], ["cityReverse", "F", "14", "川崎市"], ["cityMap", "F", "14", "川崎市"], ["cityShapeChoice", "F", "14", "神奈川県"], ["cityLocate", "F", "14", "神奈川県"],
+    ["station", "G", "14", "神奈川県"], ["stationReverse", "G", "14", "藤沢駅"], ["stationMap", "G", "14", "藤沢駅"], ["stationShapeChoice", "G", "14", "神奈川県"], ["stationLocate", "G", "14", "神奈川県"],
   ];
   for (const [type, skill, code, correct] of modes) {
     await evaluate(cdp, `globalThis.__prefQuizTest=${JSON.stringify({ type, skill, code })}; document.querySelector('#start-endless-button').click(); true`);
@@ -386,8 +392,9 @@ try {
     if (type === "shapeRegion") assert(await evaluate(cdp, `(() => { const area=[document.querySelector('#question-title'),document.querySelector('#question-help'),document.querySelector('#visual-stage')]; const exposed=area.map(node=>node.textContent+[...node.querySelectorAll('[aria-label]')].map(item=>item.getAttribute('aria-label')).join('')).join(''); return document.querySelector('#visual-stage .silhouette') && !['青森県','東北地方'].some(value=>exposed.includes(value)); })()`), "形→地方が答えを露出しています");
     if (type === "capitalShape") assert(await evaluate(cdp, `(() => { const area=[document.querySelector('#question-title'),document.querySelector('#question-help'),document.querySelector('#visual-stage')]; const exposed=area.map(node=>node.textContent+[...node.querySelectorAll('[aria-label]')].map(item=>item.getAttribute('aria-label')).join('')).join(''); return document.querySelector('#visual-stage .silhouette') && !['北海道','札幌市'].some(value=>exposed.includes(value)); })()`), "形付き県庁所在地が答えを露出しています");
     if (type === "dishMap") assert(await evaluate(cdp, `(() => { const area=[document.querySelector('#question-title'),document.querySelector('#question-help'),document.querySelector('#visual-stage')]; const exposed=area.map(node=>node.textContent+[...node.querySelectorAll('[aria-label]')].map(item=>item.getAttribute('aria-label')).join('')).join(''); return document.querySelectorAll('#visual-stage .target[data-map-code="${code}"]').length===1 && !['北海道','ジンギスカン'].some(value=>exposed.includes(value)); })()`), "地図付き郷土料理の手がかりまたは答え露出が不正です");
-    if (type === "dishShapeChoice") assert(await evaluate(cdp, `document.querySelectorAll('.shape-option svg').length === 4 && ![document.querySelector('#question-title').textContent,document.querySelector('#question-help').textContent,document.querySelector('#visual-stage').textContent].some(value=>value.includes('北海道'))`), "郷土料理→形の4択または答えの非露出が不正です");
-    if (["capitalLocate", "dishLocate"].includes(type)) assert(await evaluate(cdp, `(() => { const svg=document.querySelector('#visual-stage svg'); return ![document.querySelector('#question-title').textContent,document.querySelector('#question-help').textContent,svg.getAttribute('aria-label')].some(value=>value.includes('${namesByCode[code]}')); })()`), `${type}: 正解県名が問題文または地図名に露出しています`);
+    if (["cityMap", "stationMap"].includes(type)) assert(await evaluate(cdp, `document.querySelectorAll('#visual-stage .target[data-map-code="${code}"]').length===1`), `${type}: 地図付き問題の対象県表示が不正です`);
+    if (["dishShapeChoice", "cityShapeChoice", "stationShapeChoice"].includes(type)) assert(await evaluate(cdp, `document.querySelectorAll('.shape-option svg').length === 4 && ![document.querySelector('#question-title').textContent,document.querySelector('#question-help').textContent,document.querySelector('#visual-stage').textContent].some(value=>value.includes('${namesByCode[code]}'))`), `${type}: 4択の形または答えの非露出が不正です`);
+    if (["capitalLocate", "dishLocate", "cityLocate", "stationLocate"].includes(type)) assert(await evaluate(cdp, `(() => { const svg=document.querySelector('#visual-stage svg'); return ![document.querySelector('#question-title').textContent,document.querySelector('#question-help').textContent,svg.getAttribute('aria-label')].some(value=>value.includes('${namesByCode[code]}')); })()`), `${type}: 正解県名が問題文または地図名に露出しています`);
     if (locationTypes.includes(type)) {
       const expectedPaths = nationwideLocationTypes.includes(type) ? 47 : 7;
       assert(await evaluate(cdp, `document.querySelectorAll('.map-prefecture[data-code]').length === ${expectedPaths}`), `${type}: 地図の選択肢数が不正です`);
