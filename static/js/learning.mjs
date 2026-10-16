@@ -37,7 +37,7 @@ export function effectiveSkillMastery(progress, code, skill, enabledSkills = nul
     const fallback = Math.max(0, Math.min(1, Number(progress?.[`${code}:${skill}`]?.mastery) || 0));
     const sum = list.reduce((acc, index) => {
       const subKey = `${code}:${skill}:${index}`;
-      const val = progress?.[subKey] ? Number(progress[subKey].mastery) || 0 : fallback;
+      const val = progress?.[subKey] ? Number(progress[subKey].mastery) || 0 : index === 0 ? fallback : 0;
       return acc + Math.max(0, Math.min(1, val));
     }, 0);
     return sum / list.length;

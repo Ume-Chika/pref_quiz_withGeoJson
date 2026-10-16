@@ -110,7 +110,8 @@ function loadSaved() {
       unlockedBasic: Math.max(inferredUnlock, Math.floor(finiteNumber(parsed.unlockedBasic, 0, 0, 47))),
       pendingReviews: normalizePendingReviews(parsed.pendingReviews),
       recent: Array.isArray(parsed.recent) ? parsed.recent.filter((item) => item && /^(0[1-9]|[1-3]\d|4[0-7])$/.test(item.code) && SKILLS[item.skill] && typeof item.type === "string").slice(0, 30).map((item) => ({
-        code: item.code, skill: item.skill, type: item.type.slice(0, 40), correct: item.correct === true, timedOut: item.timedOut === true,
+        code: item.code, skill: item.skill, subIndex: Number.isInteger(item.subIndex) && item.subIndex >= 0 ? item.subIndex : null,
+        type: item.type.slice(0, 40), correct: item.correct === true, timedOut: item.timedOut === true,
         newItem: item.newItem === true, at: finiteNumber(item.at, 0, 0, Date.now() + 86_400_000),
         answer: typeof item.answer === "string" ? item.answer.slice(0, 80) : "",
         selectedCode: /^(0[1-9]|[1-3]\d|4[0-7])$/.test(item.selectedCode) ? item.selectedCode : ""
@@ -535,6 +536,7 @@ function getProgress(code, skill, subIndex = null) {
   if (subIndex !== null && subIndex !== undefined) {
     const subKey = progressKey(code, skill, subIndex);
     if (saved.progress[subKey]) return { ...blankProgress(), ...saved.progress[subKey] };
+    if (subIndex > 0) return blankProgress();
   }
   const baseKey = progressKey(code, skill);
   return { ...blankProgress(), ...(saved.progress[baseKey] || {}) };
@@ -688,7 +690,9 @@ function chooseQuestion() {
     const prefecture = prefectures.find((item) => item.code === forced.code) || prefectures.find((item) => isSkillApplicable(item.code, forced.skill, skillTargets)) || prefectures[0];
     return buildQuestion(prefecture, forced.skill, forced.type, null, forced.subIndex ?? null);
   }
-  const dueRetryIndex = session.retries.findIndex((retry) => isSkillEnabled(saved.settings.enabledSkills, retry.skill) && isSkillApplicable(retry.code, retry.skill, skillTargets) && retry.dueAt <= session.answers.length + 1);
+  const lastCode = session.recentCodes.at(-1) || "";
+  const lastItemKey = session.recentItems?.at(-1) || "";
+  const dueRetryIndex = session.retries.findIndex((retry) => isSkillEnabled(saved.settings.enabledSkills, retry.skill) && isSkillApplicable(retry.code, retry.skill, skillTargets) && retry.dueAt <= session.answers.length + 1 && retry.code !== lastCode);
   if (dueRetryIndex >= 0) {
     const retry = session.retries.splice(dueRetryIndex, 1)[0];
     const question = buildQuestion(prefectures.find((prefecture) => prefecture.code === retry.code), retry.skill, retry.type || "", null, retry.subIndex ?? null);
@@ -697,34 +701,56 @@ function chooseQuestion() {
   }
   const now = Date.now();
   const recentCodes = session.recentCodes.slice(-3);
+  const recentItems = (session.recentItems || []).slice(-4);
   const recentTypes = session.recentTypes.slice(-2);
   const skills = unlockedSkills();
   const hasEligiblePractice = skills.some((skill) => prefectures.some((prefecture) => getPrefectureSkillSummary(prefecture, skill)?.attempts));
   const hasRetryRoom = !session.limit || session.answers.length + 4 < session.limit;
-  const allowUnseen = hasRetryRoom && (canIntroduceNewItem(saved.recent) || !hasEligiblePractice);
-  const candidates = skills.flatMap((skill) => prefectures.filter((prefecture) => isSkillApplicable(prefecture.code, skill, skillTargets)).flatMap((prefecture) => {
+  const allUnits = skills.flatMap((skill) => prefectures.filter((prefecture) => isSkillApplicable(prefecture.code, skill, skillTargets)).flatMap((prefecture) => {
     const basicReady = ["A", "B"].includes(skill) || hasBasicMastery(effectiveMastery(prefecture.code, "A"), effectiveMastery(prefecture.code, "B"));
     return getSkillUnits(prefecture, skill).map(({ subIndex }) => {
+      const itemKey = progressKey(prefecture.code, skill, subIndex);
       const item = getProgress(prefecture.code, skill, subIndex);
-      const waiting = saved.pendingReviews.some((review) => review.code === prefecture.code && review.skill === skill && (review.subIndex ?? null) === subIndex && review.remaining > 0);
-      const bucket = waiting ? 0 : item.attempts && item.nextDue <= now ? 3 : item.attempts ? 1 : allowUnseen && basicReady ? 2 : 0;
-      return { prefecture, skill, subIndex, bucket, priority: schedulingPriority(item, { now, recentlyShown: recentCodes.includes(prefecture.code) }) };
+      const waiting = saved.pendingReviews.some((review) => review.code === prefecture.code && review.skill === skill && (review.subIndex === null || review.subIndex === undefined || review.subIndex === subIndex) && review.remaining > 0);
+      const recentlyShown = recentCodes.includes(prefecture.code) || recentItems.includes(itemKey);
+      return { prefecture, skill, subIndex, itemKey, item, waiting, basicReady, recentlyShown };
     });
-  })).filter(({ bucket }) => bucket > 0);
+  }));
+  const nonRecentPracticeCount = allUnits.filter(({ item, waiting, prefecture, itemKey }) => !waiting && item.attempts > 0 && prefecture.code !== lastCode && itemKey !== lastItemKey).length;
+  const allowUnseen = (hasRetryRoom && canIntroduceNewItem(saved.recent)) || !hasEligiblePractice || nonRecentPracticeCount === 0;
+  let candidates = allUnits.map((entry) => {
+    const bucket = entry.waiting ? 0 : entry.item.attempts && entry.item.nextDue <= now ? 3 : entry.item.attempts ? 1 : allowUnseen && entry.basicReady ? 2 : 0;
+    return { ...entry, bucket, priority: schedulingPriority(entry.item, { now, recentlyShown: entry.recentlyShown }) };
+  }).filter(({ bucket }) => bucket > 0);
   if (!candidates.length) {
-    const retryIndex = session.retries.findIndex((item) => isSkillEnabled(saved.settings.enabledSkills, item.skill) && isSkillApplicable(item.code, item.skill, skillTargets));
-    const retry = retryIndex >= 0 ? session.retries.splice(retryIndex, 1)[0] : null;
-    const fallbackSkill = skills[0] || enabledSkillKeys()[0] || "A";
-    const fallbackPref = prefectures.find((pref) => isSkillApplicable(pref.code, fallbackSkill, skillTargets)) || prefectures[0];
-    const question = retry ? buildQuestion(prefectures.find((prefecture) => prefecture.code === retry.code), retry.skill, retry.type, null, retry.subIndex ?? null) : buildQuestion(fallbackPref, fallbackSkill);
-    if (retry) question.pendingReview = retry;
-    return question;
+    // Relax unseen/retry-room restriction before falling back to immediate repeat
+    candidates = allUnits.filter(({ waiting, basicReady }) => !waiting && basicReady).map((entry) => ({
+      ...entry,
+      bucket: entry.item.attempts ? 1 : 2,
+      priority: schedulingPriority(entry.item, { now, recentlyShown: entry.recentlyShown })
+    }));
   }
-  const alternatives = candidates.filter(({ prefecture }) => prefecture.code !== recentCodes.at(-1));
-  const eligible = alternatives.length ? alternatives : candidates;
-  eligible.sort((a, b) => b.bucket - a.bucket || b.priority - a.priority);
-  const bestBucket = eligible[0]?.bucket;
-  const pool = eligible.filter(({ bucket }) => bucket === bestBucket).slice(0, 12);
+  if (!candidates.length) {
+    candidates = allUnits.map((entry) => ({
+      ...entry,
+      bucket: 1,
+      priority: schedulingPriority(entry.item, { now, recentlyShown: entry.recentlyShown })
+    }));
+  }
+  if (!candidates.length) {
+    const fallbackSkill = skills[0] || enabledSkillKeys()[0] || "A";
+    const fallbackPref = prefectures.find((pref) => isSkillApplicable(pref.code, fallbackSkill, skillTargets) && pref.code !== lastCode) || prefectures.find((pref) => isSkillApplicable(pref.code, fallbackSkill, skillTargets)) || prefectures[0];
+    return buildQuestion(fallbackPref, fallbackSkill);
+  }
+  const nonRepeatPref = candidates.filter(({ prefecture, itemKey }) => prefecture.code !== lastCode && itemKey !== lastItemKey);
+  const nonRepeatItem = candidates.filter(({ itemKey }) => itemKey !== lastItemKey);
+  const eligible = nonRepeatPref.length ? nonRepeatPref : nonRepeatItem.length ? nonRepeatItem : candidates;
+  // Filter to highest bucket among non-recently-shown items first so a single attempted item doesn't loop forever when other buckets exist
+  const freshEligible = eligible.filter(({ prefecture, itemKey }) => !recentCodes.includes(prefecture.code) && !recentItems.includes(itemKey));
+  const targetList = freshEligible.length ? freshEligible : eligible;
+  targetList.sort((a, b) => b.bucket - a.bucket || b.priority - a.priority);
+  const bestBucket = targetList[0]?.bucket;
+  const pool = targetList.filter(({ bucket }) => bucket === bestBucket).slice(0, 12);
   let question = null;
   for (const candidate of shuffle(pool)) {
     const built = buildQuestion(candidate.prefecture, candidate.skill, "", null, candidate.subIndex);
@@ -956,6 +982,7 @@ function renderQuestion() {
   session.locationLocked = false;
   if (session.mode !== "exam") {
     session.recentCodes.push(question.prefecture.code);
+    session.recentItems.push(progressKey(question.prefecture.code, question.skill, question.subIndex));
     session.recentTypes.push(question.type);
   }
   ui.questionNumber.textContent = session.limit ? `${session.answers.length + 1}/${session.limit}` : `${session.answers.length + 1}/∞`;
@@ -1419,7 +1446,8 @@ function completeAnswer(answer, timedOut) {
     else { session.answered = false; renderQuestion(); }
     return;
   }
-  if (question.pendingReview) saved.pendingReviews = saved.pendingReviews.filter((review) => review.code !== question.prefecture.code || review.skill !== question.skill || (review.subIndex ?? null) !== (question.subIndex ?? null));
+  saved.pendingReviews = saved.pendingReviews.filter((review) => review.code !== question.prefecture.code || review.skill !== question.skill || (review.subIndex !== null && review.subIndex !== undefined && review.subIndex !== (question.subIndex ?? null)));
+  session.retries = session.retries.filter((retry) => retry.code !== question.prefecture.code || retry.skill !== question.skill || (retry.subIndex !== null && retry.subIndex !== undefined && retry.subIndex !== (question.subIndex ?? null)));
   saved.pendingReviews.forEach((review) => { review.remaining = Math.max(0, review.remaining - 1); });
   updateLearning(question, correct, timedOut, responseMs, answer, selectedCode);
   let retry = null;
@@ -1454,7 +1482,7 @@ function updateLearning(question, correct, timedOut, responseMs, answer, selecte
       };
     }
   }
-  saved.recent.unshift({ code: question.prefecture.code, skill: question.skill, type: question.type, correct, timedOut, newItem: !previous.attempts, at: Date.now(), answer, selectedCode });
+  saved.recent.unshift({ code: question.prefecture.code, skill: question.skill, subIndex: question.subIndex ?? null, type: question.type, correct, timedOut, newItem: !previous.attempts, at: Date.now(), answer, selectedCode });
   saved.recent = saved.recent.slice(0, 30);
 }
 
@@ -1554,6 +1582,7 @@ function startGame(limit, mode = "learn") {
   session = {
     mode, limit, answers: [], retries: mode === "exam" ? [] : saved.pendingReviews.map((review) => ({ ...review, dueAt: review.remaining + 1 })),
     recentCodes: saved.recent.slice(0, 3).reverse().map((item) => item.code),
+    recentItems: saved.recent.slice(0, 4).reverse().map((item) => progressKey(item.code, item.skill, item.subIndex ?? null)),
     recentTypes: saved.recent.slice(0, 2).reverse().map((item) => item.type),
     combo: 0, maxCombo: 0, answered: false, current: null, deadline: 0, startedAt: 0, answerClockStartedAt: 0, timerHoldUntil: 0, inputReadyAt: 0,
     understandingBefore: understandingIndex(saved.progress, saved.settings.enabledSkills, skillTargets), examQuestions: [],

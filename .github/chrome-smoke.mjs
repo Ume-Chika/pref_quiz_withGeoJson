@@ -248,6 +248,13 @@ try {
   await waitFor(cdp, `document.querySelector('#progress-dialog').open`);
   assert(await evaluate(cdp, `JSON.parse(localStorage.getItem('prefecture-minigame-v2')).unlockedBasic===30 && [...document.querySelectorAll('#skill-progress .skill-row')].slice(2).every(row=>row.querySelector('.skill-name span:last-child').textContent==='挑戦数 0回 正答率 0%')`), "解放後に基本習熟が下がるとC〜Gが再ロックされます");
   await evaluate(cdp, `document.querySelector('#progress-dialog .close-button').click(); true`);
+  await evaluate(cdp, `localStorage.setItem('prefecture-minigame-v2', JSON.stringify({schema:2,settings:{sound:false,volume:.5,answerMode:'confirm',enabledSkills:{A:false,B:false,C:false,D:false,E:false,F:true,G:false}},progress:{'35:F:0':{attempts:1,correct:1,streak:1,lastSeen:1,averageMs:5000,timeouts:0,nextDue:Date.now()+864e5,mastery:.22,recent:[1]}},recent:Array.from({length:4},(_,index)=>({code:'35',skill:'F',subIndex:0,type:'city',correct:true,timedOut:false,newItem:true,at:index}))})); location.reload(); true`);
+  await waitFor(cdp, `document.querySelector('#home-screen:not([hidden])')`, 10_000);
+  await evaluate(cdp, `document.querySelector('#start-ten-button').click(); true`);
+  await waitFor(cdp, `document.querySelector('#game-screen:not([hidden])') && document.querySelectorAll('input[name="answer"]').length===4`);
+  assert(await evaluate(cdp, `document.querySelector('#game-screen').dataset.skill==='F' && document.querySelector('#game-screen').dataset.code!=='35'`), "区分FのみONかつ新規上限時に同じ都市（下関市）が連続出題されています");
+  await evaluate(cdp, `document.querySelector('#quit-game-button').click(); true`);
+  await waitFor(cdp, `document.querySelector('#home-screen:not([hidden])')`);
   await evaluate(cdp, `localStorage.setItem('prefecture-minigame-v2', JSON.stringify({schema:2,settings:{sound:false,answerMode:'broken'},progress:{'01:A':{attempts:'bad',correct:99,mastery:4,recent:null}},highScore:'bad',recent:null,pendingReviews:[{code:'03',skill:'A',type:'broken',remaining:0},{code:'03',skill:'A',type:'silhouette',remaining:2}]})); location.reload(); true`);
   await waitFor(cdp, `document.querySelector('#home-screen:not([hidden])')`, 10_000);
   assert(await evaluate(cdp, `(() => { const reviews=JSON.parse(localStorage.getItem('prefecture-minigame-v2')).pendingReviews; return reviews.length===1&&reviews[0].code==='03'&&reviews[0].type===''&&reviews[0].remaining===0; })()`), "壊れた復習予約の形式制限または重複除去が不正です");
