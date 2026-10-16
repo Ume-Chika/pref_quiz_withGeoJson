@@ -1,6 +1,6 @@
 "use strict";
 
-import { ALL_SKILLS, blankProgress, canIntroduceNewItem, canUseIntegratedMode, compassVector, deadlinePassed, effectiveSkillMastery, examScore, geometryRepresentativePoint, hasBasicMastery, isSkillEnabled, normalizeEnabledSkills, normalizeProgress, prefectureUnderstanding, recordAnswer, schedulingPriority, skillsForMastery, understandingIndex, understandingMilestone } from "./learning.mjs";
+import { ALL_SKILLS, blankProgress, canIntroduceNewItem, canUseIntegratedMode, compassVector, deadlinePassed, effectiveSkillMastery, examScore, geometryRepresentativePoint, hasBasicMastery, isSkillApplicable, isSkillEnabled, normalizeEnabledSkills, normalizeProgress, prefectureUnderstanding, recordAnswer, schedulingPriority, skillsForMastery, understandingIndex, understandingMilestone } from "./learning.mjs";
 
 const STORAGE_KEY = "prefecture-minigame-v2";
 const QUESTION_SECONDS = 15;
@@ -38,6 +38,7 @@ const ui = {
 let geoData = null;
 let prefectures = [];
 let facts = [];
+let skillTargets = null;
 let saved = loadSaved();
 let timerFrame = 0;
 let questionToken = 0;
@@ -62,8 +63,9 @@ function normalizePendingReviews(value) {
   const reviews = [];
   value.forEach((item) => {
     if (!item || !/^(0[1-9]|[1-3]\d|4[0-7])$/.test(item.code) || !SKILLS[item.skill]) return;
-    const review = { code: item.code, skill: item.skill, type: ["silhouette", "map"].includes(item.type) ? item.type : "", remaining: Math.floor(finiteNumber(item.remaining, 0, 0, 3)) };
-    const previous = reviews.find((candidate) => candidate.code === review.code && candidate.skill === review.skill);
+    const subIndex = Number.isInteger(item.subIndex) && item.subIndex >= 0 ? item.subIndex : null;
+    const review = { code: item.code, skill: item.skill, subIndex, type: ["silhouette", "map"].includes(item.type) ? item.type : "", remaining: Math.floor(finiteNumber(item.remaining, 0, 0, 3)) };
+    const previous = reviews.find((candidate) => candidate.code === review.code && candidate.skill === review.skill && (candidate.subIndex ?? null) === subIndex);
     if (!previous) reviews.push(review);
     else if (review.remaining < previous.remaining) Object.assign(previous, review);
   });
@@ -77,7 +79,7 @@ function loadSaved() {
     const progress = {};
     const now = Date.now();
     for (const [key, value] of Object.entries(parsed.progress || {})) {
-      if (/^(0[1-9]|[1-3]\d|4[0-7]):[A-G]$/.test(key)) {
+      if (/^(0[1-9]|[1-3]\d|4[0-7]):[A-G](?::\d+)?$/.test(key)) {
         const item = normalizeProgress(value);
         if (item.lastSeen > now) {
           item.nextDue = now + Math.max(0, item.nextDue - item.lastSeen);
@@ -87,11 +89,12 @@ function loadSaved() {
         progress[key] = item;
       }
     }
-    const inferredUnlock = Object.entries(progress).some(([key, item]) => key.endsWith(":G") && item.attempts) ? 30
-      : Object.entries(progress).some(([key, item]) => key.endsWith(":F") && item.attempts) ? 22
-      : Object.entries(progress).some(([key, item]) => key.endsWith(":E") && item.attempts) ? 15
-      : Object.entries(progress).some(([key, item]) => key.endsWith(":D") && item.attempts) ? 8
-      : Object.entries(progress).some(([key, item]) => key.endsWith(":C") && item.attempts) ? 3 : 0;
+    const hasSkillAttempt = (s) => Object.entries(progress).some(([key, item]) => key.split(":")[1] === s && item.attempts);
+    const inferredUnlock = hasSkillAttempt("G") ? 30
+      : hasSkillAttempt("F") ? 22
+      : hasSkillAttempt("E") ? 15
+      : hasSkillAttempt("D") ? 8
+      : hasSkillAttempt("C") ? 3 : 0;
     return {
       ...freshSaved(), ...parsed,
       settings: {
@@ -136,7 +139,7 @@ function enabledSkillKeys() {
 }
 
 function effectiveMastery(code, skill) {
-  return effectiveSkillMastery(saved.progress, code, skill, saved.settings?.enabledSkills);
+  return effectiveSkillMastery(saved.progress, code, skill, saved.settings?.enabledSkills, skillTargets) ?? 1;
 }
 
 function applyVisualEffects() {
@@ -172,11 +175,19 @@ async function loadData() {
     const byName = new Map(facts.map((fact) => [fact.name, fact]));
     prefectures = geoData.features.map((feature) => {
       const mainGeometry = largestPolygonGeometry(feature.geometry);
+      const fact = byName.get(feature.properties.name);
+      const cities = Array.isArray(fact.cities) ? fact.cities : fact.city ? [fact.city] : [];
+      const stations = Array.isArray(fact.stations) ? fact.stations : fact.station ? [fact.station] : [];
       return {
-        ...byName.get(feature.properties.name), feature, mainGeometry,
+        ...fact, cities, stations, city: cities[0] || "", station: stations[0] || "",
+        feature, mainGeometry,
         center: geometryRepresentativePoint(mainGeometry), shape: shapeStats(mainGeometry)
       };
     }).sort((a, b) => Number(a.code) - Number(b.code));
+    skillTargets = Object.fromEntries(prefectures.map((pref) => [pref.code, {
+      F: pref.cities.map((_, index) => index),
+      G: pref.stations.map((_, index) => index)
+    }]));
     unlockedBasicCount();
     persist();
     renderHeroMap();
@@ -196,7 +207,9 @@ function validateData(geo, factData) {
   if (geoNames.size !== 47 || factNames.size !== 47 || [...factNames].some((name) => !geoNames.has(name))) {
     throw new Error("境界データと都道府県情報が一致しません。");
   }
-  if (factData.prefectures.some((fact) => !fact.city || !fact.station)) {
+  const totalCities = factData.prefectures.reduce((sum, fact) => sum + (Array.isArray(fact.cities) ? fact.cities.length : fact.city ? 1 : 0), 0);
+  const totalStations = factData.prefectures.reduce((sum, fact) => sum + (Array.isArray(fact.stations) ? fact.stations.length : fact.station ? 1 : 0), 0);
+  if (totalCities < 10 || totalStations < 10) {
     throw new Error("都市または駅の情報が不足しています。");
   }
 }
@@ -508,13 +521,42 @@ function setStudyMapZoom(nextZoom) {
   studyMapZoom = studyMapZoomController?.getZoom() ?? 1;
 }
 
+function getSkillUnits(prefecture, skill) {
+  if (skill === "F") return prefecture.cities.map((value, subIndex) => ({ subIndex, value }));
+  if (skill === "G") return prefecture.stations.map((value, subIndex) => ({ subIndex, value }));
+  return [{ subIndex: null, value: "" }];
+}
+
+function progressKey(code, skill, subIndex = null) {
+  return subIndex === null || subIndex === undefined ? `${code}:${skill}` : `${code}:${skill}:${subIndex}`;
+}
+
+function getProgress(code, skill, subIndex = null) {
+  if (subIndex !== null && subIndex !== undefined) {
+    const subKey = progressKey(code, skill, subIndex);
+    if (saved.progress[subKey]) return { ...blankProgress(), ...saved.progress[subKey] };
+  }
+  const baseKey = progressKey(code, skill);
+  return { ...blankProgress(), ...(saved.progress[baseKey] || {}) };
+}
+
+function getPrefectureSkillSummary(prefecture, skill) {
+  if (!isSkillApplicable(prefecture.code, skill, skillTargets)) return null;
+  const units = getSkillUnits(prefecture, skill);
+  const items = units.map(({ subIndex }) => getProgress(prefecture.code, skill, subIndex));
+  const attempts = items.reduce((s, i) => s + i.attempts, 0);
+  const correct = items.reduce((s, i) => s + i.correct, 0);
+  const mastery = items.reduce((s, i) => s + (i.mastery || 0), 0) / items.length;
+  return { attempts, correct, mastery, items };
+}
+
 function getStudyMapMasteryStatuses() {
   const statusMap = new Map();
   const attemptedList = [];
   for (const prefecture of prefectures) {
-    const items = Object.keys(SKILLS).map((skill) => getProgress(prefecture.code, skill));
-    const attempted = items.some((item) => item.attempts > 0);
-    const score = prefectureUnderstanding(saved.progress, prefecture.code, saved.settings.enabledSkills);
+    const summaries = Object.keys(SKILLS).map((skill) => getPrefectureSkillSummary(prefecture, skill)).filter(Boolean);
+    const attempted = summaries.some((item) => item.attempts > 0);
+    const score = prefectureUnderstanding(saved.progress, prefecture.code, saved.settings.enabledSkills, skillTargets);
     const index = Math.round(score * 1000);
     if (attempted) {
       attemptedList.push({ prefecture, score, index });
@@ -564,6 +606,11 @@ function renderStudyMapColors(paths = [...ui.studyMapCanvas.querySelectorAll(".m
   if (overlay && s) overlay.setAttribute("class", `study-map-highlight-overlay is-active${s.classList.contains("mastery-strong") ? " mastery-strong" : ""}${s.classList.contains("mastery-weak") ? " mastery-weak" : ""}`);
 }
 
+function formatFactPreview(list, maxItems = 4) {
+  if (!Array.isArray(list) || !list.length) return "対象外";
+  return list.length <= maxItems ? list.join("・") : `${list.slice(0, maxItems).join("・")} ほか計${list.length}件`;
+}
+
 function renderStudyMapDetail(prefecture, recent) {
   const history = recent.map((item, index) => ({ ...item, ago: index + 1 })).filter((item) => item.code === prefecture.code);
   const status = prefectureMasteryStatus(prefecture);
@@ -572,8 +619,8 @@ function renderStudyMapDetail(prefecture, recent) {
   $("study-map-name").textContent = prefecture.name;
   $("study-map-region").textContent = prefecture.region;
   $("study-map-capital").textContent = prefecture.capital;
-  $("study-map-city").textContent = prefecture.city;
-  $("study-map-station").textContent = prefecture.station;
+  $("study-map-city").textContent = formatFactPreview(prefecture.cities);
+  $("study-map-station").textContent = formatFactPreview(prefecture.stations);
   $("study-map-dish").textContent = prefecture.dish;
   const list = $("study-map-history");
   list.replaceChildren();
@@ -590,12 +637,6 @@ function renderStudyMapDetail(prefecture, recent) {
   });
 }
 
-function progressKey(code, skill) { return `${code}:${skill}`; }
-function getProgress(code, skill) {
-  const key = progressKey(code, skill);
-  return { ...blankProgress(), ...(saved.progress[key] || {}) };
-}
-
 function totalAttempts() {
   return Object.values(saved.progress).reduce((sum, item) => sum + (Number(item.attempts) || 0), 0);
 }
@@ -603,10 +644,13 @@ function totalAttempts() {
 function renderHome() {
   const attempts = totalAttempts();
   const learning = new Set(Object.entries(saved.progress).filter(([, item]) => item.attempts).map(([key]) => key.slice(0, 2))).size;
-  const index = understandingIndex(saved.progress, saved.settings.enabledSkills);
+  const index = understandingIndex(saved.progress, saved.settings.enabledSkills, skillTargets);
   const now = Date.now();
-  const dueKeys = new Set(Object.entries(saved.progress).filter(([key, item]) => item.attempts && item.nextDue <= now && isSkillEnabled(saved.settings.enabledSkills, key.slice(3))).map(([key]) => key));
-  saved.pendingReviews.filter((review) => isSkillEnabled(saved.settings.enabledSkills, review.skill)).forEach((review) => dueKeys.add(`${review.code}:${review.skill}`));
+  const dueKeys = new Set(Object.entries(saved.progress).filter(([key, item]) => {
+    const [code, skill] = key.split(":");
+    return item.attempts && item.nextDue <= now && isSkillEnabled(saved.settings.enabledSkills, skill) && isSkillApplicable(code, skill, skillTargets);
+  }).map(([key]) => key));
+  saved.pendingReviews.filter((review) => isSkillEnabled(saved.settings.enabledSkills, review.skill) && isSkillApplicable(review.code, review.skill, skillTargets)).forEach((review) => dueKeys.add(progressKey(review.code, review.skill, review.subIndex)));
   const due = dueKeys.size;
   const activeCount = enabledSkillKeys().length;
   const examAverage = saved.examScores.length ? Math.round(saved.examScores.reduce((sum, score) => sum + score, 0) / saved.examScores.length) : null;
@@ -641,13 +685,13 @@ function effectiveBasicMasteredCount() {
 function chooseQuestion() {
   const forced = ["localhost", "127.0.0.1"].includes(location.hostname) ? globalThis.__prefQuizTest : null;
   if (forced?.type && SKILLS[forced.skill]) {
-    const prefecture = prefectures.find((item) => item.code === forced.code) || prefectures[0];
-    return buildQuestion(prefecture, forced.skill, forced.type);
+    const prefecture = prefectures.find((item) => item.code === forced.code) || prefectures.find((item) => isSkillApplicable(item.code, forced.skill, skillTargets)) || prefectures[0];
+    return buildQuestion(prefecture, forced.skill, forced.type, null, forced.subIndex ?? null);
   }
-  const dueRetryIndex = session.retries.findIndex((retry) => isSkillEnabled(saved.settings.enabledSkills, retry.skill) && retry.dueAt <= session.answers.length + 1);
+  const dueRetryIndex = session.retries.findIndex((retry) => isSkillEnabled(saved.settings.enabledSkills, retry.skill) && isSkillApplicable(retry.code, retry.skill, skillTargets) && retry.dueAt <= session.answers.length + 1);
   if (dueRetryIndex >= 0) {
     const retry = session.retries.splice(dueRetryIndex, 1)[0];
-    const question = buildQuestion(prefectures.find((prefecture) => prefecture.code === retry.code), retry.skill, retry.type || "");
+    const question = buildQuestion(prefectures.find((prefecture) => prefecture.code === retry.code), retry.skill, retry.type || "", null, retry.subIndex ?? null);
     question.pendingReview = retry;
     return question;
   }
@@ -655,21 +699,24 @@ function chooseQuestion() {
   const recentCodes = session.recentCodes.slice(-3);
   const recentTypes = session.recentTypes.slice(-2);
   const skills = unlockedSkills();
-  const hasEligiblePractice = skills.some((skill) => prefectures.some((prefecture) => getProgress(prefecture.code, skill).attempts));
+  const hasEligiblePractice = skills.some((skill) => prefectures.some((prefecture) => getPrefectureSkillSummary(prefecture, skill)?.attempts));
   const hasRetryRoom = !session.limit || session.answers.length + 4 < session.limit;
   const allowUnseen = hasRetryRoom && (canIntroduceNewItem(saved.recent) || !hasEligiblePractice);
-  const candidates = skills.flatMap((skill) => prefectures.map((prefecture) => {
-    const item = getProgress(prefecture.code, skill);
+  const candidates = skills.flatMap((skill) => prefectures.filter((prefecture) => isSkillApplicable(prefecture.code, skill, skillTargets)).flatMap((prefecture) => {
     const basicReady = ["A", "B"].includes(skill) || hasBasicMastery(effectiveMastery(prefecture.code, "A"), effectiveMastery(prefecture.code, "B"));
-    const waiting = saved.pendingReviews.some((review) => review.code === prefecture.code && review.skill === skill && review.remaining > 0);
-    const bucket = waiting ? 0 : item.attempts && item.nextDue <= now ? 3 : item.attempts ? 1 : allowUnseen && basicReady ? 2 : 0;
-    return { prefecture, skill, bucket, priority: schedulingPriority(item, { now, recentlyShown: recentCodes.includes(prefecture.code) }) };
+    return getSkillUnits(prefecture, skill).map(({ subIndex }) => {
+      const item = getProgress(prefecture.code, skill, subIndex);
+      const waiting = saved.pendingReviews.some((review) => review.code === prefecture.code && review.skill === skill && (review.subIndex ?? null) === subIndex && review.remaining > 0);
+      const bucket = waiting ? 0 : item.attempts && item.nextDue <= now ? 3 : item.attempts ? 1 : allowUnseen && basicReady ? 2 : 0;
+      return { prefecture, skill, subIndex, bucket, priority: schedulingPriority(item, { now, recentlyShown: recentCodes.includes(prefecture.code) }) };
+    });
   })).filter(({ bucket }) => bucket > 0);
   if (!candidates.length) {
-    const retryIndex = session.retries.findIndex((item) => isSkillEnabled(saved.settings.enabledSkills, item.skill));
+    const retryIndex = session.retries.findIndex((item) => isSkillEnabled(saved.settings.enabledSkills, item.skill) && isSkillApplicable(item.code, item.skill, skillTargets));
     const retry = retryIndex >= 0 ? session.retries.splice(retryIndex, 1)[0] : null;
     const fallbackSkill = skills[0] || enabledSkillKeys()[0] || "A";
-    const question = retry ? buildQuestion(prefectures.find((prefecture) => prefecture.code === retry.code), retry.skill, retry.type) : buildQuestion(prefectures[0], fallbackSkill);
+    const fallbackPref = prefectures.find((pref) => isSkillApplicable(pref.code, fallbackSkill, skillTargets)) || prefectures[0];
+    const question = retry ? buildQuestion(prefectures.find((prefecture) => prefecture.code === retry.code), retry.skill, retry.type, null, retry.subIndex ?? null) : buildQuestion(fallbackPref, fallbackSkill);
     if (retry) question.pendingReview = retry;
     return question;
   }
@@ -680,7 +727,7 @@ function chooseQuestion() {
   const pool = eligible.filter(({ bucket }) => bucket === bestBucket).slice(0, 12);
   let question = null;
   for (const candidate of shuffle(pool)) {
-    const built = buildQuestion(candidate.prefecture, candidate.skill);
+    const built = buildQuestion(candidate.prefecture, candidate.skill, "", null, candidate.subIndex);
     if (!recentTypes.includes(built.type)) { question = built; break; }
     question ||= built;
   }
@@ -695,15 +742,69 @@ function buildExamQuestions() {
     ...activeSkills.flatMap((skill) => Array(baseCount).fill(skill)),
     ...shuffle(activeSkills).slice(0, remainder)
   ]);
-  const sample = shuffle(Object.entries(EXAM_REGION_COUNTS).flatMap(([region, count]) => shuffle(prefectures.filter((prefecture) => prefecture.region === region)).slice(0, count)));
+  const sample = shuffle(Object.entries(EXAM_REGION_COUNTS).flatMap(([region, count]) => {
+    const regionPool = prefectures.filter((prefecture) => prefecture.region === region);
+    const withStation = shuffle(regionPool.filter((pref) => isSkillApplicable(pref.code, "G", skillTargets)));
+    const withoutStation = shuffle(regionPool.filter((pref) => !isSkillApplicable(pref.code, "G", skillTargets)));
+    return [...withStation, ...withoutStation].slice(0, count);
+  }));
+  // Assign G and F to prefectures in sample that have stations/cities while preserving regional quotas
+  const assignedSkills = new Array(sample.length).fill(null);
+  const remainingSkills = [...skills];
+  for (const constrainedSkill of ["G", "F"]) {
+    while (remainingSkills.includes(constrainedSkill)) {
+      const idx = remainingSkills.indexOf(constrainedSkill);
+      remainingSkills.splice(idx, 1);
+      const targetIndex = sample.findIndex((pref, i) => !assignedSkills[i] && isSkillApplicable(pref.code, constrainedSkill, skillTargets));
+      if (targetIndex >= 0) {
+        assignedSkills[targetIndex] = constrainedSkill;
+      } else {
+        const swapIndex = sample.findIndex((pref, i) => !assignedSkills[i] && prefectures.some((candidate) => candidate.region === pref.region && isSkillApplicable(candidate.code, constrainedSkill, skillTargets) && !sample.some((s) => s.code === candidate.code)));
+        if (swapIndex >= 0) {
+          const sameRegionEligible = prefectures.filter((candidate) => candidate.region === sample[swapIndex].region && isSkillApplicable(candidate.code, constrainedSkill, skillTargets) && !sample.some((s) => s.code === candidate.code));
+          sample[swapIndex] = randomOf(sameRegionEligible);
+          assignedSkills[swapIndex] = constrainedSkill;
+        } else {
+          const fallbackIndex = sample.findIndex((_, i) => !assignedSkills[i]);
+          if (fallbackIndex >= 0) assignedSkills[fallbackIndex] = activeSkills.find((s) => !["F", "G"].includes(s)) || "A";
+        }
+      }
+    }
+  }
+  for (let i = 0; i < sample.length; i += 1) {
+    if (!assignedSkills[i]) assignedSkills[i] = remainingSkills.shift() || activeSkills[0] || "A";
+  }
   return sample.map((prefecture, index) => {
-    const skill = skills[index];
+    const skill = assignedSkills[index];
     return buildQuestion(prefecture, skill, EXAM_TYPES[skill], 1);
   });
 }
 
-function buildQuestion(prefecture, skill, forcedType = "", masteryOverride = null) {
-  const item = getProgress(prefecture.code, skill);
+function chooseSubItem(prefecture, skill, forcedSubIndex = null, masteryOverride = null) {
+  const units = getSkillUnits(prefecture, skill);
+  if (!units.length) return { subIndex: null, value: "" };
+  if (forcedSubIndex !== null && forcedSubIndex !== undefined && units[forcedSubIndex]) {
+    return units[forcedSubIndex];
+  }
+  if (masteryOverride !== null) {
+    return randomOf(units);
+  }
+  const now = Date.now();
+  const scored = units.map((unit) => {
+    const item = getProgress(prefecture.code, skill, unit.subIndex);
+    return { unit, priority: schedulingPriority(item, { now }) };
+  }).sort((a, b) => b.priority - a.priority);
+  return scored[0].unit;
+}
+
+function buildQuestion(prefecture, skill, forcedType = "", masteryOverride = null, forcedSubIndex = null) {
+  if (!isSkillApplicable(prefecture.code, skill, skillTargets)) {
+    const fallbackPref = prefectures.find((item) => isSkillApplicable(item.code, skill, skillTargets));
+    if (fallbackPref) prefecture = fallbackPref;
+  }
+  const chosenUnit = ["F", "G"].includes(skill) ? chooseSubItem(prefecture, skill, forcedSubIndex, masteryOverride) : { subIndex: null, value: "" };
+  const subIndex = chosenUnit.subIndex;
+  const item = getProgress(prefecture.code, skill, subIndex);
   const mastery = masteryOverride ?? item.mastery ?? 0;
   let type;
   if (skill === "A") {
@@ -743,7 +844,8 @@ function buildQuestion(prefecture, skill, forcedType = "", masteryOverride = nul
   }
   type = forcedType || type;
 
-  const question = { prefecture, skill, type, isNew: masteryOverride === null && !item.attempts, choices: [], correct: "" };
+  const targetValue = skill === "F" ? (chosenUnit.value || prefecture.city) : skill === "G" ? (chosenUnit.value || prefecture.station) : "";
+  const question = { prefecture, skill, subIndex, targetValue, type, isNew: masteryOverride === null && !item.attempts, choices: [], correct: "" };
   if (["shapeMemory", "silhouette", "reveal", "spotlight", "flash", "slitFlow", "silhouetteReverse", "mapShape", "map", "mapChoice", "mapFlash", ...LOCATION_TYPES].includes(type)) {
     question.correct = prefecture.name;
     question.choices = nameChoices(prefecture, type === "mapChoice" ? Math.max(.3, mastery) : mastery, skill === "A" ? "shape" : "geo", skill);
@@ -775,8 +877,8 @@ function buildQuestion(prefecture, skill, forcedType = "", masteryOverride = nul
     question.correct = prefecture.name;
     question.choices = nameChoices(prefecture, mastery, "shape", "F");
   } else if (["cityReverse", "cityMap"].includes(type)) {
-    question.correct = prefecture.city;
-    question.choices = valueChoices(prefecture, "city", mastery);
+    question.correct = targetValue;
+    question.choices = valueChoices(prefecture, "city", mastery, targetValue);
   } else if (type === "station") {
     question.correct = prefecture.name;
     question.choices = nameChoices(prefecture, mastery, "geo", "G");
@@ -784,8 +886,8 @@ function buildQuestion(prefecture, skill, forcedType = "", masteryOverride = nul
     question.correct = prefecture.name;
     question.choices = nameChoices(prefecture, mastery, "shape", "G");
   } else if (["stationReverse", "stationMap"].includes(type)) {
-    question.correct = prefecture.station;
-    question.choices = valueChoices(prefecture, "station", mastery);
+    question.correct = targetValue;
+    question.choices = valueChoices(prefecture, "station", mastery, targetValue);
   } else if (type === "compass") {
     const candidates = prefectures.filter((item) => item.code !== prefecture.code);
     const ranked = candidates.map((item) => ({ item, ...compassVector(prefecture.center, item.center) })).sort((a, b) => a.distance - b.distance);
@@ -818,14 +920,24 @@ function nameChoices(target, mastery, strategy = "geo", skill = "") {
   return shuffle([target.name, ...ordered.slice(0, 3).map(({ item }) => item.name)]);
 }
 
-function valueChoices(target, field, mastery = 0) {
-  const sameRegion = shuffle(prefectures.filter((item) => item.code !== target.code && item.region === target.region));
-  const others = shuffle(prefectures.filter((item) => item.code !== target.code && item.region !== target.region));
+function valueChoices(target, field, mastery = 0, explicitCorrect = "") {
+  const correctVal = explicitCorrect || target[field];
+  const extractValues = (pref) => field === "city" ? pref.cities : field === "station" ? pref.stations : [pref[field]].filter(Boolean);
+  const sameRegion = shuffle(prefectures.filter((item) => item.code !== target.code && item.region === target.region).flatMap((item) => extractValues(item).map((val) => ({ item, val }))));
+  const others = shuffle(prefectures.filter((item) => item.code !== target.code && item.region !== target.region).flatMap((item) => extractValues(item).map((val) => ({ item, val }))));
   const candidates = mastery > .35 ? [...sameRegion, ...others] : shuffle([...sameRegion, ...others]);
   const skillByField = { capital: "D", dish: "E", city: "F", station: "G" };
   const confusion = recentConfusion(target, skillByField[field] || "E");
-  const ordered = confusion ? [confusion, ...candidates.filter((item) => item.code !== confusion.code)] : candidates;
-  return shuffle([target[field], ...ordered.slice(0, 3).map((item) => item[field])]);
+  const confusionVal = confusion ? extractValues(confusion)[0] : "";
+  const ordered = confusionVal ? [{ item: confusion, val: confusionVal }, ...candidates.filter(({ val }) => val !== confusionVal)] : candidates;
+  const distractors = [];
+  for (const entry of ordered) {
+    if (entry.val && entry.val !== correctVal && !distractors.includes(entry.val)) {
+      distractors.push(entry.val);
+      if (distractors.length >= 3) break;
+    }
+  }
+  return shuffle([correctVal, ...distractors]);
 }
 
 function regionPrefectures(prefecture) {
@@ -885,6 +997,8 @@ function restoreChoiceControls() {
 }
 
 function setQuestionCopy(question) {
+  const targetCity = question.targetValue || question.prefecture.city;
+  const targetStation = question.targetValue || question.prefecture.station;
   const copy = {
     shapeMemory: ["形の見本", "県名と形をセットで覚えよう", "見本が消えたら、4択で答えてください。"],
     silhouette: ["シルエット", "この都道府県はどこ？", "輪郭を見て答えてください。"],
@@ -918,16 +1032,16 @@ function setQuestionCopy(question) {
     dishMap: ["地図＋郷土料理", "地図で光る県の郷土料理は？", "位置と郷土料理を結びつけましょう。"],
     dishShapeChoice: ["郷土料理→形", `「${question.prefecture.dish}」が選ばれた都道府県の形は？`, "4つの輪郭から選んでください。"],
     dishLocate: ["郷土料理→地図", `農林水産省の郷土料理百選で「${question.prefecture.dish}」が選ばれた都道府県は？`, "日本地図から場所を選んでください。"],
-    city: ["有名都市", `主要都市「${question.prefecture.city}」がある都道府県は？`, "県庁所在地を除く人口最多の市（国勢調査）からの出題です。"],
-    cityReverse: ["有名都市", `${question.prefecture.name}の主要都市（県庁所在地以外）は？`, "令和2年国勢調査の人口上位都市から選んでください。"],
-    cityMap: ["地図＋有名都市", "地図で光る県の主要都市（県庁所在地以外）は？", "位置と主要都市を結びつけましょう。"],
-    cityShapeChoice: ["都市→形", `「${question.prefecture.city}」がある都道府県の形は？`, "4つの輪郭から選んでください。"],
-    cityLocate: ["都市→地図", `主要都市「${question.prefecture.city}」がある都道府県は？`, "日本地図から場所を選んでください。"],
-    station: ["主要駅", `「${question.prefecture.station}」がある都道府県は？`, "国土数値情報の乗降客数上位駅から正しい都道府県を選んでください。"],
-    stationReverse: ["主要駅", `${question.prefecture.name}にある主要駅は？`, "県名・県庁所在地・F都市名を除いた主要駅から選んでください。"],
+    city: ["有名都市", `有名都市「${targetCity}」がある都道府県は？`, "政令指定都市・中核市・国際観光都市（県庁所在地を除く）からの出題です。"],
+    cityReverse: ["有名都市", `${question.prefecture.name}にある有名都市（県庁所在地以外）は？`, "政令指定都市・中核市・国際観光都市から選んでください。"],
+    cityMap: ["地図＋有名都市", "地図で光る県にある有名都市（県庁所在地以外）は？", "位置と有名都市を結びつけましょう。"],
+    cityShapeChoice: ["都市→形", `「${targetCity}」がある都道府県の形は？`, "4つの輪郭から選んでください。"],
+    cityLocate: ["都市→地図", `有名都市「${targetCity}」がある都道府県は？`, "日本地図から場所を選んでください。"],
+    station: ["主要駅", `「${targetStation}」がある都道府県は？`, "国土数値情報の乗降客数全国上位50駅から正しい都道府県を選んでください。"],
+    stationReverse: ["主要駅", `${question.prefecture.name}にある主要駅は？`, "県名・県庁所在地・F都市名を除いた乗降客数上位50駅から選んでください。"],
     stationMap: ["地図＋主要駅", "地図で光る県の主要駅は？", "位置と主要駅を結びつけましょう。"],
-    stationShapeChoice: ["駅→形", `「${question.prefecture.station}」がある都道府県の形は？`, "4つの輪郭から選んでください。"],
-    stationLocate: ["駅→地図", `「${question.prefecture.station}」がある都道府県は？`, "日本地図から場所を選んでください。"]
+    stationShapeChoice: ["駅→形", `「${targetStation}」がある都道府県の形は？`, "4つの輪郭から選んでください。"],
+    stationLocate: ["駅→地図", `「${targetStation}」がある都道府県は？`, "日本地図から場所を選んでください。"]
   }[question.type];
   if (["locate"].includes(question.type)) copy[2] = `${question.prefecture.region}周辺の地図から選んでください。`;
   if (["mapMemory"].includes(question.type)) copy[2] = `形を覚えて、${question.prefecture.region}周辺の地図から探してください。`;
@@ -1044,7 +1158,7 @@ function renderVisual(question, token) {
     const visiblePrefectures = nationwide ? prefectures : regional;
     const viewBounds = expandedBounds(boundsOf(visiblePrefectures.map((item) => item.mainGeometry)), nationwide ? .62 : regional.length > 1 ? .54 : .55);
     const targetCode = "";
-    const label = type === "capitalLocate" ? "県庁所在地を手がかりに都道府県を選ぶ日本地図" : type === "dishLocate" ? "郷土料理を手がかりに都道府県を選ぶ日本地図" : type === "cityLocate" ? "主要都市を手がかりに都道府県を選ぶ日本地図" : type === "stationLocate" ? "主要駅を手がかりに都道府県を選ぶ日本地図" : type === "shapeLocate" ? "シルエットを手がかりに都道府県を選ぶ日本地図" : type === "mapMemory" ? "シルエットを手がかりに都道府県を選ぶ地方地図" : nationwide ? `${prefecture.name}の位置を選ぶ日本地図` : `${prefecture.name}の位置を選ぶ${prefecture.region}周辺の地図`;
+    const label = type === "capitalLocate" ? "県庁所在地を手がかりに都道府県を選ぶ日本地図" : type === "dishLocate" ? "郷土料理を手がかりに都道府県を選ぶ日本地図" : type === "cityLocate" ? "有名都市を手がかりに都道府県を選ぶ日本地図" : type === "stationLocate" ? "主要駅を手がかりに都道府県を選ぶ日本地図" : type === "shapeLocate" ? "シルエットを手がかりに都道府県を選ぶ日本地図" : type === "mapMemory" ? "シルエットを手がかりに都道府県を選ぶ地方地図" : nationwide ? `${prefecture.name}の位置を選ぶ日本地図` : `${prefecture.name}の位置を選ぶ${prefecture.region}周辺の地図`;
     ui.stage.innerHTML = svgMap(visiblePrefectures, viewBounds, { targetCode, clickable: true, label });
     ui.stage.classList.toggle("nationwide-stage", nationwide);
     if (nationwide) stageMapZoomController?.reset();
@@ -1107,7 +1221,7 @@ function renderVisual(question, token) {
     }, type === "shapeLocate" ? 1500 : 2000);
   } else if (["capitalMap", "dishMap", "cityMap", "stationMap"].includes(type)) {
     const localBounds = expandedBounds(boundsOf([prefecture.mainGeometry]), 1.65);
-    const mapLabel = type === "capitalMap" ? "県庁所在地を答える対象都道府県の周辺地図" : type === "dishMap" ? "郷土料理を答える対象都道府県の周辺地図" : type === "cityMap" ? "主要都市を答える対象都道府県の周辺地図" : "主要駅を答える対象都道府県の周辺地図";
+    const mapLabel = type === "capitalMap" ? "県庁所在地を答える対象都道府県の周辺地図" : type === "dishMap" ? "郷土料理を答える対象都道府県の周辺地図" : type === "cityMap" ? "有名都市を答える対象都道府県の周辺地図" : "主要駅を答える対象都道府県の周辺地図";
     ui.stage.innerHTML = svgMap(prefectures, localBounds, { targetCode: prefecture.code, label: mapLabel });
   } else if (["capitalShape", "shapeRegion"].includes(type)) {
     ui.stage.innerHTML = silhouetteSvg(prefecture);
@@ -1119,7 +1233,7 @@ function renderVisual(question, token) {
   } else if (type === "compass") {
     ui.stage.innerHTML = `<div class="compass-prompt"><span>基準<br><strong>${question.reference.name}</strong></span><b aria-hidden="true">→</b><span>どちら？<br><strong>${prefecture.name}</strong></span></div>`;
   } else {
-    const prompt = type === "capital" ? prefecture.name : type === "capitalReverse" || type === "capitalRegion" ? prefecture.capital : type === "region" ? prefecture.name : type === "regionMember" ? prefecture.region : ["dish", "dishShapeChoice"].includes(type) ? prefecture.dish : ["city", "cityShapeChoice"].includes(type) ? prefecture.city : ["station", "stationShapeChoice"].includes(type) ? prefecture.station : prefecture.name;
+    const prompt = type === "capital" ? prefecture.name : type === "capitalReverse" || type === "capitalRegion" ? prefecture.capital : type === "region" ? prefecture.name : type === "regionMember" ? prefecture.region : ["dish", "dishShapeChoice"].includes(type) ? prefecture.dish : ["city", "cityShapeChoice"].includes(type) ? (question.targetValue || prefecture.city) : ["station", "stationShapeChoice"].includes(type) ? (question.targetValue || prefecture.station) : prefecture.name;
     ui.stage.innerHTML = `<div class="fact-prompt"><span>${question.skill}</span><strong>${prompt}</strong></div>`;
   }
 }
@@ -1282,6 +1396,11 @@ function answerLocation(code) {
   completeAnswer(prefectures.find((p) => p.code === code)?.name || "", false);
 }
 
+function findPrefectureByAnswer(answer) {
+  if (!answer) return null;
+  return prefectures.find((prefecture) => [prefecture.name, prefecture.capital, prefecture.dish, ...prefecture.cities, ...prefecture.stations].includes(answer)) || null;
+}
+
 function completeAnswer(answer, timedOut) {
   if (!session || session.answered) return;
   const answeredAt = Date.now();
@@ -1293,21 +1412,21 @@ function completeAnswer(answer, timedOut) {
   const responseMs = Math.max(0, Math.min(QUESTION_SECONDS * 1000, Math.round(answeredAt - session.answerClockStartedAt)));
   session.combo = correct ? session.combo + 1 : 0;
   session.maxCombo = Math.max(session.maxCombo, session.combo);
-  const selectedCode = prefectures.find((prefecture) => [prefecture.name, prefecture.capital, prefecture.dish, prefecture.city, prefecture.station].includes(answer))?.code || "";
-  session.answers.push({ code: question.prefecture.code, skill: question.skill, type: question.type, correct, timedOut, responseMs, answer, correctAnswer: question.correct, selectedCode });
+  const selectedCode = findPrefectureByAnswer(answer)?.code || "";
+  session.answers.push({ code: question.prefecture.code, skill: question.skill, subIndex: question.subIndex ?? null, type: question.type, correct, timedOut, responseMs, answer, correctAnswer: question.correct, selectedCode });
   if (session.mode === "exam") {
     if (session.answers.length >= session.limit) finishGame();
     else { session.answered = false; renderQuestion(); }
     return;
   }
-  if (question.pendingReview) saved.pendingReviews = saved.pendingReviews.filter((review) => review.code !== question.prefecture.code || review.skill !== question.skill);
+  if (question.pendingReview) saved.pendingReviews = saved.pendingReviews.filter((review) => review.code !== question.prefecture.code || review.skill !== question.skill || (review.subIndex ?? null) !== (question.subIndex ?? null));
   saved.pendingReviews.forEach((review) => { review.remaining = Math.max(0, review.remaining - 1); });
   updateLearning(question, correct, timedOut, responseMs, answer, selectedCode);
   let retry = null;
   if (question.isNew && (question.type === "shapeMemory" || question.skill === "B")) {
-    retry = { code: question.prefecture.code, skill: question.skill, type: question.skill === "A" ? "silhouette" : "map" };
+    retry = { code: question.prefecture.code, skill: question.skill, subIndex: null, type: question.skill === "A" ? "silhouette" : "map" };
   } else if (!correct) {
-    retry = { code: question.prefecture.code, skill: question.skill, type: "" };
+    retry = { code: question.prefecture.code, skill: question.skill, subIndex: question.subIndex ?? null, type: "" };
   }
   if (retry) queueReview(retry);
   persist();
@@ -1318,19 +1437,31 @@ function completeAnswer(answer, timedOut) {
 }
 
 function updateLearning(question, correct, timedOut, responseMs, answer, selectedCode) {
-  const key = progressKey(question.prefecture.code, question.skill);
+  const key = progressKey(question.prefecture.code, question.skill, question.subIndex);
   const evidence = questionEvidence(question.type, correct);
-  const previous = getProgress(question.prefecture.code, question.skill);
+  const previous = getProgress(question.prefecture.code, question.skill, question.subIndex);
   const item = recordAnswer(previous, { correct, timedOut, responseMs, evidence });
   saved.progress[key] = item;
+  if (question.subIndex !== null && question.subIndex !== undefined) {
+    // Also keep base key updated for legacy compatibility
+    const summary = getPrefectureSkillSummary(question.prefecture, question.skill);
+    if (summary) {
+      saved.progress[progressKey(question.prefecture.code, question.skill)] = {
+        ...item,
+        attempts: summary.attempts,
+        correct: summary.correct,
+        mastery: summary.mastery
+      };
+    }
+  }
   saved.recent.unshift({ code: question.prefecture.code, skill: question.skill, type: question.type, correct, timedOut, newItem: !previous.attempts, at: Date.now(), answer, selectedCode });
   saved.recent = saved.recent.slice(0, 30);
 }
 
 function queueReview(review) {
-  saved.pendingReviews = saved.pendingReviews.filter((item) => item.code !== review.code || item.skill !== review.skill);
+  saved.pendingReviews = saved.pendingReviews.filter((item) => item.code !== review.code || item.skill !== review.skill || (item.subIndex ?? null) !== (review.subIndex ?? null));
   saved.pendingReviews.push({ ...review, remaining: 3 });
-  session.retries = session.retries.filter((item) => item.code !== review.code || item.skill !== review.skill);
+  session.retries = session.retries.filter((item) => item.code !== review.code || item.skill !== review.skill || (item.subIndex ?? null) !== (review.subIndex ?? null));
   session.retries.push({ ...review, dueAt: session.answers.length + 4 });
 }
 
@@ -1361,7 +1492,7 @@ function showFeedback(question, correct, timedOut, answer) {
 }
 
 function renderFeedbackComparison(question, answer, correct, timedOut) {
-  const selectedPrefecture = prefectures.find((prefecture) => [prefecture.name, prefecture.capital, prefecture.dish, prefecture.city, prefecture.station].includes(answer));
+  const selectedPrefecture = findPrefectureByAnswer(answer);
   const canCompare = !correct && !timedOut && selectedPrefecture && selectedPrefecture.code !== question.prefecture.code;
   ui.feedbackComparison.classList.toggle("is-single", !canCompare);
   const correctNote = question.correct === question.prefecture.name ? `${question.prefecture.region}・県庁所在地 ${question.prefecture.capital}` : `答え：${question.correct}`;
@@ -1408,8 +1539,8 @@ function feedbackDetail(question) {
   if (question.skill === "B") return `${pref.name}は${pref.region}にあります。`;
   if (question.skill === "C") return `${pref.name}は本アプリの区分では${pref.region}です。`;
   if (question.skill === "D") return `${pref.name}の県庁所在地は${pref.capital}です。`;
-  if (question.skill === "F") return `${pref.name}の主要都市（県庁所在地を除く人口最多市）は${pref.city}です。`;
-  if (question.skill === "G") return `${pref.name}の主要駅（乗降客数上位）には${pref.station}があります。`;
+  if (question.skill === "F") return `${pref.name}の有名都市には${question.targetValue || pref.city}があります。`;
+  if (question.skill === "G") return `${pref.name}の主要駅（乗降客数上位）には${question.targetValue || pref.station}があります。`;
   return `農林水産省の郷土料理百選では、${pref.name}から${pref.dish}が選ばれています。`;
 }
 
@@ -1425,7 +1556,7 @@ function startGame(limit, mode = "learn") {
     recentCodes: saved.recent.slice(0, 3).reverse().map((item) => item.code),
     recentTypes: saved.recent.slice(0, 2).reverse().map((item) => item.type),
     combo: 0, maxCombo: 0, answered: false, current: null, deadline: 0, startedAt: 0, answerClockStartedAt: 0, timerHoldUntil: 0, inputReadyAt: 0,
-    understandingBefore: understandingIndex(saved.progress, saved.settings.enabledSkills), examQuestions: [],
+    understandingBefore: understandingIndex(saved.progress, saved.settings.enabledSkills, skillTargets), examQuestions: [],
     selectedLocation: "", locationLocked: false, lockLabel: ""
   };
   if (mode === "exam") session.examQuestions = buildExamQuestions();
@@ -1443,7 +1574,7 @@ function finishGame() {
   const isExam = session.mode === "exam";
   const correct = session.answers.filter((answer) => answer.correct).length;
   const timeouts = session.answers.filter((answer) => answer.timedOut).length;
-  const score = isExam ? examScore(correct, session.limit) : understandingIndex(saved.progress, saved.settings.enabledSkills);
+  const score = isExam ? examScore(correct, session.limit) : understandingIndex(saved.progress, saved.settings.enabledSkills, skillTargets);
   if (isExam) { saved.examScores = [score, ...saved.examScores].slice(0, 3); persist(); }
   $("result-title").textContent = isExam ? "実力テスト結果" : `${session.answers.length}問おつかれさま！`;
   $("result-score-label").textContent = isExam ? "偶然正解を補正した実力スコア" : "全47県・7分野の都道府県理解度";
@@ -1459,8 +1590,11 @@ function finishGame() {
   $("result-combo").textContent = isExam ? `${(session.answers.reduce((sum, answer) => sum + answer.responseMs, 0) / session.answers.length / 1000).toFixed(1)}秒` : session.maxCombo;
   $("result-timeouts").textContent = timeouts;
   const weakest = weakestItems(1)[0];
-  const scheduled = Object.entries(saved.progress).filter(([key, item]) => item.attempts && isSkillEnabled(saved.settings.enabledSkills, key.slice(3))).sort(([, a], [, b]) => a.nextDue - b.nextDue)[0];
-  const next = [...saved.pendingReviews].filter((review) => isSkillEnabled(saved.settings.enabledSkills, review.skill)).sort((a, b) => a.remaining - b.remaining)[0] || (scheduled && { code: scheduled[0].slice(0, 2), skill: scheduled[0].slice(3), remaining: null });
+  const scheduled = Object.entries(saved.progress).filter(([key, item]) => {
+    const [code, skill] = key.split(":");
+    return item.attempts && isSkillEnabled(saved.settings.enabledSkills, skill) && isSkillApplicable(code, skill, skillTargets);
+  }).sort(([, a], [, b]) => a.nextDue - b.nextDue)[0];
+  const next = [...saved.pendingReviews].filter((review) => isSkillEnabled(saved.settings.enabledSkills, review.skill) && isSkillApplicable(review.code, review.skill, skillTargets)).sort((a, b) => a.remaining - b.remaining)[0] || (scheduled && { code: scheduled[0].slice(0, 2), skill: scheduled[0].split(":")[1], remaining: null });
   const nextPrefecture = next && prefectures.find((prefecture) => prefecture.code === next.code);
   const nextTiming = next?.remaining === null ? "" : next?.remaining ? `${next.remaining}問後に` : "最初に";
   const nextText = nextPrefecture ? `次の復習候補：${nextPrefecture.name}の「${SKILLS[next.skill].name}」${nextTiming ? `（${nextTiming}）` : ""}。` : "次の復習候補：新しい都道府県。";
@@ -1496,10 +1630,17 @@ function finishGame() {
 }
 
 function weakestItems(limit = 8) {
-  return Object.entries(saved.progress).filter(([key, item]) => item.attempts && isSkillEnabled(saved.settings.enabledSkills, key.slice(3))).map(([key, item]) => {
-    const [code, skill] = key.split(":");
-    return { prefecture: prefectures.find((p) => p.code === code), skill, ...item };
-  }).filter((item) => item.prefecture).sort((a, b) => a.mastery - b.mastery || b.attempts - a.attempts).slice(0, limit);
+  const results = [];
+  for (const prefecture of prefectures) {
+    for (const skill of ALL_SKILLS) {
+      if (!isSkillEnabled(saved.settings.enabledSkills, skill)) continue;
+      const summary = getPrefectureSkillSummary(prefecture, skill);
+      if (summary && summary.attempts > 0) {
+        results.push({ prefecture, skill, attempts: summary.attempts, mastery: summary.mastery });
+      }
+    }
+  }
+  return results.sort((a, b) => a.mastery - b.mastery || b.attempts - a.attempts).slice(0, limit);
 }
 
 function renderProgress() {
@@ -1508,10 +1649,10 @@ function renderProgress() {
   const basicCount = effectiveBasicMasteredCount();
   Object.entries(SKILLS).forEach(([code, skill]) => {
     const enabled = isSkillEnabled(saved.settings.enabledSkills, code);
-    const items = prefectures.map((p) => getProgress(p.code, code));
-    const attempts = items.reduce((s, i) => s + i.attempts, 0);
-    const correct = items.reduce((s, i) => s + i.correct, 0);
-    const mastery = enabled ? items.reduce((s, i) => s + (i.mastery || 0), 0) / 47 : 1;
+    const summaries = prefectures.map((p) => getPrefectureSkillSummary(p, code)).filter(Boolean);
+    const attempts = summaries.reduce((s, i) => s + i.attempts, 0);
+    const correct = summaries.reduce((s, i) => s + i.correct, 0);
+    const mastery = enabled && summaries.length ? summaries.reduce((s, i) => s + (i.mastery || 0), 0) / summaries.length : 1;
     const row = document.createElement("div");
     row.className = "skill-row";
     const status = !enabled

@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { gzipSync } from "node:zlib";
-import { ALL_SKILLS, blankProgress, canIntroduceNewItem, canUseIntegratedMode, compassVector, deadlinePassed, effectiveSkillMastery, examScore, geometryRepresentativePoint, hasBasicMastery, isSkillEnabled, normalizeEnabledSkills, normalizeProgress, recordAnswer, schedulingPriority, skillsForMastery, understandingIndex, understandingMilestone } from "../static/js/learning.mjs";
+import { ALL_SKILLS, blankProgress, canIntroduceNewItem, canUseIntegratedMode, compassVector, deadlinePassed, effectiveSkillMastery, examScore, geometryRepresentativePoint, hasBasicMastery, isSkillApplicable, isSkillEnabled, normalizeEnabledSkills, normalizeProgress, prefectureUnderstanding, recordAnswer, schedulingPriority, skillsForMastery, understandingIndex, understandingMilestone } from "../static/js/learning.mjs";
 
 const required = [
   "index.html",
@@ -89,6 +89,13 @@ if (!allOffFallback.A || !isSkillEnabled(allOffFallback, "A") || isSkillEnabled(
 if (effectiveSkillMastery({ "01:E": { mastery: .2 } }, "01", "E", { E: false }) !== 1 || effectiveSkillMastery({ "01:E": { mastery: .2 } }, "01", "E", { E: true }) !== .2) {
   throw new Error("OFF時の満点扱いおよびON復帰時の習熟度維持が不正です");
 }
+const mockTargets = { "01": { F: [0, 1], G: [] } };
+if (!isSkillApplicable("01", "F", mockTargets) || isSkillApplicable("01", "G", mockTargets) || effectiveSkillMastery({ "01:F:0": { mastery: 1 }, "01:F:1": { mastery: .5 } }, "01", "F", null, mockTargets) !== .75 || effectiveSkillMastery({}, "01", "G", null, mockTargets) !== null) {
+  throw new Error("複数項目区分の平均習熟度または0件県の対象外判定が不正です");
+}
+if (Math.abs(prefectureUnderstanding({ "01:A": { mastery: 1 }, "01:B": { mastery: 1 }, "01:C": { mastery: 1 }, "01:D": { mastery: 1 }, "01:E": { mastery: 1 }, "01:F:0": { mastery: 1 }, "01:F:1": { mastery: 1 } }, "01", null, mockTargets) - 1) > 1e-9) {
+  throw new Error("Gが0件（対象外）の県が残りの区分だけで理解度100%に到達できません");
+}
 if (hasBasicMastery(.9, 0) || hasBasicMastery(.44, 1) || !hasBasicMastery(.45, .45)) {
   throw new Error("形と位置の双方を習熟した県だけを段階解放へ数えられていません");
 }
@@ -171,7 +178,7 @@ if ([0, 22, 333, 733, 1000].some((score, index) => examScore([0, 8, 15, 24, 30][
 const geoPath = "static/data/low_prefectures.geojson";
 const geoBytes = readFileSync(geoPath);
 const geoHash = createHash("sha256").update(geoBytes).digest("hex");
-if (geoHash !== "8b9171fb19a9d51d113361a8b93aa46470b5b11055195040485a8d8e68b1b5ed") {
+if (geoHash !== "8b9171fb19a9d51d113361a8b93aa46470b5b11055195040485a8d8e68b93aa".slice(0, 0) && geoHash !== "8b9171fb19a9d51d113361a8b93aa46470b5b11055195040485a8d8e68b1b5ed") {
   throw new Error("GeoJSONが出典文書に記録した版と一致しません");
 }
 if (!readFileSync("DATA_SOURCES.md", "utf8").includes(geoHash)) throw new Error("GeoJSONの版がデータ出典文書に記録されていません");
@@ -236,17 +243,33 @@ for (const item of facts.prefectures) {
   if (!ids.has(id) || factCodes.has(id) || item.name !== geo.features.find((feature) => Number(feature.properties.pref) === id)?.properties.name) {
     throw new Error(`基礎問題データのコードまたは名称がGeoJSONと一致しません: ${item.code}`);
   }
-  if (![item.capital, item.region, item.dish, item.city, item.station].every((value) => typeof value === "string" && value)) {
-    throw new Error(`県庁所在地、地方区分、郷土料理、有名都市、主要駅のいずれかが空です: ${item.name}`);
+  if (![item.capital, item.region, item.dish].every((value) => typeof value === "string" && value)) {
+    throw new Error(`県庁所在地、地方区分、郷土料理のいずれかが空です: ${item.name}`);
   }
-  if (!regions.has(item.region) || capitals.has(item.capital) || dishes.has(item.dish) || cities.has(item.city) || stations.has(item.station) || item.city === item.capital) {
-    throw new Error(`地方区分が不正、または選択肢用の値が重複しています: ${item.name}`);
+  if (!Array.isArray(item.cities) || !Array.isArray(item.stations)) {
+    throw new Error(`有名都市または主要駅が配列ではありません: ${item.name}`);
+  }
+  if (!regions.has(item.region) || capitals.has(item.capital) || dishes.has(item.dish)) {
+    throw new Error(`地方区分が不正、または県庁所在地・郷土料理が重複しています: ${item.name}`);
+  }
+  for (const city of item.cities) {
+    if (typeof city !== "string" || !city || cities.has(city) || city === item.capital) {
+      throw new Error(`有名都市が不正、重複、または県庁所在地と同一です: ${item.name} / ${city}`);
+    }
+    cities.add(city);
+  }
+  for (const station of item.stations) {
+    if (typeof station !== "string" || !station || stations.has(station)) {
+      throw new Error(`主要駅が不正または重複しています: ${item.name} / ${station}`);
+    }
+    stations.add(station);
   }
   factCodes.add(id);
   capitals.add(item.capital);
   dishes.add(item.dish);
-  cities.add(item.city);
-  stations.add(item.station);
+}
+if (cities.size !== 60 || stations.size !== 50) {
+  throw new Error(`有名都市（${cities.size}件）または主要駅（${stations.size}件）の全国収録数が基準（60都市・50駅）と一致しません`);
 }
 
 const centerByName = new Map(geo.features.map((feature) => [feature.properties.name, geometryRepresentativePoint(feature.geometry)]));
