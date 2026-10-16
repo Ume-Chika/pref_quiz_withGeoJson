@@ -141,8 +141,27 @@ try {
   await waitFor(cdp, `document.querySelector('#progress-dialog').open`);
   assert(await evaluate(cdp, `(() => { const text=[...document.querySelectorAll('#skill-progress .skill-name')].map(item=>item.textContent); return text.some(value=>value.includes('あと3県習得で解放')) && text.some(value=>value.includes('あと8県習得で解放')) && text.some(value=>value.includes('あと15県習得で解放')) && text.some(value=>value.includes('あと22県習得で解放')) && text.some(value=>value.includes('あと30県習得で解放')); })()`), "学習記録にC〜Gの解放条件を表示できません");
   await evaluate(cdp, `document.querySelector('#progress-dialog .close-button').click(); true`);
-  await evaluate(cdp, `document.querySelector('#settings-button').click(); document.querySelector('#skill-setting-E').click(); document.querySelector('#settings-dialog .close-button').click(); true`);
-  assert(await evaluate(cdp, `document.querySelector('#understanding-index').textContent==='60'`), "OFFにした区分を満点（習得済み）として理解度指数へ反映できません");
+  await evaluate(cdp, `document.querySelector('#settings-button').click(); true`);
+  await waitFor(cdp, `document.querySelector('#settings-dialog').open`);
+  assert(await evaluate(cdp, `(() => {
+    const items = [...document.querySelectorAll('.skill-setting-item')];
+    const noWrap = items.every(item => {
+      const span = item.querySelector('span');
+      const input = item.querySelector('input');
+      const spanRect = span.getBoundingClientRect();
+      const inputRect = input.getBoundingClientRect();
+      return span.getClientRects().length === 1 && spanRect.height < 32 && (inputRect.left - spanRect.right) < 40;
+    });
+    const dangerDiv = document.querySelector('.danger-zone > div');
+    const strongRect = dangerDiv.querySelector('strong').getBoundingClientRect();
+    const smallRect = dangerDiv.querySelector('small').getBoundingClientRect();
+    const stackedDanger = smallRect.top >= strongRect.bottom - 2;
+    const resetBtn = document.querySelector('#reset-data-button');
+    const singleLineBtn = resetBtn.getBoundingClientRect().height < 56;
+    return noWrap && stackedDanger && singleLineBtn;
+  })()`), "設定ダイアログの区分ラベル折り返し、チェックボックス間隔、またはデータ消去欄の縦積み・ボタン表示が崩れています");
+  await evaluate(cdp, `document.querySelector('#skill-setting-E').click(); document.querySelector('#settings-dialog .close-button').click(); true`);
+  assert(await evaluate(cdp, `document.querySelector('#understanding-index').textContent==='84'`), "OFFにした区分を満点（習得済み）として理解度指数へ反映できません");
   await evaluate(cdp, `document.querySelector('#settings-button').click(); document.querySelector('#skill-setting-E').click(); document.querySelector('#settings-dialog .close-button').click(); true`);
   assert(await evaluate(cdp, `document.querySelector('#understanding-index').textContent==='0'`), "区分をONに戻した際に元の学習状況へ戻りません");
 
@@ -369,7 +388,7 @@ try {
     ["station", "G", "14", "神奈川県"], ["stationReverse", "G", "14", "藤沢駅"], ["stationMap", "G", "14", "藤沢駅"], ["stationShapeChoice", "G", "14", "神奈川県"], ["stationLocate", "G", "14", "神奈川県"],
   ];
   for (const [type, skill, code, correct] of modes) {
-    await evaluate(cdp, `globalThis.__prefQuizTest=${JSON.stringify({ type, skill, code })}; document.querySelector('#start-endless-button').click(); true`);
+    await evaluate(cdp, `globalThis.__prefQuizTest=${JSON.stringify({ type, skill, code, subIndex: 0 })}; document.querySelector('#start-endless-button').click(); true`);
     await waitFor(cdp, `document.querySelector('#game-screen:not([hidden])') && document.querySelector('#game-screen').dataset.quizType === '${type}'`);
     await waitFor(cdp, `document.activeElement===document.querySelector('#question-title')`);
     assert(await evaluate(cdp, `getComputedStyle(document.querySelector('#question-title')).outlineStyle==='none'`), `${type}: 問題見出しに不要なフォーカス枠が出ています`);

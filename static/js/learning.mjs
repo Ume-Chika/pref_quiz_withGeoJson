@@ -22,8 +22,26 @@ export function isSkillEnabled(enabledSkills, skill) {
   return normalizeEnabledSkills(enabledSkills)[skill] !== false;
 }
 
-export function effectiveSkillMastery(progress, code, skill, enabledSkills = null) {
+export function isSkillApplicable(code, skill, targets = null) {
+  if (!ALL_SKILLS.includes(skill)) return false;
+  if (!targets || !["F", "G"].includes(skill)) return true;
+  const list = targets?.[code]?.[skill];
+  return Array.isArray(list) ? list.length > 0 : true;
+}
+
+export function effectiveSkillMastery(progress, code, skill, enabledSkills = null, targets = null) {
   if (!isSkillEnabled(enabledSkills, skill)) return 1;
+  if (!isSkillApplicable(code, skill, targets)) return null;
+  const list = targets?.[code]?.[skill];
+  if (Array.isArray(list) && list.length > 0) {
+    const fallback = Math.max(0, Math.min(1, Number(progress?.[`${code}:${skill}`]?.mastery) || 0));
+    const sum = list.reduce((acc, index) => {
+      const subKey = `${code}:${skill}:${index}`;
+      const val = progress?.[subKey] ? Number(progress[subKey].mastery) || 0 : fallback;
+      return acc + Math.max(0, Math.min(1, val));
+    }, 0);
+    return sum / list.length;
+  }
   return Math.max(0, Math.min(1, Number(progress?.[`${code}:${skill}`]?.mastery) || 0));
 }
 
@@ -55,17 +73,18 @@ export function hasBasicMastery(shapeMastery, locationMastery) {
   return shapeMastery >= .45 && locationMastery >= .45;
 }
 
-export function prefectureUnderstanding(progress, code, enabledSkills = null) {
-  const mastery = (skill) => effectiveSkillMastery(progress, code, skill, enabledSkills);
-  const shape = mastery("A");
-  const location = mastery("B");
+export function prefectureUnderstanding(progress, code, enabledSkills = null, targets = null) {
+  const mastery = (skill) => effectiveSkillMastery(progress, code, skill, enabledSkills, targets);
+  const shape = mastery("A") ?? 0;
+  const location = mastery("B") ?? 0;
   const basics = .35 * (shape + location) + .3 * Math.sqrt(shape * location);
-  const advanced = (mastery("C") + mastery("D") + mastery("E") + mastery("F") + mastery("G")) / 5;
+  const advancedValues = ["C", "D", "E", "F", "G"].map(mastery).filter((val) => val !== null);
+  const advanced = advancedValues.length ? advancedValues.reduce((sum, val) => sum + val, 0) / advancedValues.length : 1;
   return .7 * basics + .3 * advanced;
 }
 
-export function understandingIndex(progress, enabledSkills = null) {
-  const total = Array.from({ length: 47 }, (_, index) => prefectureUnderstanding(progress, String(index + 1).padStart(2, "0"), enabledSkills)).reduce((sum, value) => sum + value, 0);
+export function understandingIndex(progress, enabledSkills = null, targets = null) {
+  const total = Array.from({ length: 47 }, (_, index) => prefectureUnderstanding(progress, String(index + 1).padStart(2, "0"), enabledSkills, targets)).reduce((sum, value) => sum + value, 0);
   return Math.round(total / 47 * 1000);
 }
 

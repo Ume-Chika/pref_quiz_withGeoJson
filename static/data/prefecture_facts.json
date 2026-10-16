@@ -1,1 +1,90 @@
-{"schemaVersion":1,"retrievedAt":"2026-10-16","sources":{"prefectureCodes":{"title":"政府統計の総合窓口（e-Stat） 都道府県一覧","url":"https://www.e-stat.go.jp/stat-search/file-download?fileKind=2&statInfId=000007914937"},"capitals":{"title":"国土地理院 都道府県と都道府県庁所在地","url":"https://www.gsi.go.jp/common/000218164.pdf"},"regions":{"title":"内閣府 地震防災対策の現状調査に係る住民アンケート結果（地域区分定義）","url":"https://www.bousai.go.jp/jishin/nankai/taisaku_wg_02/11/pdf/sub1.pdf"},"tokyoMetropolitanGovernment":{"title":"東京都 都庁への交通案内","url":"https://www.metro.tokyo.lg.jp/about/kotsuannai"},"localCuisineSelection":{"title":"農林水産省 農山漁村の郷土料理百選一覧","url":"https://www.maff.go.jp/j/study/syoku_vision/manual/pdf/meguji.pdf"},"majorCities":{"title":"総務省統計局 令和2年国勢調査 人口等基本集計（e-Stat）","url":"https://www.e-stat.go.jp/stat-search/files?toukei=00200521"},"majorStations":{"title":"国土交通省 国土数値情報 駅別乗降客数データ（S12）","url":"https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-S12-v3_1.html"}},"notes":["地方区分に法令上の唯一の定義はないため、内閣府資料に明記された8区分を本アプリの正解として採用した。","東京都は国土地理院教材の表記「東京」ではなく、都庁本庁舎の所在自治体である「新宿区」を正解とした。","郷土料理は、農林水産省の郷土料理百選一覧で各都道府県の先頭に掲載された料理を、出題基準を統一するため採用した。その都道府県だけで食べられるという意味ではない。","有名都市（区分F）は、令和2年国勢調査において都道府県庁所在地（東京都は特別区部）および都道府県名と同名の市を除いた人口最多の市を採用した。","主要駅（区分G）は、国土数値情報（駅別乗降客数データ S12）に基づき、駅名に都道府県名・県庁所在地・区分Fの都市名を含まない乗降客数上位の主要駅を採用した。"],"prefectures":[{"code":"01","name":"北海道","capital":"札幌市","region":"北海道地方","dish":"ジンギスカン","city":"旭川市","station":"新千歳空港駅"},{"code":"02","name":"青森県","capital":"青森市","region":"東北地方","dish":"いちご煮","city":"八戸市","station":"弘前駅"},{"code":"03","name":"岩手県","capital":"盛岡市","region":"東北地方","dish":"わんこそば","city":"奥州市","station":"一ノ関駅"},{"code":"04","name":"宮城県","capital":"仙台市","region":"東北地方","dish":"ずんだ餅","city":"石巻市","station":"名取駅"},{"code":"05","name":"秋田県","capital":"秋田市","region":"東北地方","dish":"きりたんぽ鍋","city":"横手市","station":"大曲駅"},{"code":"06","name":"山形県","capital":"山形市","region":"東北地方","dish":"いも煮","city":"鶴岡市","station":"米沢駅"},{"code":"07","name":"福島県","capital":"福島市","region":"東北地方","dish":"こづゆ","city":"いわき市","station":"郡山駅"},{"code":"08","name":"茨城県","capital":"水戸市","region":"関東地方","dish":"あんこう料理","city":"つくば市","station":"取手駅"},{"code":"09","name":"栃木県","capital":"宇都宮市","region":"関東地方","dish":"しもつかれ","city":"小山市","station":"那須塩原駅"},{"code":"10","name":"群馬県","capital":"前橋市","region":"関東地方","dish":"おっきりこみ","city":"高崎市","station":"太田駅"},{"code":"11","name":"埼玉県","capital":"さいたま市","region":"関東地方","dish":"冷汁うどん","city":"川口市","station":"大宮駅"},{"code":"12","name":"千葉県","capital":"千葉市","region":"関東地方","dish":"太巻き寿司","city":"船橋市","station":"柏駅"},{"code":"13","name":"東京都","capital":"新宿区","region":"関東地方","dish":"深川丼","city":"八王子市","station":"渋谷駅"},{"code":"14","name":"神奈川県","capital":"横浜市","region":"関東地方","dish":"へらへら団子","city":"川崎市","station":"藤沢駅"},{"code":"15","name":"新潟県","capital":"新潟市","region":"中部地方","dish":"のっぺい汁","city":"長岡市","station":"越後湯沢駅"},{"code":"16","name":"富山県","capital":"富山市","region":"中部地方","dish":"ます寿し","city":"高岡市","station":"魚津駅"},{"code":"17","name":"石川県","capital":"金沢市","region":"中部地方","dish":"かぶら寿し","city":"白山市","station":"小松駅"},{"code":"18","name":"福井県","capital":"福井市","region":"中部地方","dish":"越前おろしそば","city":"坂井市","station":"敦賀駅"},{"code":"19","name":"山梨県","capital":"甲府市","region":"中部地方","dish":"ほうとう","city":"甲斐市","station":"大月駅"},{"code":"20","name":"長野県","capital":"長野市","region":"中部地方","dish":"信州そば","city":"松本市","station":"軽井沢駅"},{"code":"21","name":"岐阜県","capital":"岐阜市","region":"中部地方","dish":"栗きんとん","city":"大垣市","station":"多治見駅"},{"code":"22","name":"静岡県","capital":"静岡市","region":"中部地方","dish":"桜えびのかき揚げ","city":"浜松市","station":"熱海駅"},{"code":"23","name":"愛知県","capital":"名古屋市","region":"中部地方","dish":"ひつまぶし","city":"豊田市","station":"豊橋駅"},{"code":"24","name":"三重県","capital":"津市","region":"近畿地方","dish":"伊勢うどん","city":"四日市市","station":"桑名駅"},{"code":"25","name":"滋賀県","capital":"大津市","region":"近畿地方","dish":"ふなずし","city":"草津市","station":"米原駅"},{"code":"26","name":"京都府","capital":"京都市","region":"近畿地方","dish":"京漬物","city":"宇治市","station":"長岡京駅"},{"code":"27","name":"大阪府","capital":"大阪市","region":"近畿地方","dish":"箱寿司","city":"堺市","station":"天王寺駅"},{"code":"28","name":"兵庫県","capital":"神戸市","region":"近畿地方","dish":"ぼたん鍋","city":"姫路市","station":"三ノ宮駅"},{"code":"29","name":"奈良県","capital":"奈良市","region":"近畿地方","dish":"柿の葉寿司","city":"橿原市","station":"大和西大寺駅"},{"code":"30","name":"和歌山県","capital":"和歌山市","region":"近畿地方","dish":"鯨の竜田揚げ","city":"田辺市","station":"白浜駅"},{"code":"31","name":"鳥取県","capital":"鳥取市","region":"中国地方","dish":"かに汁","city":"米子市","station":"倉吉駅"},{"code":"32","name":"島根県","capital":"松江市","region":"中国地方","dish":"出雲そば","city":"出雲市","station":"安来駅"},{"code":"33","name":"岡山県","capital":"岡山市","region":"中国地方","dish":"ばらずし","city":"倉敷市","station":"児島駅"},{"code":"34","name":"広島県","capital":"広島市","region":"中国地方","dish":"カキの土手鍋","city":"福山市","station":"呉駅"},{"code":"35","name":"山口県","capital":"山口市","region":"中国地方","dish":"ふく料理","city":"下関市","station":"徳山駅"},{"code":"36","name":"徳島県","capital":"徳島市","region":"四国地方","dish":"そば米雑炊","city":"阿南市","station":"阿波池田駅"},{"code":"37","name":"香川県","capital":"高松市","region":"四国地方","dish":"讃岐うどん","city":"丸亀市","station":"坂出駅"},{"code":"38","name":"愛媛県","capital":"松山市","region":"四国地方","dish":"宇和島鯛めし","city":"今治市","station":"新居浜駅"},{"code":"39","name":"高知県","capital":"高知市","region":"四国地方","dish":"かつおのたたき","city":"南国市","station":"後免駅"},{"code":"40","name":"福岡県","capital":"福岡市","region":"九州地方","dish":"水炊き","city":"北九州市","station":"博多駅"},{"code":"41","name":"佐賀県","capital":"佐賀市","region":"九州地方","dish":"呼子イカの活きづくり","city":"唐津市","station":"鳥栖駅"},{"code":"42","name":"長崎県","capital":"長崎市","region":"九州地方","dish":"卓袱料理","city":"佐世保市","station":"諫早駅"},{"code":"43","name":"熊本県","capital":"熊本市","region":"九州地方","dish":"馬刺し","city":"八代市","station":"肥後大津駅"},{"code":"44","name":"大分県","capital":"大分市","region":"九州地方","dish":"ブリのあつめし","city":"別府市","station":"中津駅"},{"code":"45","name":"宮崎県","capital":"宮崎市","region":"九州地方","dish":"地鶏の炭火焼き","city":"都城市","station":"延岡駅"},{"code":"46","name":"鹿児島県","capital":"鹿児島市","region":"九州地方","dish":"鶏飯","city":"霧島市","station":"川内駅"},{"code":"47","name":"沖縄県","capital":"那覇市","region":"九州地方","dish":"沖縄そば","city":"うるま市","station":"おもろまち駅"}]}
+{
+  "schemaVersion": 2,
+  "retrievedAt": "2026-10-16",
+  "sources": {
+    "prefectureCodes": {
+      "title": "政府統計の総合窓口（e-Stat） 都道府県一覧",
+      "url": "https://www.e-stat.go.jp/stat-search/file-download?fileKind=2&statInfId=000007914937"
+    },
+    "capitals": {
+      "title": "国土地理院 都道府県と都道府県庁所在地",
+      "url": "https://www.gsi.go.jp/common/000218164.pdf"
+    },
+    "regions": {
+      "title": "内閣府 地震防災対策の現状調査に係る住民アンケート結果（地域区分定義）",
+      "url": "https://www.bousai.go.jp/jishin/nankai/taisaku_wg_02/11/pdf/sub1.pdf"
+    },
+    "tokyoMetropolitanGovernment": {
+      "title": "東京都 都庁への交通案内",
+      "url": "https://www.metro.tokyo.lg.jp/about/kotsuannai"
+    },
+    "localCuisineSelection": {
+      "title": "農林水産省 農山漁村の郷土料理百選一覧",
+      "url": "https://www.maff.go.jp/j/study/syoku_vision/manual/pdf/meguji.pdf"
+    },
+    "majorCities": {
+      "title": "総務省 政令指定都市・中核市一覧、観光庁 国際会議観光都市一覧、国際観光文化都市建設法",
+      "url": "https://www.soumu.go.jp/main_sosiki/jichi_gyousei/bunken/chihou-koukyoudantai_kubun.html"
+    },
+    "majorStations": {
+      "title": "国土交通省 国土数値情報 駅別乗降客数データ（S12）",
+      "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-S12-v3_1.html"
+    }
+  },
+  "notes": [
+    "地方区分に法令上の唯一の定義はないため、内閣府資料に明記された8区分を本アプリの正解として採用した。",
+    "東京都は国土地理院教材の表記「東京」ではなく、都庁本庁舎の所在自治体である「新宿区」を正解とした。",
+    "郷土料理は、農林水産省の郷土料理百選一覧で各都道府県の先頭に掲載された料理を、出題基準を統一するため採用した。その都道府県だけで食べられるという意味ではない。",
+    "有名都市（区分F）は、総務省の政令指定都市・中核市および観光庁の国際会議観光都市・国際観光文化都市から、都道府県庁所在地（東京都は特別区部）および都道府県名と同名の市を除いた全国60都市を採用した。",
+    "主要駅（区分G）は、国土数値情報（駅別乗降客数データ S12）に基づき、駅名に都道府県名・県庁所在地・区分Fの都市名を含まない乗降客数全国上位50駅を採用した。"
+  ],
+  "prefectures": [
+    {"code":"01","name":"北海道","capital":"札幌市","region":"北海道地方","dish":"ジンギスカン","cities":["旭川市","函館市","釧路市"],"stations":[]},
+    {"code":"02","name":"青森県","capital":"青森市","region":"東北地方","dish":"いちご煮","cities":["八戸市"],"stations":[]},
+    {"code":"03","name":"岩手県","capital":"盛岡市","region":"東北地方","dish":"わんこそば","cities":[],"stations":[]},
+    {"code":"04","name":"宮城県","capital":"仙台市","region":"東北地方","dish":"ずんだ餅","cities":[],"stations":[]},
+    {"code":"05","name":"秋田県","capital":"秋田市","region":"東北地方","dish":"きりたんぽ鍋","cities":[],"stations":[]},
+    {"code":"06","name":"山形県","capital":"山形市","region":"東北地方","dish":"いも煮","cities":["鶴岡市"],"stations":[]},
+    {"code":"07","name":"福島県","capital":"福島市","region":"東北地方","dish":"こづゆ","cities":["郡山市","いわき市"],"stations":[]},
+    {"code":"08","name":"茨城県","capital":"水戸市","region":"関東地方","dish":"あんこう料理","cities":["つくば市","土浦市"],"stations":[]},
+    {"code":"09","name":"栃木県","capital":"宇都宮市","region":"関東地方","dish":"しもつかれ","cities":["日光市"],"stations":[]},
+    {"code":"10","name":"群馬県","capital":"前橋市","region":"関東地方","dish":"おっきりこみ","cities":["高崎市"],"stations":[]},
+    {"code":"11","name":"埼玉県","capital":"さいたま市","region":"関東地方","dish":"冷汁うどん","cities":["川口市","川越市","越谷市"],"stations":["大宮駅","浦和駅"]},
+    {"code":"12","name":"千葉県","capital":"千葉市","region":"関東地方","dish":"太巻き寿司","cities":["船橋市","柏市","成田市","木更津市","浦安市"],"stations":["松戸駅","津田沼駅"]},
+    {"code":"13","name":"東京都","capital":"新宿区","region":"関東地方","dish":"深川丼","cities":["八王子市"],"stations":["渋谷駅","池袋駅","北千住駅","品川駅","新橋駅","秋葉原駅","高田馬場駅","上野駅","大手町駅","目黒駅","大崎駅","有楽町駅","立川駅","吉祥寺駅","中野駅","浜松町駅","恵比寿駅","田町駅","蒲田駅","町田駅","五反田駅","銀座駅","日暮里駅","押上駅","豊洲駅","錦糸町駅","赤羽駅","中目黒駅"]},
+    {"code":"14","name":"神奈川県","capital":"横浜市","region":"関東地方","dish":"へらへら団子","cities":["川崎市","相模原市","横須賀市","箱根町"],"stations":["藤沢駅","武蔵小杉駅","戸塚駅","溝の口駅","大船駅","海老名駅"]},
+    {"code":"15","name":"新潟県","capital":"新潟市","region":"中部地方","dish":"のっぺい汁","cities":[],"stations":[]},
+    {"code":"16","name":"富山県","capital":"富山市","region":"中部地方","dish":"ます寿し","cities":[],"stations":[]},
+    {"code":"17","name":"石川県","capital":"金沢市","region":"中部地方","dish":"かぶら寿し","cities":[],"stations":[]},
+    {"code":"18","name":"福井県","capital":"福井市","region":"中部地方","dish":"越前おろしそば","cities":[],"stations":[]},
+    {"code":"19","name":"山梨県","capital":"甲府市","region":"中部地方","dish":"ほうとう","cities":["富士吉田市"],"stations":[]},
+    {"code":"20","name":"長野県","capital":"長野市","region":"中部地方","dish":"信州そば","cities":["松本市","上田市","軽井沢町"],"stations":[]},
+    {"code":"21","name":"岐阜県","capital":"岐阜市","region":"中部地方","dish":"栗きんとん","cities":["高山市"],"stations":[]},
+    {"code":"22","name":"静岡県","capital":"静岡市","region":"中部地方","dish":"桜えびのかき揚げ","cities":["浜松市","熱海市","伊東市"],"stations":[]},
+    {"code":"23","name":"愛知県","capital":"名古屋市","region":"中部地方","dish":"ひつまぶし","cities":["豊田市","岡崎市","一宮市","豊橋市","犬山市"],"stations":["金山駅","栄駅"]},
+    {"code":"24","name":"三重県","capital":"津市","region":"近畿地方","dish":"伊勢うどん","cities":["伊勢市","鳥羽市"],"stations":[]},
+    {"code":"25","name":"滋賀県","capital":"大津市","region":"近畿地方","dish":"ふなずし","cities":[],"stations":[]},
+    {"code":"26","name":"京都府","capital":"京都市","region":"近畿地方","dish":"京漬物","cities":[],"stations":[]},
+    {"code":"27","name":"大阪府","capital":"大阪市","region":"近畿地方","dish":"箱寿司","cities":["堺市","東大阪市","枚方市","豊中市","吹田市","高槻市","八尾市","寝屋川市"],"stations":["梅田駅","難波駅","天王寺駅","京橋駅","淀屋橋駅","本町駅","心斎橋駅"]},
+    {"code":"28","name":"兵庫県","capital":"神戸市","region":"近畿地方","dish":"ぼたん鍋","cities":["姫路市","西宮市","尼崎市","明石市","芦屋市"],"stations":["三ノ宮駅"]},
+    {"code":"29","name":"奈良県","capital":"奈良市","region":"近畿地方","dish":"柿の葉寿司","cities":[],"stations":[]},
+    {"code":"30","name":"和歌山県","capital":"和歌山市","region":"近畿地方","dish":"鯨の竜田揚げ","cities":[],"stations":[]},
+    {"code":"31","name":"鳥取県","capital":"鳥取市","region":"中国地方","dish":"かに汁","cities":[],"stations":[]},
+    {"code":"32","name":"島根県","capital":"松江市","region":"中国地方","dish":"出雲そば","cities":[],"stations":[]},
+    {"code":"33","name":"岡山県","capital":"岡山市","region":"中国地方","dish":"ばらずし","cities":["倉敷市"],"stations":[]},
+    {"code":"34","name":"広島県","capital":"広島市","region":"中国地方","dish":"カキの土手鍋","cities":["福山市","呉市"],"stations":[]},
+    {"code":"35","name":"山口県","capital":"山口市","region":"中国地方","dish":"ふく料理","cities":["下関市"],"stations":[]},
+    {"code":"36","name":"徳島県","capital":"徳島市","region":"四国地方","dish":"そば米雑炊","cities":[],"stations":[]},
+    {"code":"37","name":"香川県","capital":"高松市","region":"四国地方","dish":"讃岐うどん","cities":[],"stations":[]},
+    {"code":"38","name":"愛媛県","capital":"松山市","region":"四国地方","dish":"宇和島鯛めし","cities":[],"stations":[]},
+    {"code":"39","name":"高知県","capital":"高知市","region":"四国地方","dish":"かつおのたたき","cities":[],"stations":[]},
+    {"code":"40","name":"福岡県","capital":"福岡市","region":"九州地方","dish":"水炊き","cities":["北九州市","久留米市"],"stations":["博多駅","天神駅"]},
+    {"code":"41","name":"佐賀県","capital":"佐賀市","region":"九州地方","dish":"呼子イカの活きづくり","cities":[],"stations":[]},
+    {"code":"42","name":"長崎県","capital":"長崎市","region":"九州地方","dish":"卓袱料理","cities":["佐世保市"],"stations":[]},
+    {"code":"43","name":"熊本県","capital":"熊本市","region":"九州地方","dish":"馬刺し","cities":[],"stations":[]},
+    {"code":"44","name":"大分県","capital":"大分市","region":"九州地方","dish":"ブリのあつめし","cities":["別府市"],"stations":[]},
+    {"code":"45","name":"宮崎県","capital":"宮崎市","region":"九州地方","dish":"地鶏の炭火焼き","cities":[],"stations":[]},
+    {"code":"46","name":"鹿児島県","capital":"鹿児島市","region":"九州地方","dish":"鶏飯","cities":[],"stations":[]},
+    {"code":"47","name":"沖縄県","capital":"那覇市","region":"九州地方","dish":"沖縄そば","cities":[],"stations":[]}
+  ]
+}
