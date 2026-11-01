@@ -1,7 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { basename, dirname, join } from "node:path";
 import { gzipSync } from "node:zlib";
 import { ALL_SKILLS, blankProgress, canIntroduceNewItem, canUseIntegratedMode, compassVector, deadlinePassed, effectiveSkillMastery, examScore, geometryRepresentativePoint, hasBasicMastery, isSkillApplicable, isSkillEnabled, normalizeEnabledSkills, normalizeProgress, prefectureUnderstanding, recordAnswer, schedulingPriority, skillsForMastery, understandingIndex, understandingMilestone } from "../static/js/learning.mjs";
 
@@ -45,6 +45,65 @@ for (const name of readdirSync("static/js").filter((name) => /\.m?js$/.test(name
   execFileSync(process.execPath, ["--check", join("static/js", name)], { stdio: "inherit" });
 }
 execFileSync(process.execPath, ["--check", ".github/chrome-smoke.mjs"], { stdio: "inherit" });
+
+const jsFiles = readdirSync("static/js").filter((f) => f.endsWith(".js") || f.endsWith(".mjs"));
+const exportsByFile = {};
+const importsByFile = {};
+for (const file of jsFiles) {
+  const content = readFileSync(join("static/js", file), "utf8");
+  exportsByFile[file] = new Set();
+  importsByFile[file] = [];
+  for (const m of content.matchAll(/export\s+(?:async\s+)?(?:function\*?|const|let|class)\s+([a-zA-Z0-9_$]+)/g)) {
+    exportsByFile[file].add(m[1]);
+  }
+  for (const m of content.matchAll(/export\s*\{([^}]+)\}(?:\s*from\s*["\x27]([^"\x27]+)["\x27])?/g)) {
+    if (!m[2]) {
+      for (const item of m[1].split(",")) {
+        const name = item.trim().split(/\s+as\s+/).pop().trim();
+        if (name) exportsByFile[file].add(name);
+      }
+    }
+  }
+  for (const m of content.matchAll(/import\s*\{([^}]+)\}\s*from\s*["\x27]([^"\x27]+)["\x27]/g)) {
+    const target = basename(m[2]);
+    const names = m[1].split(",").map((s) => s.trim().split(/\s+as\s+/)[0].trim()).filter(Boolean);
+    importsByFile[file].push({ target, names });
+  }
+}
+for (const file of jsFiles) {
+  const content = readFileSync(join("static/js", file), "utf8");
+  for (const m of content.matchAll(/export\s*\{([^}]+)\}\s*from\s*["\x27]([^"\x27]+)["\x27]/g)) {
+    if (m[2]) {
+      const target = basename(m[2]);
+      for (const item of m[1].split(",")) {
+        const parts = item.trim().split(/\s+as\s+/);
+        const exported = (parts[1] || parts[0]).trim();
+        if (exported) exportsByFile[file].add(exported);
+      }
+    }
+  }
+}
+for (const [file, imports] of Object.entries(importsByFile)) {
+  for (const { target, names } of imports) {
+    if (!exportsByFile[target]) throw new Error(`未定義ファイルからのインポート: ${file} → ${target}`);
+    for (const name of names) {
+      if (!exportsByFile[target].has(name)) {
+        throw new Error(`存在しないexportを参照しています: ${file} が ${target} の "${name}" をimport`);
+      }
+    }
+  }
+}
+
+const codeFiles = [
+  ...readdirSync("static/js").filter((name) => /\.m?js$/.test(name)).map((name) => join("static/js", name)),
+  ...readdirSync("static/css").filter((name) => /\.css$/.test(name)).map((name) => join("static/css", name)),
+];
+for (const path of codeFiles) {
+  const lineCount = readFileSync(path, "utf8").split("\n").length;
+  if (lineCount > 200) {
+    throw new Error(`ソースコードが200行を超えています（リポジトリルール違反）: ${path} (${lineCount}行)`);
+  }
+}
 
 for (const path of ["index.html", "sources.html", "static/css/style.css", "static/js/script.js"]) {
   const source = readFileSync(path, "utf8");

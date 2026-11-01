@@ -79,7 +79,10 @@ scripts/               境界データの再生成・開発用ユーティリテ
 
 ## 開発と公開
 
-`main` は公開可能な状態に保ち、変更は直接コミットします。GitHub ActionsはJavaScript構文、ローカル参照、GeoJSON、Chrome操作、LighthouseモバイルPerformance 90以上・Accessibility 95以上を検査し、`main` の成功時にGitHub Pagesへ公開します。LighthouseレポートはActionsの成果物から確認できます。
+`main` は公開可能な状態に保ち、変更は直接コミットします。GitHub ActionsはJavaScript構文、ローカル参照、GeoJSON、ソースコード行数制限（200行以下）、Chrome操作、LighthouseモバイルPerformance 90以上・Accessibility 95以上を検査し、`main` の成功時にGitHub Pagesへ公開します。LighthouseレポートはActionsの成果物から確認できます。
+
+### コード規約
+- **ソースコードの行数上限**: 保守性・可読性の担保のため、フロントエンドのすべてのソースコードファイル（`static/js/*.{js,mjs}`, `static/css/*.css`）は**1ファイルあたり200行以下**に分割・維持します。CI（`.github/validate.mjs`）で自動検査されます。
 
 ローカルでもNode.js 22以上で同じ主要検査を実行できます。
 

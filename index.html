@@ -44,17 +44,15 @@
       </section>
 
       <section id="error-screen" class="screen center-screen" hidden>
-        <p class="eyebrow">読み込みエラー</p>
         <h1>地図を準備できませんでした</h1>
-        <p id="error-message" class="muted">通信状態を確認して、もう一度お試しください。</p>
+        <p id="error-message" class="muted">通信状態を確認して再試行してください。</p>
         <button id="retry-button" class="primary-button" type="button">もう一度読み込む</button>
       </section>
 
       <section id="home-screen" class="screen home-screen" hidden>
         <div class="hero-card">
           <div>
-            <p class="eyebrow">遊ぶほど、あなた向けに</p>
-            <h1><span>日本のかたちを</span><br><span>ミニゲームで覚えよう。</span></h1>
+            <h1><span>日本のかたちを</span><br><span>ミニゲームで覚えよう</span></h1>
             <p class="hero-copy">苦手な県と忘れかけた問題を自動で選びます。まずは10問、気軽に挑戦。</p>
           </div>
           <div id="hero-map" class="hero-map" aria-hidden="true"></div>
@@ -85,16 +83,13 @@
           <button id="start-exam-button" class="secondary-button exam-button" type="button"><span>実力テスト 30問</span><small id="exam-summary">全7分野・約8分・答え合わせは最後</small></button>
           <button id="start-endless-button" class="secondary-button" type="button">エンドレス学習</button>
           <button id="study-map-button" class="secondary-button" type="button">白地図を眺める</button>
-          <p id="next-review-hint" class="subtle-hint">最初は基本の形から出題します。</p>
+          <p id="next-review-hint" class="subtle-hint">最初は基本の形から出題</p>
         </div>
 
         <section class="mode-preview" aria-labelledby="mode-preview-title">
           <div class="section-heading">
-            <div>
-              <p class="eyebrow">出題形式</p>
-              <h2 id="mode-preview-title">いろいろな見え方で出題</h2>
-            </div>
-            <span>自動選択</span>
+            <h2 id="mode-preview-title">出題形式</h2>
+            <span>全47都道府県対応</span>
           </div>
           <div class="mode-chips" aria-label="出題形式">
             <span>形の見本</span><span>シルエット</span><span>隙間シルエット</span><span>形を選ぶ</span><span>地図→形</span><span>地図</span><span>地図を選ぶ</span><span>地図フラッシュ</span><span>スポットライト</span><span>形→地図</span><span>全国地図タップ</span><span>方角</span><span>県庁所在地</span><span>県庁所在地→地図</span><span>県庁所在地→地方</span><span>地方地図</span><span>地方の形</span><span>形→地方</span><span>郷土料理</span><span>郷土料理→形</span><span>郷土料理→地図</span><span>有名都市</span><span>都市→形</span><span>都市→地図</span><span>主要駅</span><span>駅→形</span><span>駅→地図</span>
@@ -119,7 +114,7 @@
         <div class="question-heading">
           <span id="quiz-type" class="quiz-type">シルエット</span>
           <h1 id="question-title" tabindex="-1">この都道府県はどこ？</h1>
-          <p id="question-help" class="muted">形を見て答えてください。</p>
+          <p id="question-help" class="muted">形を見て回答</p>
         </div>
 
         <div id="stage-zoom-toolbar" class="study-map-toolbar stage-zoom-toolbar" aria-label="地図の拡大縮小" hidden>
@@ -143,8 +138,7 @@
       </section>
 
       <section id="result-screen" class="screen result-screen" hidden>
-        <p class="eyebrow">学習結果</p>
-        <h1 id="result-title">10問おつかれさま！</h1>
+        <h1 id="result-title">10問終了</h1>
         <div class="result-score">
           <span id="result-score-label" class="result-score-label">都道府県理解度</span>
           <strong id="result-score">0</strong><span id="result-score-unit">/1000</span>
@@ -157,7 +151,7 @@
           <article><span>時間切れ</span><strong id="result-timeouts">0</strong></article>
         </div>
         <div class="review-card">
-          <span class="review-icon" aria-hidden="true">↻</span>
+          <span class="review-icon" aria-hidden="true"><svg viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10a7 7 0 1 0 2.05-4.95L3 7m0-4v4h4"/></svg></span>
           <div><h2>次のおすすめ</h2><p id="result-review">新しい県に挑戦しましょう。</p></div>
         </div>
         <div class="result-actions">
@@ -180,8 +174,8 @@
 
   <dialog id="feedback-dialog" class="app-dialog feedback-dialog" aria-labelledby="feedback-title" aria-describedby="feedback-detail">
     <div id="feedback-mark" class="feedback-mark" aria-hidden="true"></div>
-    <p id="feedback-kicker" class="eyebrow">正解</p>
-    <h2 id="feedback-title" tabindex="-1">正解！</h2>
+    <p id="feedback-kicker" class="visually-hidden">正解</p>
+    <h2 id="feedback-title" tabindex="-1">正解</h2>
     <p id="feedback-detail">正解は東京都です。</p>
     <div id="feedback-comparison" class="feedback-comparison" aria-label="回答した県と正解の県の形と場所"></div>
     <p id="feedback-points" class="feedback-points">理解度指数を更新しました</p>
@@ -193,7 +187,7 @@
 
   <dialog id="settings-dialog" class="app-dialog settings-dialog" aria-labelledby="settings-title">
     <form method="dialog">
-      <div class="dialog-header"><h2 id="settings-title">設定</h2><button class="close-button" value="close" aria-label="閉じる">×</button></div>
+      <div class="dialog-header"><h2 id="settings-title">設定</h2><button class="close-button" value="close" aria-label="閉じる"><svg aria-hidden="true" viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 4l8 8m0-8l-8 8"/></svg></button></div>
       <fieldset class="setting-row setting-column skill-settings-group">
         <legend><strong>覚える区分</strong><small>OFFの区分は習得済み（全部正解）として扱い、ONに戻すと学習状況が戻ります</small></legend>
         <div id="skill-settings-list" class="skill-settings-list">
@@ -234,7 +228,7 @@
 
   <dialog id="progress-dialog" class="app-dialog progress-dialog" aria-labelledby="progress-title">
     <form method="dialog">
-      <div class="dialog-header"><div><p class="eyebrow">学習状況</p><h2 id="progress-title">学習記録</h2></div><button class="close-button" value="close" aria-label="閉じる">×</button></div>
+      <div class="dialog-header"><h2 id="progress-title">学習記録</h2><button class="close-button" value="close" aria-label="閉じる"><svg aria-hidden="true" viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 4l8 8m0-8l-8 8"/></svg></button></div>
       <div id="skill-progress" class="skill-progress"></div>
       <section class="weak-section"><h3>いま復習したい県</h3><div id="weak-prefectures" class="weak-list"></div></section>
     </form>
@@ -242,13 +236,13 @@
 
   <dialog id="study-map-dialog" class="app-dialog study-map-dialog" aria-labelledby="study-map-title">
     <form method="dialog">
-      <div class="dialog-header"><div><p class="eyebrow">理解度マップ</p><h2 id="study-map-title">白地図を眺める</h2></div><button class="close-button" value="close" aria-label="閉じる">×</button></div>
+      <div class="dialog-header"><h2 id="study-map-title">白地図</h2><button class="close-button" value="close" aria-label="閉じる"><svg aria-hidden="true" viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 4l8 8m0-8l-8 8"/></svg></button></div>
       <div class="study-map-body">
         <div class="study-map-main">
           <div class="study-map-controls">
             <div class="study-map-filters" aria-label="習熟度の色分け">
-              <label><input id="study-map-show-strong" type="checkbox" checked><i class="legend-correct">○</i>得意を緑色</label>
-              <label><input id="study-map-show-weak" type="checkbox" checked><i class="legend-incorrect">×</i>苦手を赤色</label>
+              <label><input id="study-map-show-strong" type="checkbox" checked><i class="legend-correct" aria-hidden="true"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="8" cy="8" r="5"/></svg></i>得意を緑色</label>
+              <label><input id="study-map-show-weak" type="checkbox" checked><i class="legend-incorrect" aria-hidden="true"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M4 4l8 8m0-8l-8 8"/></svg></i>苦手を赤色</label>
             </div>
             <div class="study-map-toolbar" aria-label="地図の拡大縮小">
               <button id="study-map-zoom-out" type="button" aria-label="地図を縮小">−</button>
@@ -278,8 +272,8 @@
   </dialog>
 
   <dialog id="confirm-reset-dialog" class="app-dialog confirm-dialog" aria-labelledby="reset-title" aria-describedby="reset-description">
-    <h2 id="reset-title">本当に消去しますか？</h2>
-    <p id="reset-description">学習記録・設定・実力テスト結果は元に戻せません。</p>
+    <h2 id="reset-title">学習データの消去</h2>
+    <p id="reset-description">学習記録・設定・実力テスト結果をすべて初期化します。この操作は取り消せません。</p>
     <div class="dialog-actions">
       <button id="confirm-reset-button" class="danger-button" type="button">消去する</button>
       <button id="cancel-reset-button" class="secondary-button" type="button">キャンセル</button>
