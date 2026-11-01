@@ -28,10 +28,10 @@ export function updateLearning(question, correct, timedOut, responseMs, answer, 
   const isExam = ctx.session.mode === "exam";
   const now = Date.now();
   const subIndex = question.subIndex;
-  const progressKey = subIndex === null || subIndex === undefined ? `${question.prefecture.code}:${question.skill}` : `${question.prefecture.code}:${question.skill}:${subIndex}`;
+  const key = subIndex === null || subIndex === undefined ? `${question.prefecture.code}:${question.skill}` : `${question.prefecture.code}:${question.skill}:${subIndex}`;
   if (!isExam) {
     const evidence = questionEvidence(question.type, correct);
-    ctx.saved.progress[progressKey] = recordAnswer(ctx.saved.progress[progressKey], { correct, timedOut, responseMs, evidence, now });
+    ctx.saved.progress[key] = recordAnswer(ctx.saved.progress[key], { correct, timedOut, responseMs, evidence, now });
     ctx.saved.recent.unshift({
       code: question.prefecture.code, skill: question.skill, subIndex, type: question.type, correct, timedOut,
       newItem: question.isNew, at: now, answer: typeof answer === "string" ? answer.slice(0, 80) : "",
